@@ -20,7 +20,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     subtitle: 'Your #1 Supporter ❤️',
     avatarIcon: '👑',
     avatarImageUrl: '/avatars/nandhini.jpg',
-    cartoonImageUrl: '/avatars/nandhini_cartoon.jpg',
+    cartoonImageUrl: '/avatars/nandhini_3d.png',
     badgeText: 'VIP CHEERLEADER',
     badgeColor: '#ff4b4b',
     cheerQuotes: [
@@ -38,7 +38,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     subtitle: 'Focused & Determined',
     avatarIcon: '⚡',
     avatarImageUrl: '/avatars/founder.jpg',
-    cartoonImageUrl: '/avatars/founder_cartoon.jpg',
+    cartoonImageUrl: '/avatars/founder_3d.png',
     badgeText: 'LEARNER',
     badgeColor: '#1cb0f6',
     cheerQuotes: [
@@ -71,7 +71,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     subtitle: 'Himalayan Persian (White Fur & Brown)',
     avatarIcon: '🐈',
     avatarImageUrl: '/avatars/connie.jpg',
-    cartoonImageUrl: '/avatars/connie_cartoon.jpg',
+    cartoonImageUrl: '/avatars/connie_3d.png',
     badgeText: 'PRECISION CAT',
     badgeColor: '#ce82ff',
     cheerQuotes: [
@@ -101,7 +101,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     subtitle: 'Grey Lhasa Apso',
     avatarIcon: '🐶',
     avatarImageUrl: '/avatars/scooby.jpg',
-    cartoonImageUrl: '/avatars/scooby_cartoon.jpg',
+    cartoonImageUrl: '/avatars/scooby_3d.png',
     badgeText: 'WISE GUARDIAN',
     badgeColor: '#64748b',
     cheerQuotes: [
