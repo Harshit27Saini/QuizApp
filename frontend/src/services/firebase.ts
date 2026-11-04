@@ -26,3 +26,4 @@ if (firebaseConfig.projectId) {
 }
 
 export { app, auth, storage };
+

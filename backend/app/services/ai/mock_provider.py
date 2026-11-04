@@ -5,8 +5,9 @@ from app.services.ai.base import BaseAIProvider
 
 class MockAIProvider(BaseAIProvider):
     """
-    Zero-dependency Mock AI Provider for offline development, CI/CD, and fast unit tests.
-    Synthesizes authentic questions using direct quotes from the input text sections.
+    Intelligent Mock AI Provider for offline testing and development.
+    Synthesizes authentic academic exam questions grounded in the material,
+    eliminating meta-language ("according to text") and robotic distractors.
     """
 
     async def generate_structured_json(
@@ -16,71 +17,78 @@ class MockAIProvider(BaseAIProvider):
         response_schema: Dict[str, Any]
     ) -> Dict[str, Any]:
         # Extract source sentences from the user prompt
-        text_matches = re.findall(r"Content:\s*(.*?)(?=(?:\[Section|\Z))", user_prompt, re.DOTALL)
+        text_matches = re.findall(r"\[Topic:.*?\]\s*(.*?)(?=(?:\[Topic|\Z))", user_prompt, re.DOTALL)
         combined_text = " ".join(text_matches).strip() if text_matches else user_prompt
 
-        # Split into readable sentences
+        # Clean into high-value academic sentences
         sentences = [
             s.strip() for s in re.split(r"(?<=[.!?])\s+", combined_text)
-            if len(s.strip()) > 25 and not s.strip().startswith("[")
+            if len(s.strip()) > 35 and not s.strip().startswith("[") and not s.strip().startswith("#")
         ]
 
         if not sentences:
             sentences = [
-                "Recall is a personalized learning platform that transforms user-uploaded material into an interactive experience.",
-                "Active recall strengthens memory retention through self-testing and immediate feedback.",
-                "Spaced repetition algorithms schedule reviews at optimal intervals before forgetting occurs."
+                "Active recall strengthens synaptic connections by repeatedly retrieving stored memory without consulting external reference material.",
+                "Spaced repetition leverages the psychological spacing effect to counteract the Ebbinghaus forgetting curve.",
+                "Cognitive load theory posits that instructional design must accommodate the limited capacity of human working memory.",
+                "Synaptic plasticity enables long-term potentiation, which serves as the primary cellular mechanism for memory encoding."
             ]
 
         # Extract page number if present in prompt
-        page_match = re.search(r"Page:\s*(\d+)", user_prompt)
+        page_match = re.search(r"Page\s*(\d+)", user_prompt)
         page_num = int(page_match.group(1)) if page_match else 1
 
         questions: List[Dict[str, Any]] = []
 
-        # Generate a balanced set of MCQ and MSQ
+        # Domain terms gathered across the text for generating plausible distractors
+        all_words = set(re.findall(r"\b[A-Za-z]{5,}\b", combined_text))
+        distractor_pool = [w.capitalize() for w in all_words if len(w) > 6][:10]
+        if len(distractor_pool) < 3:
+            distractor_pool = ["Inhibition", "Phosphorylation", "Attenuation", "Serialization"]
+
         for idx, sentence in enumerate(sentences[:10]):
-            is_msq = (idx % 2 == 1)
             clean_sentence = sentence.replace("\n", " ").strip()
             
-            # Key subject identification
-            words = [w for w in clean_sentence.split() if len(w) > 4]
-            key_term = words[0] if words else "the concept"
+            # Extract key concept from sentence
+            words = [w for w in clean_sentence.split() if len(w) > 5 and w.isalpha()]
+            core_term = words[0].capitalize() if words else "This process"
+            secondary_term = words[1].capitalize() if len(words) > 1 else distractor_pool[0]
+
+            is_msq = (idx % 2 == 1)
 
             if not is_msq:
-                # Single Choice (MCQ)
+                # Authentic Academic Exam Question (MCQ)
                 questions.append({
                     "question_type": "MCQ",
-                    "prompt": f"According to the source material, which statement accurately reflects the discussion regarding {key_term}?",
+                    "prompt": f"What is the primary role or mechanism of {core_term} within this system?",
                     "options": [
                         {"id": "a", "text": clean_sentence},
-                        {"id": "b", "text": f"It is unrelated to {key_term} and operates in an alternate paradigm."},
-                        {"id": "c", "text": f"It has been deprecated and replaced by unvalidated assertions."},
-                        {"id": "d", "text": "None of the source material supports this statement."}
+                        {"id": "b", "text": f"It acts as a competitive inhibitor against {secondary_term} activation."},
+                        {"id": "c", "text": f"It permanently decreases system throughput by downregulating {distractor_pool[min(idx, len(distractor_pool)-1)]}."},
+                        {"id": "d", "text": f"It operates passively without consuming energy or altering state variables."}
                     ],
                     "correct_answers": ["a"],
-                    "explanation": f"The source text directly states: '{clean_sentence}'",
+                    "explanation": f"The primary function is explicitly verified: {clean_sentence}",
                     "source_page": page_num,
                     "source_quote": clean_sentence,
                     "difficulty": "medium"
                 })
             else:
-                # Multi-select (MSQ)
+                # Authentic Academic Multi-Select Question (MSQ)
                 questions.append({
                     "question_type": "MSQ",
-                    "prompt": f"Which of the following points are explicitly supported by the uploaded text regarding {key_term}? (Select all that apply)",
+                    "prompt": f"Which of the following characteristics accurately describe the function and behavior of {core_term}? (Select all that apply)",
                     "options": [
                         {"id": "a", "text": clean_sentence},
-                        {"id": "b", "text": "This assertion is directly grounded in the provided document context."},
-                        {"id": "c", "text": "This contradicting statement is refuted by the source text."},
-                        {"id": "d", "text": "This extraneous claim is never mentioned in the text."}
+                        {"id": "b", "text": f"It plays an active functional role in the regulation of {secondary_term}."},
+                        {"id": "c", "text": f"It directly halts all downstream processing under standard operational conditions."},
+                        {"id": "d", "text": f"It functions identically to {distractor_pool[min(idx+1, len(distractor_pool)-1)]} with zero variance in pathway activity."}
                     ],
                     "correct_answers": ["a", "b"],
-                    "explanation": f"Both options correctly reflect the verified evidence: '{clean_sentence}'",
+                    "explanation": f"Both statements accurately describe {core_term}: {clean_sentence}",
                     "source_page": page_num,
                     "source_quote": clean_sentence,
                     "difficulty": "medium"
                 })
 
         return {"questions": questions}
-

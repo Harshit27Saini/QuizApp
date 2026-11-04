@@ -78,7 +78,7 @@ export const api = {
     collection_id?: string;
     document_ids: string[];
     title?: string;
-    mode: 'STRICT' | 'CONCEPTUAL';
+    mode: 'EXAMINATION' | 'STRICT' | 'CONCEPTUAL';
     difficulty: 'easy' | 'medium' | 'hard';
     question_count: number;
     question_types?: string[];

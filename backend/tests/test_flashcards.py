@@ -17,3 +17,4 @@ async def test_generate_flashcards():
     assert "front" in cards[0]
     assert "back" in cards[0]
     assert "source_quote" in cards[0]
+

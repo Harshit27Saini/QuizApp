@@ -30,3 +30,4 @@ class FlashcardGenerateRequest(BaseModel):
     document_ids: List[str] = Field(..., min_length=1)
     title: Optional[str] = None
     card_count: int = Field(8, ge=2, le=30)
+

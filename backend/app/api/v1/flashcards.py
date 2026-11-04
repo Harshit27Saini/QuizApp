@@ -88,3 +88,4 @@ async def list_collection_decks(
 ):
     """Lists all flashcard decks associated with a collection."""
     return await db.list_flashcard_decks(collection_id=collection_id, user_id=current_user["id"])
+

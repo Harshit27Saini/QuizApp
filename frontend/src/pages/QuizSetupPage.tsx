@@ -11,7 +11,7 @@ export const QuizSetupPage: React.FC = () => {
 
   const [documents, setDocuments] = useState<StudyDocument[]>([]);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
-  const [mode, setMode] = useState<'STRICT' | 'CONCEPTUAL'>('STRICT');
+  const [mode, setMode] = useState<'EXAMINATION' | 'STRICT' | 'CONCEPTUAL'>('EXAMINATION');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [questionCount, setQuestionCount] = useState<number>(5);
   const [loading, setLoading] = useState(true);
@@ -138,9 +138,27 @@ export const QuizSetupPage: React.FC = () => {
           {/* Generation Mode */}
           <div>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-              Generation Mode
+              Exam Pattern & Mode
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+              <div
+                onClick={() => setMode('EXAMINATION')}
+                style={{
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: `2px solid ${mode === 'EXAMINATION' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: mode === 'EXAMINATION' ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem', color: mode === 'EXAMINATION' ? 'var(--color-primary)' : 'inherit' }}>
+                  🎯 EXAMINATION (Recommended)
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Realistic university exam questions: tests mechanisms, causality, and plausible academic distractors without reading-trivia.
+                </div>
+              </div>
+
               <div
                 onClick={() => setMode('STRICT')}
                 style={{
@@ -151,9 +169,9 @@ export const QuizSetupPage: React.FC = () => {
                   cursor: 'pointer'
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem' }}>📌 STRICT</div>
+                <div style={{ fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem' }}>📌 STRICT FACTUAL</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  Questions strictly grounded in document text with mandatory verifiable quotes and page citations.
+                  Rigorous direct recall with mandatory evidence quotes directly cited from the text.
                 </div>
               </div>
 
@@ -169,7 +187,7 @@ export const QuizSetupPage: React.FC = () => {
               >
                 <div style={{ fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem' }}>💡 CONCEPTUAL</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  Tests deeper comprehension, synthesis, and relationships between concepts.
+                  Comprehension of fundamental principles, analogies, and cross-concept interactions.
                 </div>
               </div>
             </div>

@@ -1,8 +1,8 @@
+import re
 from typing import List, Dict, Any
 from app.services.ai.factory import get_ai_provider
 from app.services.quiz_engine.validator import validate_generated_questions
 from app.core.errors import QuizValidationError
-
 
 QUESTION_JSON_SCHEMA = {
     "type": "object",
@@ -42,45 +42,89 @@ QUESTION_JSON_SCHEMA = {
 }
 
 
+def filter_academic_content(sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Filters out administrative noise such as syllabi, professor emails,
+    grading rubrics, copyright notices, and tables of contents.
+    """
+    noise_keywords = [
+        "syllabus", "grading scale", "office hours", "course policy",
+        "attendance", "prerequisites:", "email:", "isbn", "all rights reserved",
+        "table of contents", "instructor:", "teaching assistant"
+    ]
+    
+    clean_sections = []
+    for s in sections:
+        content = s.get("content", "").lower()
+        heading = (s.get("heading") or "").lower()
+        
+        # Skip sections dominated by administrative metadata
+        is_noise = any(kw in heading for kw in noise_keywords)
+        if not is_noise and len(content.strip()) > 40:
+            clean_sections.append(s)
+            
+    return clean_sections if clean_sections else sections
+
+
 async def generate_quiz_questions(
     sections: List[Dict[str, Any]],
-    mode: str = "STRICT",
+    mode: str = "EXAMINATION",
     difficulty: str = "medium",
     count: int = 5,
     allowed_types: List[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Orchestrates prompt creation, LLM invocation via BaseAIProvider, and strict validation.
+    Generates authentic, high-yield academic exam questions.
     """
     if not sections:
         raise QuizValidationError("Cannot generate quiz: No document content provided.")
 
     allowed_types = allowed_types or ["MCQ", "MSQ"]
+    clean_sections = filter_academic_content(sections)
 
-    # Build context from sections
+    # Build context from clean sections
     context_chunks = []
-    for s in sections[:15]:  # limit to top 15 sections to keep prompt concise
-        heading = s.get("heading") or "Untitled Section"
+    for s in clean_sections[:15]:
+        heading = s.get("heading") or "Core Topic"
         page = s.get("page_number") or 1
-        content = s.get("content", "")[:2000]
-        context_chunks.append(f"[Section {s.get('section_index', 0)} - Page {page}] {heading}\nContent:\n{content}")
+        content = s.get("content", "")[:2500]
+        context_chunks.append(f"[Topic: {heading} - Page {page}]\n{content}")
 
     full_context = "\n\n---\n\n".join(context_chunks)
 
-    system_instruction = (
-        "You are the examination and assessment engine for Recall, a high-rigor learning platform. "
-        "Your task is to generate active-recall assessment questions strictly grounded in the provided document material.\n"
-        "Rules:\n"
-        f"1. Mode: {mode}. "
-        + ("For STRICT mode: Every single question must be directly verifiable in the text. You must provide an exact 'source_quote' from the text." if mode == "STRICT" else "For CONCEPTUAL mode: Test comprehension, relationships, and synthesis of concepts in the text.") + "\n"
-        f"2. Difficulty level: {difficulty}.\n"
-        f"3. Generate exactly {count} questions.\n"
-        f"4. Supported question types: {', '.join(allowed_types)}. For MCQ: exactly 1 correct answer. For MSQ: 2 or more correct answers.\n"
-        "5. Each question must provide 4 distinct options with ids 'a', 'b', 'c', 'd'.\n"
-        "6. Do not include ungrounded external facts or hallucinated information."
-    )
+    system_instruction = f"""You are a senior university professor and competitive examination author for Recall.
+Your goal is to write realistic, high-yield exam questions that thoroughly test a student's mastery of the subject matter.
 
-    user_prompt = f"Target Question Count: {count}\nDifficulty: {difficulty}\n\nDOCUMENT MATERIAL:\n{full_context}"
+CRITICAL RULES:
+1. BAN META-LANGUAGE:
+   - NEVER write "According to the passage", "As stated in the text", "The document discusses", or "Which of the following is mentioned".
+   - The question must read like a real standardized board/university exam question evaluating domain knowledge.
+
+2. QUESTION TYPES TO TARGET:
+   - Mechanism & Function: "What is the primary role of X in Y process?"
+   - Causality & Consequences: "What occurs when X is inhibited/modified?"
+   - Comparative Analysis: "How does X differ from Y?"
+   - Problem-solving & Application: "Given scenario X, which outcome is expected?"
+   - Mode: {mode}.
+     * If EXAMINATION or STRICT: Questions must test verifiable factual mechanisms from the text.
+     * If CONCEPTUAL: Test deep understanding of why systems behave the way they do.
+
+3. PLAUSIBLE, HIGH-QUALITY DISTRACTORS:
+   - Distractors MUST be plausible terms/mechanisms from the same academic domain that test common student misconceptions.
+   - NEVER use throwaway/joke options, meta-commentary, or obvious giveaways like "None of the above" or "The author does not say".
+   - All 4 options must be similar in length and tone.
+
+4. SPECIFICATIONS:
+   - Target difficulty: {difficulty}.
+   - Generate exactly {count} questions.
+   - Allowed types: {', '.join(allowed_types)}.
+   - For MCQ: exactly 1 correct answer. For MSQ: 2 or more correct answers.
+   - Provide an exact 'source_quote' from the material that justifies the correct answer.
+   - Write clear explanations explaining WHY the correct option is right and why the distractors are wrong.
+"""
+
+    user_prompt = f"TARGET QUESTION COUNT: {count}\nDIFFICULTY: {difficulty}\nMODE: {mode}\n\nSTUDY MATERIAL:\n{full_context}"
 
     provider = get_ai_provider()
     raw_payload = await provider.generate_structured_json(
@@ -92,4 +136,3 @@ async def generate_quiz_questions(
     raw_questions = raw_payload.get("questions", [])
     validated = validate_generated_questions(raw_questions, mode=mode)
     return validated[:count]
-

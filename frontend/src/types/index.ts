@@ -67,7 +67,7 @@ export interface Quiz {
   user_id: string;
   collection_id?: string;
   title: string;
-  mode: 'STRICT' | 'CONCEPTUAL';
+  mode: 'EXAMINATION' | 'STRICT' | 'CONCEPTUAL';
   difficulty: 'easy' | 'medium' | 'hard';
   created_at: string;
   questions?: QuestionPublic[];

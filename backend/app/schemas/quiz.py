@@ -34,9 +34,9 @@ class QuizGenerateRequest(BaseModel):
     collection_id: Optional[str] = None
     document_ids: List[str] = Field(..., min_length=1)
     title: Optional[str] = None
-    mode: Literal["STRICT", "CONCEPTUAL"] = "STRICT"
+    mode: Literal["EXAMINATION", "STRICT", "CONCEPTUAL"] = "EXAMINATION"
     difficulty: Literal["easy", "medium", "hard"] = "medium"
-    question_count: int = Field(5, ge=1, le=20)
+    question_count: int = Field(5, ge=1, le=30)
     question_types: List[Literal["MCQ", "MSQ"]] = ["MCQ", "MSQ"]
 
 
