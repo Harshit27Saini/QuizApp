@@ -38,9 +38,13 @@ Recall is designed as a **Modular Monolith** with a decoupled single-page applic
 
 ### Frontend (`frontend/`)
 - **Technology:** React 18, TypeScript, Vite.
-- **State Management:** React Context (`AuthContext`) and local state hooks.
+- **Layout:** Production 3-Column Duolingo Architecture:
+  - **Left Sidebar:** Sticky navigation (Learn, History, Companions) with 3D pressable tabs.
+  - **Center Feed:** Serpentine 3D stepping stone quest path, substantive study stage, and practice runner.
+  - **Right Sidebar:** Sticky Daily Streak flame, circular SVG Daily Goal XP ring, and Active Companion showcase.
+- **Visual Design System:** Duolingo-grade tactile 3D buttons (`btn-3d`, depressing on active state with bottom border depth), `#58cc02` emerald, `#1cb0f6` cobalt, `#ffc800` gold, `#ff4b4b` coral.
+- **Companions & Particle FX:** VIP Girlfriend Nandhini & Founder cheerleaders, the 5 Pet study squad (Sydney, Connie, Milo, Scooby, Bunny), and zero-dependency HTML5 canvas confetti explosions.
 - **Routing:** React Router v6.
-- **Styling:** Custom CSS variables (`src/styles/variables.css`) adhering to a token-based system (colors, typography, spacing, border radii).
 - **Communication:**
   - Supabase JS Client: handles user sign-in/up and raw document uploads to Supabase Storage.
   - API Client (`src/services/api.ts`): calls FastAPI endpoints with the user's Supabase access token in the `Authorization: Bearer <token>` header.
