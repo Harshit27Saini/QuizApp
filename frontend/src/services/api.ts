@@ -69,6 +69,8 @@ export const api = {
     request<StudyDocument[]>(`/collections/${collectionId}/documents`),
   getDocumentPreview: (documentId: string) =>
     request<StudyDocument>(`/documents/${documentId}`),
+  getDocumentFileUrl: (documentId: string) =>
+    `${API_BASE_URL}/documents/${documentId}/file`,
   uploadDocument: (collectionId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);

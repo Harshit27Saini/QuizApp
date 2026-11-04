@@ -1,6 +1,8 @@
 import os
+import uuid
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, UploadFile, File, Form, status
+from fastapi.responses import FileResponse
 from app.core.security import get_current_user
 from app.core.database import db
 from app.core.config import settings
@@ -19,7 +21,7 @@ async def upload_document(
 ):
     """
     Uploads a document (PDF, DOCX, PPTX, TXT), extracts text and structural sections,
-    and returns parsed sections for immediate document preview.
+    saves the raw file to disk for viewing, and returns parsed sections for immediate document preview.
     """
     coll = await db.get_collection(collection_id, current_user["id"])
     if not coll:
@@ -40,6 +42,19 @@ async def upload_document(
     # Parse document structure, pages, and sections
     parsed = parse_document(content_bytes, filename)
 
+    # Persist file on disk for full PDF reader support
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    upload_dir = os.path.join(base_dir, "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    safe_disk_filename = f"{uuid.uuid4().hex}_{filename}"
+    disk_path = os.path.join(upload_dir, safe_disk_filename)
+    try:
+        with open(disk_path, "wb") as f:
+            f.write(content_bytes)
+        storage_path = disk_path
+    except Exception:
+        storage_path = f"documents/{current_user['id']}/{filename}"
+
     # Persist document record
     doc_record = await db.create_document(
         collection_id=collection_id,
@@ -47,7 +62,7 @@ async def upload_document(
         filename=filename,
         file_type=ext.replace(".", ""),
         file_size_bytes=file_size,
-        storage_path=f"documents/{current_user['id']}/{filename}",
+        storage_path=storage_path,
         total_pages=parsed.total_pages,
         status="ready"
     )
@@ -88,7 +103,7 @@ async def get_document_preview(
 ):
     """
     Document Preview Endpoint: Returns the document metadata and extracted sections
-    so users can verify text extraction fidelity before generating a quiz.
+    so users can verify text extraction fidelity before quiz generation or study.
     """
     doc = await db.get_document(document_id, current_user["id"])
     if not doc:
@@ -99,4 +114,35 @@ async def get_document_preview(
         **doc,
         "sections": sections
     }
+
+
+@router.get("/documents/{document_id}/file")
+async def get_document_raw_file(
+    document_id: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Returns the raw document file bytes with proper MIME type for inline PDF viewing or download.
+    """
+    doc = await db.get_document(document_id, current_user["id"])
+    if not doc:
+        raise not_found_error("Document", document_id)
+
+    file_path = doc.get("storage_path")
+    if not file_path or not os.path.exists(file_path):
+        raise not_found_error("Document file on disk", document_id)
+
+    ext = (doc.get("file_type") or "").lower()
+    media_map = {
+        "pdf": "application/pdf",
+        "txt": "text/plain",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    }
+    media_type = media_map.get(ext, "application/octet-stream")
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        filename=doc.get("filename", f"document.{ext}")
+    )
 

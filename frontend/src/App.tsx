@@ -21,6 +21,7 @@ export const App: React.FC = () => {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
           <Route path="/documents/:documentId/preview" element={<DocumentPreviewPage />} />
+          <Route path="/documents/:documentId/reader" element={<DocumentPreviewPage />} />
           <Route path="/documents/:documentId/path" element={<LearningPathPage />} />
           <Route path="/collections/:collectionId/quiz-setup" element={<QuizSetupPage />} />
           <Route path="/collections/:collectionId/cards" element={<FlashcardsPage />} />

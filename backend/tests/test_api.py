@@ -99,3 +99,8 @@ def test_full_learning_flow_e2e():
     retry_questions = retry_resp.json()
     assert any(q["id"] == q2["id"] for q in retry_questions)
 
+    # 7. Raw File Stream Endpoint
+    file_resp = client.get(f"/api/v1/documents/{doc_id}/file")
+    assert file_resp.status_code == 200
+    assert "Neurons and Synapses" in file_resp.text
+
