@@ -1,0 +1,222 @@
+import React, { useEffect, useState } from 'react';
+import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { api } from '../services/api';
+import type { StudyDocument } from '../types';
+
+export const QuizSetupPage: React.FC = () => {
+  const { collectionId } = useParams<{ collectionId: string }>();
+  const [searchParams] = useSearchParams();
+  const preselectedDocId = searchParams.get('doc');
+  const navigate = useNavigate();
+
+  const [documents, setDocuments] = useState<StudyDocument[]>([]);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [mode, setMode] = useState<'STRICT' | 'CONCEPTUAL'>('STRICT');
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [questionCount, setQuestionCount] = useState<number>(5);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!collectionId) return;
+    setLoading(true);
+    api.listDocuments(collectionId)
+      .then(docs => {
+        setDocuments(docs);
+        if (preselectedDocId && docs.some(d => d.id === preselectedDocId)) {
+          setSelectedDocIds([preselectedDocId]);
+        } else if (docs.length > 0) {
+          setSelectedDocIds([docs[0].id]);
+        }
+      })
+      .catch(err => setError(err.message || 'Failed to load documents'))
+      .finally(() => setLoading(false));
+  }, [collectionId, preselectedDocId]);
+
+  const toggleDocSelection = (id: string) => {
+    setSelectedDocIds(prev =>
+      prev.includes(id)
+        ? (prev.length > 1 ? prev.filter(item => item !== id) : prev) // keep at least one
+        : [...prev, id]
+    );
+  };
+
+  const handleGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedDocIds.length === 0) {
+      alert('Please select at least one document.');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setError(null);
+      const quiz = await api.generateQuiz({
+        collection_id: collectionId,
+        document_ids: selectedDocIds,
+        mode,
+        difficulty,
+        question_count: questionCount,
+        question_types: ['MCQ', 'MSQ']
+      });
+      navigate(`/quizzes/${quiz.id}/session`);
+    } catch (err: any) {
+      setError(err.message || 'Quiz generation failed');
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div>
+        <Link to={`/collections/${collectionId}`} style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+          ← Back to Collection
+        </Link>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>Configure Quiz</h1>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.925rem' }}>
+          Customize your active-recall assessment parameters.
+        </p>
+      </div>
+
+      {error && (
+        <div className="card" style={{ borderLeft: '4px solid var(--color-error)' }}>
+          <p style={{ color: 'var(--color-error-dark)', fontWeight: 600 }}>{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
+          Loading document options...
+        </div>
+      ) : (
+        <form onSubmit={handleGenerate} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Target Documents */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              Select Source Material ({selectedDocIds.length} selected)
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {documents.map(d => {
+                const isSelected = selectedDocIds.includes(d.id);
+                return (
+                  <div
+                    key={d.id}
+                    onClick={() => toggleDocSelection(d.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: 'var(--radius-md)',
+                      border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                      cursor: 'pointer',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.925rem' }}>{d.filename}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: '0.5rem' }}>
+                        ({d.total_pages} {d.total_pages === 1 ? 'page' : 'pages'})
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Generation Mode */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              Generation Mode
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div
+                onClick={() => setMode('STRICT')}
+                style={{
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: `2px solid ${mode === 'STRICT' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: mode === 'STRICT' ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem' }}>📌 STRICT</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Questions strictly answerable from text. Requires exact text quotes and page citations.
+                </div>
+              </div>
+
+              <div
+                onClick={() => setMode('CONCEPTUAL')}
+                style={{
+                  padding: '1rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: `2px solid ${mode === 'CONCEPTUAL' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: mode === 'CONCEPTUAL' ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem' }}>💡 CONCEPTUAL</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Tests deeper comprehension, synthesis, and relationships between concepts.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Difficulty & Count */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Difficulty
+              </label>
+              <select
+                className="select-input"
+                value={difficulty}
+                onChange={e => setDifficulty(e.target.value as any)}
+              >
+                <option value="easy">Easy (Foundational)</option>
+                <option value="medium">Medium (Standard)</option>
+                <option value="hard">Hard (Advanced Rigor)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Question Count
+              </label>
+              <select
+                className="select-input"
+                value={questionCount}
+                onChange={e => setQuestionCount(Number(e.target.value))}
+              >
+                <option value={3}>3 Questions (Quick check)</option>
+                <option value={5}>5 Questions (Standard session)</option>
+                <option value={10}>10 Questions (In-depth review)</option>
+                <option value={15}>15 Questions (Thorough mastery)</option>
+              </select>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', marginTop: '0.5rem' }}
+            disabled={generating}
+          >
+            {generating ? 'Synthesizing grounded questions...' : '⚡ Launch Quiz Session'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+};
