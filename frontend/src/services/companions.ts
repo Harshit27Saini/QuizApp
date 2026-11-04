@@ -12,23 +12,23 @@ export interface Companion {
 }
 
 export const INITIAL_COMPANIONS: Companion[] = [
-  // Priority 1: VIP (Girlfriend & Founder)
+  // Priority 1: Top Study Motivators
   {
     id: 'nandhini',
     name: 'Nandhini',
     category: 'vip',
-    subtitle: 'Your #1 Supporter ❤️',
-    avatarIcon: '👑',
-    avatarImageUrl: '/avatars/nandhini.jpg',
+    subtitle: 'Your #1 Study Mate ⭐',
+    avatarIcon: '⭐',
+    avatarImageUrl: '/avatars/nandhini_3d.png',
     cartoonImageUrl: '/avatars/nandhini_3d.png',
-    badgeText: 'VIP CHEERLEADER',
-    badgeColor: '#ff4b4b',
+    badgeText: 'TOP CHEERLEADER',
+    badgeColor: '#10b981',
     cheerQuotes: [
-      "You've got this babe! Keep going! ❤️",
-      "Look at you being so smart! Proud of you!",
-      "Don't give up! Just one more unit and then treat yourself!",
-      "Locked in! I believe in you so much! ✨",
-      "Yayyy! You're crushing this syllabus!"
+      "You've got this! Keep pushing forward! ⭐",
+      "Look at you mastering these concepts! Let's go!",
+      "Don't give up! Just one more unit and then take a break!",
+      "Locked in! I believe in your potential! ✨",
+      "Awesome work! You're completely crushing this syllabus!"
     ]
   },
   {
@@ -37,7 +37,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     category: 'vip',
     subtitle: 'Focused & Determined',
     avatarIcon: '⚡',
-    avatarImageUrl: '/avatars/founder.jpg',
+    avatarImageUrl: '/avatars/founder_3d.png',
     cartoonImageUrl: '/avatars/founder_3d.png',
     badgeText: 'LEARNER',
     badgeColor: '#1cb0f6',
@@ -70,7 +70,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     category: 'pet',
     subtitle: 'Himalayan Persian (White Fur & Brown)',
     avatarIcon: '🐈',
-    avatarImageUrl: '/avatars/connie.jpg',
+    avatarImageUrl: '/avatars/connie_3d.png',
     cartoonImageUrl: '/avatars/connie_3d.png',
     badgeText: 'PRECISION CAT',
     badgeColor: '#ce82ff',
@@ -100,7 +100,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     category: 'pet',
     subtitle: 'Grey Lhasa Apso',
     avatarIcon: '🐶',
-    avatarImageUrl: '/avatars/scooby.jpg',
+    avatarImageUrl: '/avatars/scooby_3d.png',
     cartoonImageUrl: '/avatars/scooby_3d.png',
     badgeText: 'WISE GUARDIAN',
     badgeColor: '#64748b',
@@ -127,8 +127,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
 ];
 
 class CompanionService {
-  private activeId: string = 'nandhini'; // Nandhini is default VIP companion!
-  private avatarStyle: 'cartoon' | 'photo' = 'cartoon'; // Default to Duolingo cartoon!
+  private activeId: string = 'nandhini';
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -136,29 +135,11 @@ class CompanionService {
       if (saved) {
         this.activeId = saved;
       }
-      const savedStyle = localStorage.getItem('recall_companion_style');
-      if (savedStyle === 'cartoon' || savedStyle === 'photo') {
-        this.avatarStyle = savedStyle;
-      }
-    }
-  }
-
-  public getAvatarStyle(): 'cartoon' | 'photo' {
-    return this.avatarStyle;
-  }
-
-  public setAvatarStyle(style: 'cartoon' | 'photo') {
-    this.avatarStyle = style;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('recall_companion_style', style);
     }
   }
 
   public getAvatarUrl(companion: Companion): string | undefined {
-    if (this.avatarStyle === 'cartoon') {
-      return companion.cartoonImageUrl || companion.avatarImageUrl;
-    }
-    return companion.avatarImageUrl || companion.cartoonImageUrl;
+    return companion.cartoonImageUrl || companion.avatarImageUrl;
   }
 
   public listCompanions(): Companion[] {
@@ -193,7 +174,7 @@ class CompanionService {
       name,
       category: 'friend',
       subtitle: nickname || 'Friend & Study Mate',
-      avatarIcon: '🧑‍🎓',
+      avatarIcon: '🎓',
       avatarImageUrl: avatarUrl,
       badgeText: 'FRIEND',
       badgeColor: '#10b981',
@@ -215,7 +196,7 @@ class CompanionService {
 
   public getRandomCheer(companionId?: string): string {
     const c = companionId ? this.listCompanions().find(x => x.id === companionId) : this.getActiveCompanion();
-    if (!c || !c.cheerQuotes.length) return "Keep cooking! You got this! 🔥";
+    if (!c || !c.cheerQuotes.length) return "Keep cooking! You got this! 🚀";
     return c.cheerQuotes[Math.floor(Math.random() * c.cheerQuotes.length)];
   }
 }

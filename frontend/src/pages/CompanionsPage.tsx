@@ -6,19 +6,12 @@ import { soundManager } from '../utils/sound';
 export const CompanionsPage: React.FC = () => {
   const [companions, setCompanions] = useState<Companion[]>(companionService.listCompanions());
   const [activeId, setActiveId] = useState<string>(companionService.getActiveCompanion().id);
-  const [avatarStyle, setAvatarStyle] = useState<'cartoon' | 'photo'>(companionService.getAvatarStyle());
 
   // Add friend state
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [friendName, setFriendName] = useState('');
   const [friendNickname, setFriendNickname] = useState('');
   const [friendCheer, setFriendCheer] = useState('');
-
-  const handleToggleStyle = (style: 'cartoon' | 'photo') => {
-    companionService.setAvatarStyle(style);
-    setAvatarStyle(style);
-    soundManager.playCorrect();
-  };
 
   const handleSelect = (comp: Companion) => {
     companionService.setActiveCompanion(comp.id);
@@ -63,30 +56,6 @@ export const CompanionsPage: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Avatar Art Style Toggle */}
-          <div style={{
-            display: 'flex',
-            background: 'var(--color-surface-hover)',
-            padding: '4px',
-            borderRadius: 'var(--radius-lg)',
-            border: '2px solid var(--color-border)'
-          }}>
-            <button
-              className={`btn-3d ${avatarStyle === 'cartoon' ? 'btn-3d-green' : 'btn-3d-white'}`}
-              style={{ fontSize: '0.8rem', padding: '0.4rem 0.875rem' }}
-              onClick={() => handleToggleStyle('cartoon')}
-            >
-              🎨 Duolingo Cartoon
-            </button>
-            <button
-              className={`btn-3d ${avatarStyle === 'photo' ? 'btn-3d-blue' : 'btn-3d-white'}`}
-              style={{ fontSize: '0.8rem', padding: '0.4rem 0.875rem' }}
-              onClick={() => handleToggleStyle('photo')}
-            >
-              📷 Real Photo
-            </button>
-          </div>
-
           <button
             className="btn-3d btn-3d-gold"
             onClick={() => setShowAddFriend(prev => !prev)}
