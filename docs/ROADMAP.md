@@ -1,19 +1,20 @@
 # Product Roadmap — Recall
 
-## Phase 1: MVP (Target: 14 Days) — IN PROGRESS
+## Phase 1: MVP (Target: 14 Days) — CORE SYSTEM IMPLEMENTED
 *Goal: Usable, reliable active-recall learning application for real students.*
 
 - [x] Architecture design & documentation suite
-- [ ] Backend foundation (FastAPI, Pydantic, security guard)
-- [ ] Supabase PostgreSQL schema & migration scripts
-- [ ] Document parser service (PDF via PyMuPDF, DOCX, PPTX, TXT)
-- [ ] Document preview endpoint & UI (inspect extracted sections)
-- [ ] Provider-independent AI abstraction (Mock, Gemini Flash, Groq)
-- [ ] STRICT & CONCEPTUAL quiz generation (MCQ & MSQ)
-- [ ] Interactive quiz-taking flow with real-time progress
-- [ ] Server-side deterministic grading with source citations
-- [ ] Quiz history & "Retry Incorrect Questions" loop
-- [ ] Clean responsive frontend using CSS variables
+- [x] Backend foundation (FastAPI, Pydantic, security guard)
+- [x] Supabase PostgreSQL schema & migration scripts
+- [x] Document parser service (PDF via PyMuPDF, DOCX, PPTX, TXT)
+- [x] Document preview endpoint & UI (inspect extracted sections)
+- [x] Provider-independent AI abstraction (Mock, Gemini Flash, Groq)
+- [x] STRICT & CONCEPTUAL quiz generation (MCQ & MSQ)
+- [x] Interactive quiz-taking flow with real-time progress
+- [x] Server-side deterministic grading with source citations
+- [x] Quiz history & "Retry Incorrect Questions" loop
+- [x] Clean responsive frontend using CSS variables
+- [x] Automated test suite (14/14 unit & E2E tests passing)
 
 ---
 
