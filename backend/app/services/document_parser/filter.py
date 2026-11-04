@@ -55,3 +55,4 @@ def filter_studyable_sections(sections: List[Dict[str, Any]]) -> List[Dict[str, 
     if not substantive:
         substantive = [s for s in sections if (s.get("page_number") or 1) > 2]
     return substantive if substantive else sections
+

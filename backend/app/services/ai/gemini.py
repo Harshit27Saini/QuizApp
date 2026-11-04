@@ -46,16 +46,22 @@ class GeminiProvider(BaseAIProvider):
             }
         }
 
+        # Generous timeout: 15s connect, 90s read (to allow large structured JSON generation)
+        timeout = httpx.Timeout(connect=15.0, read=90.0, write=20.0, pool=15.0)
         models_to_try = [self.PRIMARY_MODEL] + self.FALLBACK_MODELS
         last_error = "Unknown error"
 
-        async with httpx.AsyncClient(timeout=45.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             for model_name in models_to_try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
                 try:
                     response = await client.post(url, headers=headers, params=params, json=payload)
+                except httpx.TimeoutException:
+                    last_error = f"Connection to Gemini ({model_name}) timed out after 90 seconds. Try reducing question count or section size."
+                    continue
                 except httpx.RequestError as e:
-                    last_error = f"Network error connecting to Gemini API: {str(e)}"
+                    detail = str(e) or type(e).__name__
+                    last_error = f"Network connection error to Gemini ({model_name}): {detail}"
                     continue
 
                 if response.status_code == 429:

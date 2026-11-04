@@ -60,12 +60,13 @@ async def generate_quiz_questions(
     allowed_types = allowed_types or ["MCQ", "MSQ"]
     clean_sections = filter_studyable_sections(sections)
 
-    # Build context from clean sections
+    # Build context from clean sections, prioritizing core content
+    max_sections = min(10, max(4, count + 2))
     context_chunks = []
-    for s in clean_sections[:15]:
+    for s in clean_sections[:max_sections]:
         heading = s.get("heading") or "Core Topic"
         page = s.get("page_number") or 1
-        content = s.get("content", "")[:2500]
+        content = s.get("content", "")[:1500]
         context_chunks.append(f"[Topic: {heading} - Page {page}]\n{content}")
 
     full_context = "\n\n---\n\n".join(context_chunks)
@@ -106,12 +107,25 @@ CRITICAL RULES:
     user_prompt = f"TARGET QUESTION COUNT: {count}\nDIFFICULTY: {difficulty}\nMODE: {mode}\n\nCURRICULUM MATERIAL:\n{full_context}"
 
     provider = get_ai_provider()
-    raw_payload = await provider.generate_structured_json(
-        system_instruction=system_instruction,
-        user_prompt=user_prompt,
-        response_schema=QUESTION_JSON_SCHEMA
-    )
-
-    raw_questions = raw_payload.get("questions", [])
-    validated = validate_generated_questions(raw_questions, mode=mode)
-    return validated[:count]
+    try:
+        raw_payload = await provider.generate_structured_json(
+            system_instruction=system_instruction,
+            user_prompt=user_prompt,
+            response_schema=QUESTION_JSON_SCHEMA
+        )
+        raw_questions = raw_payload.get("questions", [])
+        validated = validate_generated_questions(raw_questions, mode=mode)
+        return validated[:count]
+    except Exception as e:
+        # If hosted provider encounters network/timeout error, fall back to offline synthesis
+        if provider.__class__.__name__ != "MockAIProvider":
+            from app.services.ai.mock_provider import MockAIProvider
+            fallback = MockAIProvider()
+            raw_payload = await fallback.generate_structured_json(
+                system_instruction=system_instruction,
+                user_prompt=user_prompt,
+                response_schema=QUESTION_JSON_SCHEMA
+            )
+            raw_questions = raw_payload.get("questions", [])
+            return validate_generated_questions(raw_questions, mode=mode)[:count]
+        raise e
