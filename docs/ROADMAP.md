@@ -14,13 +14,16 @@
 - [x] Granular question count control (1-25 questions + presets)
 - [x] Interactive Learning Flashcards with 3D flip & mastery tracking
 - [x] Front-matter and institutional noise filtering (filters cover pages, founder speeches, and indices)
-- [x] Duolingo-style progressive learning path (60s study bites + mini-quizzes + stepping-stone unlock)
+- [x] Duolingo-style progressive learning path with substantive theory & mistake recycling
+- [x] Sandbox Scope controls (custom slide/page ranges & depth: sprint, standard, deep dive)
+- [x] AI Pet Study Assistants (Sydney, Connie, Milo, Scooby, Bunny) powered by Gemini
+- [x] Zero-dependency Web Audio synthesizers (correct chimes, soft error tones, victory fanfare)
 - [x] Firebase integration (Auth, Firestore, Cloud Storage)
 - [x] Interactive quiz-taking flow with real-time progress
 - [x] Server-side deterministic grading with source citations
 - [x] Quiz history & "Retry Incorrect Questions" loop
 - [x] Clean responsive frontend using CSS variables
-- [x] Automated test suite (18/18 unit & E2E tests passing)
+- [x] Automated test suite (23/23 unit & E2E tests passing)
 
 ---
 

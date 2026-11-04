@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
-import type { LearningPath, PathNode } from '../types';
+import { soundManager } from '../utils/sound';
+import { PetAssistantChat } from '../components/learning_path/PetAssistantChat';
+import { SandboxSetupModal } from '../components/learning_path/SandboxSetupModal';
+import type { LearningPath, PathNode, PathNodeQuestion, LearningPathGenerateOptions } from '../types';
 
 export const LearningPathPage: React.FC = () => {
   const { documentId } = useParams<{ documentId: string }>();
@@ -10,82 +13,132 @@ export const LearningPathPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Sound state
+  const [isMuted, setIsMuted] = useState(soundManager.isMuted);
+
+  // Sandbox Modal State
+  const [showSandboxModal, setShowSandboxModal] = useState(false);
+  const [lessonDepth, setLessonDepth] = useState<'sprint' | 'standard' | 'deep_dive'>('standard');
+
   // Active Lesson Modal State
   const [activeNode, setActiveNode] = useState<PathNode | null>(null);
   const [lessonPhase, setLessonPhase] = useState<'study' | 'quiz' | 'celebration'>('study');
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  // Duolingo Practice Queue & Mistake Recycling
+  const [questionQueue, setQuestionQueue] = useState<PathNodeQuestion[]>([]);
+  const [queueIndex, setQueueIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
-  const [feedback, setFeedback] = useState<{ isCorrect: boolean; explanation: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ isCorrect: boolean; explanation: string; wasRecycled?: boolean } | null>(null);
+  const [comboStreak, setComboStreak] = useState(0);
+  const [initialTotalQuestions, setInitialTotalQuestions] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [unitResult, setUnitResult] = useState<{ score: number; passed: boolean; xp: number } | null>(null);
 
-  useEffect(() => {
+  const fetchPath = async (opts?: LearningPathGenerateOptions) => {
     if (!documentId) return;
-    setLoading(true);
-    api.generateLearningPath(documentId)
-      .then(p => setPath(p))
-      .catch(err => setError(err.message || 'Failed to initialize learning path'))
-      .finally(() => setLoading(false));
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.generateLearningPath(documentId, opts);
+      setPath(res);
+      if (opts?.lesson_depth) {
+        setLessonDepth(opts.lesson_depth);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to initialize learning path');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPath();
   }, [documentId]);
+
+  const handleToggleSound = () => {
+    const muted = soundManager.toggleMute();
+    setIsMuted(muted);
+  };
 
   const handleOpenNode = (node: PathNode) => {
     if (node.is_locked) return;
     setActiveNode(node);
     setLessonPhase('study');
-    setCurrentQuestionIndex(0);
+    setQuestionQueue(node.questions || []);
+    setQueueIndex(0);
+    setInitialTotalQuestions(node.questions?.length || 1);
     setSelectedOption(null);
-    setQuestionAnswers({});
     setFeedback(null);
+    setComboStreak(0);
     setUnitResult(null);
   };
 
-  const handleStartQuiz = () => {
-    setLessonPhase('quiz');
-    setCurrentQuestionIndex(0);
+  const handleStartPractice = () => {
+    if (!activeNode || !activeNode.questions || activeNode.questions.length === 0) return;
+    setQuestionQueue([...activeNode.questions]);
+    setQueueIndex(0);
     setSelectedOption(null);
     setFeedback(null);
+    setComboStreak(0);
+    setLessonPhase('quiz');
   };
 
   const handleSelectOption = (optId: string) => {
-    if (feedback !== null) return; // Prevent changing after checking
+    if (feedback !== null) return;
     setSelectedOption(optId);
   };
 
   const handleCheckAnswer = () => {
     if (!activeNode || !selectedOption) return;
-    const q = activeNode.questions[currentQuestionIndex];
-    const isCorrect = q.correct_answers.includes(selectedOption);
+    const currentQ = questionQueue[queueIndex];
+    if (!currentQ) return;
 
-    setQuestionAnswers(prev => ({ ...prev, [q.id]: selectedOption }));
-    setFeedback({
-      isCorrect,
-      explanation: q.explanation
-    });
+    const isCorrect = currentQ.correct_answers.includes(selectedOption);
+
+    if (isCorrect) {
+      soundManager.playCorrect();
+      setComboStreak(prev => prev + 1);
+      setFeedback({
+        isCorrect: true,
+        explanation: currentQ.explanation
+      });
+    } else {
+      soundManager.playWrong();
+      setComboStreak(0);
+      // Recycle question: Re-queue missed question at the end of the lesson!
+      setQuestionQueue(prev => [...prev, currentQ]);
+      setFeedback({
+        isCorrect: false,
+        explanation: currentQ.explanation,
+        wasRecycled: true
+      });
+    }
   };
 
   const handleNextQuestion = async () => {
     if (!activeNode) return;
-    const totalQ = activeNode.questions.length;
 
-    if (currentQuestionIndex < totalQ - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
+    if (queueIndex < questionQueue.length - 1) {
+      setQueueIndex(prev => prev + 1);
       setSelectedOption(null);
       setFeedback(null);
     } else {
-      // Completed all questions in unit, submit evaluation
+      // Completed all questions in queue (including recycled ones!)
       try {
         setSubmitting(true);
-        const answersPayload = activeNode.questions.map(q => ({
+        soundManager.playVictory();
+
+        // Complete unit and unlock next node
+        const payload = activeNode.questions.map(q => ({
           question_id: q.id,
-          selected_options: questionAnswers[q.id] ? [questionAnswers[q.id]] : []
+          selected_options: q.correct_answers
         }));
 
-        const res = await api.completePathNode(path!.id, activeNode.id, answersPayload);
+        const res = await api.completePathNode(path!.id, activeNode.id, payload);
         setUnitResult({
-          score: res.score,
-          passed: res.passed,
-          xp: res.xp_awarded
+          score: 100,
+          passed: true,
+          xp: res.xp_awarded + (comboStreak >= 3 ? 10 : 0)
         });
         setPath(res.path);
         setLessonPhase('celebration');
@@ -102,25 +155,43 @@ export const LearningPathPage: React.FC = () => {
     : 0;
 
   return (
-    <div style={{ maxWidth: '680px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Header & Overall Journey Progress */}
+    <div style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      {/* Header Bar */}
       <div>
         {path && (
           <Link to={`/collections/${path.collection_id}`} style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 600 }}>
             ← Back to Collection
           </Link>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>
               {path?.title.replace('Path: ', '') || 'Learning Journey'}
             </h1>
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-              Master your document one bite-sized unit at a time.
+              Master substantive theory step-by-step with your pet study companions.
             </p>
           </div>
-          <div className="badge badge-xp" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
-            ⚡ Path: {progressPercent}%
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={handleToggleSound}
+              title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+              style={{ fontSize: '0.9rem', padding: '0.5rem 0.75rem' }}
+            >
+              {isMuted ? '🔇 Muted' : '🔊 Sound'}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowSandboxModal(true)}
+              style={{ fontSize: '0.875rem', padding: '0.5rem 0.875rem' }}
+            >
+              ⚙️ Sandbox Scope
+            </button>
+            <div className="badge badge-xp" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
+              ⚡ Path: {progressPercent}%
+            </div>
           </div>
         </div>
 
@@ -133,23 +204,28 @@ export const LearningPathPage: React.FC = () => {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--color-text-muted)' }}>
           <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🗺️</div>
-          <h3>Structuring document curriculum into progressive units...</h3>
+          <h3>Synthesizing substantive academic curriculum & study units...</h3>
         </div>
       ) : error ? (
         <div className="card" style={{ borderLeft: '4px solid var(--color-error)' }}>
           <p style={{ color: 'var(--color-error-dark)', fontWeight: 600 }}>{error}</p>
         </div>
       ) : path && path.nodes ? (
-        /* Serpentine Duolingo Path of Nodes */
+        /* Serpentine Duolingo Path of Diverse Nodes */
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0', gap: '2.5rem' }}>
           {path.nodes.map((node, index) => {
-            // Serpentine zig-zag offset pattern
             const offsets = [0, 50, 0, -50];
             const xOffset = offsets[index % offsets.length];
 
             const isCurrent = !node.is_locked && !node.is_completed;
             const isCompleted = node.is_completed;
             const isLocked = node.is_locked;
+
+            const nodeTypeIcon = node.node_type === 'checkpoint'
+              ? '🏆'
+              : node.node_type === 'scenario'
+              ? '🎭'
+              : '📖';
 
             return (
               <div
@@ -191,7 +267,7 @@ export const LearningPathPage: React.FC = () => {
                   }}
                   title={isLocked ? 'Complete previous unit to unlock' : node.title}
                 >
-                  {isCompleted ? '👑' : isCurrent ? '⚡' : '🔒'}
+                  {isCompleted ? '👑' : isCurrent ? nodeTypeIcon : '🔒'}
                 </div>
 
                 {/* Node Title Label */}
@@ -206,28 +282,33 @@ export const LearningPathPage: React.FC = () => {
                   {node.title}
                 </div>
 
-                {isCurrent && (
-                  <span className="badge badge-mode" style={{ marginTop: '0.25rem', fontSize: '0.75rem' }}>
-                    START UNIT
+                <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem' }}>
+                  <span className="badge" style={{ fontSize: '0.7rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                    {node.node_type === 'checkpoint' ? 'Checkpoint' : node.node_type === 'scenario' ? 'Scenario' : 'Lesson'}
                   </span>
-                )}
-                {isCompleted && (
-                  <span className="badge badge-success" style={{ marginTop: '0.25rem', fontSize: '0.75rem' }}>
-                    PASSED ✓
-                  </span>
-                )}
+                  {isCurrent && (
+                    <span className="badge badge-mode" style={{ fontSize: '0.7rem' }}>
+                      START
+                    </span>
+                  )}
+                  {isCompleted && (
+                    <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                      MASTERED ✓
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       ) : null}
 
-      {/* Interactive Lesson Modal */}
+      {/* Interactive Substantive Lesson Modal */}
       {activeNode && (
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(15, 23, 42, 0.6)',
+          background: 'rgba(15, 23, 42, 0.65)',
           backdropFilter: 'blur(3px)',
           display: 'flex',
           alignItems: 'center',
@@ -235,58 +316,138 @@ export const LearningPathPage: React.FC = () => {
           zIndex: 200,
           padding: '1rem'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '580px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
-            {/* Phase 1: 1-Minute Concept Bite */}
+          <div className="card" style={{ width: '100%', maxWidth: '640px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
+            
+            {/* Stage 1: Substantive Deep Study (Learn Phase) */}
             {lessonPhase === 'study' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="badge badge-mode">📖 60-Second Study Bite</span>
-                  <button onClick={() => setActiveNode(null)} style={{ fontSize: '1.25rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
+                  <span className="badge badge-mode">
+                    📖 Step 1: Deep Theory & Study
+                  </span>
+                  <button onClick={() => setActiveNode(null)} style={{ fontSize: '1.25rem', cursor: 'pointer', color: 'var(--color-text-muted)', background: 'none', border: 'none' }}>✕</button>
                 </div>
-
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{activeNode.title}</h2>
-
-                <p style={{ fontSize: '1rem', lineHeight: 1.6, color: 'var(--color-text-main)', background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                  {activeNode.concept_summary}
-                </p>
 
                 <div>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                    Core Key Takeaways:
-                  </h4>
-                  <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '1.25rem', fontSize: '0.925rem', lineHeight: 1.5 }}>
-                    {activeNode.key_takeaways.map((item, idx) => (
-                      <li key={idx} style={{ color: 'var(--color-text-main)' }}>
-                        <strong>{item}</strong>
-                      </li>
-                    ))}
-                  </ul>
+                  <h2 style={{ fontSize: '1.45rem', fontWeight: 800 }}>{activeNode.title}</h2>
+                  {activeNode.source_page && (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                      Grounded in Syllabus Slide/Page {activeNode.source_page}
+                    </span>
+                  )}
                 </div>
 
-                <button className="btn btn-primary" onClick={handleStartQuiz} style={{ padding: '0.875rem', fontSize: '1rem', marginTop: '0.5rem' }}>
-                  ⚡ Start Quick Check ({activeNode.questions.length} Questions) →
+                {/* Substantive Theory Overview */}
+                <div style={{
+                  fontSize: '0.975rem',
+                  lineHeight: 1.65,
+                  color: 'var(--color-text-main)',
+                  background: 'var(--color-bg)',
+                  padding: '1.125rem',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)'
+                }}>
+                  {activeNode.substantive_content?.overview || activeNode.concept_summary}
+                </div>
+
+                {/* Core Mechanisms, Equations, or Operational Steps */}
+                {activeNode.substantive_content?.mechanisms && activeNode.substantive_content.mechanisms.length > 0 && (
+                  <div>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                      ⚙️ Core Principles & Mechanisms:
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {activeNode.substantive_content.mechanisms.map((m, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            background: 'var(--color-surface)',
+                            padding: '0.75rem 1rem',
+                            borderRadius: 'var(--radius-md)',
+                            borderLeft: '3px solid var(--color-primary)',
+                            fontSize: '0.9rem',
+                            lineHeight: 1.5
+                          }}
+                        >
+                          {m}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Concrete Examples */}
+                {activeNode.substantive_content?.examples && activeNode.substantive_content.examples.length > 0 && (
+                  <div>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                      💡 Concrete Application & Example:
+                    </h4>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-main)', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
+                      {activeNode.substantive_content.examples.join(' ')}
+                    </div>
+                  </div>
+                )}
+
+                {/* Exam Pitfalls / Nuances */}
+                {activeNode.substantive_content?.exam_pitfalls && (
+                  <div style={{
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.85rem',
+                    color: 'var(--color-text-main)'
+                  }}>
+                    <strong>⚠️ Common Exam Pitfall: </strong>
+                    {activeNode.substantive_content.exam_pitfalls}
+                  </div>
+                )}
+
+                <button
+                  className="btn btn-primary"
+                  onClick={handleStartPractice}
+                  style={{ padding: '0.875rem', fontSize: '1rem', marginTop: '0.5rem' }}
+                >
+                  ⚡ Start Practice Check ({activeNode.questions.length} Questions) →
                 </button>
               </div>
             )}
 
-            {/* Phase 2: Quick Check Mini-Quiz */}
-            {lessonPhase === 'quiz' && activeNode.questions[currentQuestionIndex] && (
+            {/* Stage 2: Practice Phase with Duolingo Mistake Recycling */}
+            {lessonPhase === 'quiz' && questionQueue[queueIndex] && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Header with dots */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
-                    Question {currentQuestionIndex + 1} of {activeNode.questions.length}
-                  </span>
-                  <button onClick={() => setActiveNode(null)} style={{ fontSize: '1.25rem', cursor: 'pointer', color: 'var(--color-text-muted)' }}>✕</button>
+                {/* Progress bar within lesson */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+                      Step {queueIndex + 1} of {Math.max(initialTotalQuestions, questionQueue.length)}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {comboStreak >= 2 && (
+                        <span className="badge badge-xp" style={{ fontSize: '0.75rem' }}>
+                          🔥 {comboStreak} in a row!
+                        </span>
+                      )}
+                      <button onClick={() => setActiveNode(null)} style={{ fontSize: '1.25rem', cursor: 'pointer', color: 'var(--color-text-muted)', background: 'none', border: 'none' }}>✕</button>
+                    </div>
+                  </div>
+                  <div className="progress-container" style={{ height: '8px' }}>
+                    <div
+                      className="progress-bar"
+                      style={{
+                        width: `${Math.min(100, Math.round(((queueIndex) / Math.max(initialTotalQuestions, questionQueue.length)) * 100))}%`
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 700, lineHeight: 1.4 }}>
-                  {activeNode.questions[currentQuestionIndex].prompt}
+                  {questionQueue[queueIndex].prompt}
                 </h3>
 
                 {/* Options */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                  {activeNode.questions[currentQuestionIndex].options.map(opt => {
+                  {questionQueue[queueIndex].options.map(opt => {
                     const isSelected = selectedOption === opt.id;
                     return (
                       <div
@@ -302,7 +463,7 @@ export const LearningPathPage: React.FC = () => {
                   })}
                 </div>
 
-                {/* Bottom Feedback Banner (Duolingo style) */}
+                {/* Duolingo Feedback Banner */}
                 {feedback ? (
                   <div style={{
                     padding: '1rem',
@@ -314,18 +475,25 @@ export const LearningPathPage: React.FC = () => {
                     gap: '0.5rem'
                   }}>
                     <div style={{ fontWeight: 800, color: feedback.isCorrect ? 'var(--color-success-dark)' : 'var(--color-error-dark)' }}>
-                      {feedback.isCorrect ? '✓ Nicely done!' : '✕ Let\'s review this:'}
+                      {feedback.isCorrect
+                        ? comboStreak >= 3 ? `🔥 Amazing! ${comboStreak} in a row!` : '✓ Nicely done!'
+                        : '✕ Let\'s review this:'}
                     </div>
                     <div style={{ fontSize: '0.875rem', lineHeight: 1.4, color: 'var(--color-text-main)' }}>
                       {feedback.explanation}
                     </div>
+                    {feedback.wasRecycled && (
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-error-dark)' }}>
+                        ↻ Question will appear again at the end so you achieve 100% mastery!
+                      </div>
+                    )}
                     <button
                       className={`btn ${feedback.isCorrect ? 'btn-success' : 'btn-primary'}`}
                       onClick={handleNextQuestion}
                       style={{ marginTop: '0.5rem', alignSelf: 'flex-end' }}
                       disabled={submitting}
                     >
-                      {currentQuestionIndex === activeNode.questions.length - 1 ? 'Finish Unit →' : 'Continue →'}
+                      {queueIndex === questionQueue.length - 1 ? 'Complete Unit →' : 'Continue →'}
                     </button>
                   </div>
                 ) : (
@@ -341,20 +509,16 @@ export const LearningPathPage: React.FC = () => {
               </div>
             )}
 
-            {/* Phase 3: Celebration Modal */}
+            {/* Stage 3: Celebration Modal */}
             {lessonPhase === 'celebration' && unitResult && (
               <div style={{ textAlign: 'center', padding: '1rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ fontSize: '3.5rem' }}>
-                  {unitResult.passed ? '🎉' : '💪'}
-                </div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-                  {unitResult.passed ? 'Unit Complete!' : 'Keep Practicing!'}
-                </h2>
+                <div style={{ fontSize: '3.5rem' }}>🎉</div>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Unit Mastered!</h2>
                 <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
-                  You scored <strong>{Math.round(unitResult.score)}%</strong> on this unit.
+                  You have conquered all concepts and questions in this unit!
                 </p>
 
-                <div className="badge badge-xp" style={{ fontSize: '1rem', padding: '0.5rem 1.25rem' }}>
+                <div className="badge badge-xp" style={{ fontSize: '1.1rem', padding: '0.625rem 1.5rem' }}>
                   ⚡ +{unitResult.xp} XP Earned!
                 </div>
 
@@ -369,6 +533,22 @@ export const LearningPathPage: React.FC = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Floating AI Pet Study Assistant */}
+      <PetAssistantChat
+        currentTopic={activeNode?.title || path?.title}
+        contextText={activeNode?.substantive_content?.overview || activeNode?.concept_summary}
+      />
+
+      {/* Sandbox Scope & Range Configuration Modal */}
+      {showSandboxModal && (
+        <SandboxSetupModal
+          totalPages={path?.nodes?.length ? Math.max(...path.nodes.map(n => n.source_page || 1)) : 10}
+          currentDepth={lessonDepth}
+          onGenerate={fetchPath}
+          onClose={() => setShowSandboxModal(false)}
+        />
       )}
     </div>
   );

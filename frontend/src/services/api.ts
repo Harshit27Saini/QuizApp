@@ -7,7 +7,11 @@ import type {
   QuestionPublic,
   UserProfile,
   FlashcardDeck,
-  LearningPath
+  LearningPath,
+  LearningPathGenerateOptions,
+  PetProfile,
+  PetChatRequest,
+  PetChatResponse
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -122,10 +126,18 @@ export const api = {
   listCollectionDecks: (collectionId: string) =>
     request<FlashcardDeck[]>(`/flashcards/collections/${collectionId}`),
 
-  // Learning Paths (Duolingo Mode)
-  generateLearningPath: (documentId: string) =>
-    request<LearningPath>(`/learning-paths/generate?document_id=${documentId}`, {
+  // Learning Paths & Substantive Curriculum
+  generateLearningPath: (documentId: string, options?: LearningPathGenerateOptions) =>
+    request<LearningPath>('/learning-paths/generate', {
       method: 'POST',
+      body: JSON.stringify({
+        document_id: documentId,
+        page_start: options?.page_start,
+        page_end: options?.page_end,
+        section_ids: options?.section_ids,
+        lesson_depth: options?.lesson_depth || 'standard',
+        force_regenerate: options?.force_regenerate || false,
+      }),
     }),
   getLearningPath: (pathId: string) =>
     request<LearningPath>(`/learning-paths/${pathId}`),
@@ -140,5 +152,14 @@ export const api = {
     }>(`/learning-paths/${pathId}/nodes/${nodeId}/complete`, {
       method: 'POST',
       body: JSON.stringify({ answers }),
+    }),
+
+  // AI Pet Study Assistants (Sydney, Connie, Milo, Scooby, Bunny)
+  listPetAssistants: () =>
+    request<PetProfile[]>('/learning-paths/pets'),
+  chatWithPet: (payload: PetChatRequest) =>
+    request<PetChatResponse>('/learning-paths/chat-assistant', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 };

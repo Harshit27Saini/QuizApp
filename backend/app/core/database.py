@@ -506,9 +506,11 @@ class Repository:
                 "id": node_id,
                 "path_id": path_id,
                 "unit_index": idx,
+                "node_type": u.get("node_type", "lesson"),
                 "title": u.get("title", f"Unit {idx + 1}"),
                 "concept_summary": u.get("concept_summary", ""),
                 "key_takeaways": u.get("key_takeaways", []),
+                "substantive_content": u.get("substantive_content"),
                 "source_page": u.get("source_page"),
                 "questions": questions,
                 "is_completed": False,
@@ -588,6 +590,28 @@ class Repository:
         if path_id:
             return await self.get_learning_path(path_id, user_id)
         return None
+
+    async def delete_document_learning_path(self, document_id: str, user_id: str) -> bool:
+        """Deletes an existing learning path and its nodes for recreation/sandbox mode."""
+        existing = await self.get_document_learning_path(document_id, user_id)
+        if not existing:
+            return False
+
+        path_id = existing["id"]
+        if self.firestore:
+            # Delete nodes
+            docs = self.firestore.collection("path_nodes").where("path_id", "==", path_id).stream()
+            for d in docs:
+                d.reference.delete()
+            self.firestore.collection("learning_paths").document(path_id).delete()
+        else:
+            # In-memory delete
+            nodes_to_del = [n_id for n_id, n in memory_db.path_nodes.items() if n["path_id"] == path_id]
+            for n_id in nodes_to_del:
+                del memory_db.path_nodes[n_id]
+            if path_id in memory_db.learning_paths:
+                del memory_db.learning_paths[path_id]
+        return True
 
     async def complete_path_node(
         self,

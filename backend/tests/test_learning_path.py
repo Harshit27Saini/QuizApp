@@ -23,5 +23,30 @@ async def test_generate_learning_path():
     assert "title" in units[0]
     assert "concept_summary" in units[0]
     assert "key_takeaways" in units[0]
+    assert "substantive_content" in units[0]
+    assert "overview" in units[0]["substantive_content"]
     assert len(units[0]["questions"]) >= 1
     assert len(units[0]["questions"][0]["options"]) == 4
+
+
+@pytest.mark.asyncio
+async def test_sandbox_slide_range_and_depth():
+    mock_sections = [
+        {"section_index": 0, "page_number": 1, "heading": "Cover", "content": "Department of Engineering Subject Code 101"},
+        {"section_index": 1, "page_number": 10, "heading": "PID Controllers", "content": "Proportional Integral Derivative controllers calculate an error value as the difference between a desired setpoint and a measured process variable."},
+        {"section_index": 2, "page_number": 12, "heading": "State Space Representation", "content": "State space representation models physical systems as a set of input, output, and state variables related by first-order differential equations."},
+        {"section_index": 3, "page_number": 30, "heading": "Advanced Kalman Filtering", "content": "Kalman filtering uses a series of measurements observed over time containing statistical noise to estimate unknown variables."}
+    ]
+    
+    # Sandbox restricted to pages 10-15 with sprint depth
+    units = await generate_document_learning_path(
+        sections=mock_sections,
+        doc_title="Robotics",
+        page_start=10,
+        page_end=15,
+        lesson_depth="sprint"
+    )
+    assert len(units) >= 1
+    # Check that page 30 was not included in the sandbox units
+    assert all(u.get("source_page", 10) <= 20 for u in units)
+    assert units[0]["substantive_content"] is not None

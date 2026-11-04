@@ -133,6 +133,16 @@ export interface FlashcardDeck {
 }
 
 
+export interface SubstantiveContent {
+  overview: string;
+  mechanisms: string[];
+  examples: string[];
+  distinctions?: string;
+  exam_pitfalls?: string;
+  source_quote?: string;
+  source_page?: number;
+}
+
 export interface PathNodeQuestion {
   id: string;
   prompt: string;
@@ -145,9 +155,11 @@ export interface PathNode {
   id: string;
   path_id: string;
   unit_index: number;
+  node_type?: 'lesson' | 'scenario' | 'checkpoint';
   title: string;
   concept_summary: string;
   key_takeaways: string[];
+  substantive_content?: SubstantiveContent;
   source_page?: number;
   questions: PathNodeQuestion[];
   is_completed: boolean;
@@ -166,4 +178,41 @@ export interface LearningPath {
   completed_units: number;
   created_at: string;
   nodes: PathNode[];
+}
+
+export interface LearningPathGenerateOptions {
+  page_start?: number;
+  page_end?: number;
+  section_ids?: string[];
+  lesson_depth?: 'sprint' | 'standard' | 'deep_dive';
+  force_regenerate?: boolean;
+}
+
+export interface PetProfile {
+  id: string;
+  name: string;
+  breed: string;
+  avatar: string;
+  tagline: string;
+  style: string;
+}
+
+export interface PetMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface PetChatRequest {
+  pet_id: string;
+  user_message: string;
+  current_topic?: string;
+  context_text?: string;
+  chat_history?: PetMessage[];
+}
+
+export interface PetChatResponse {
+  pet_id: string;
+  pet_name: string;
+  reply: string;
+  suggested_followups: string[];
 }

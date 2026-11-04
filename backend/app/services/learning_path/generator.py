@@ -1,9 +1,8 @@
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.services.ai.factory import get_ai_provider
 from app.services.document_parser.filter import filter_studyable_sections
 from app.services.quiz_engine.validator import shuffle_question_options
-from app.core.errors import RecallException
 
 LEARNING_PATH_JSON_SCHEMA = {
     "type": "object",
@@ -13,11 +12,34 @@ LEARNING_PATH_JSON_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
+                    "node_type": {
+                        "type": "string",
+                        "enum": ["lesson", "scenario", "checkpoint"]
+                    },
                     "title": {"type": "string"},
                     "concept_summary": {"type": "string"},
                     "key_takeaways": {
                         "type": "array",
                         "items": {"type": "string"}
+                    },
+                    "substantive_content": {
+                        "type": "object",
+                        "properties": {
+                            "overview": {"type": "string"},
+                            "mechanisms": {
+                                "type": "array",
+                                "items": {"type": "string"}
+                            },
+                            "examples": {
+                                "type": "array",
+                                "items": {"type": "string"}
+                            },
+                            "distinctions": {"type": "string"},
+                            "exam_pitfalls": {"type": "string"},
+                            "source_quote": {"type": "string"},
+                            "source_page": {"type": "integer"}
+                        },
+                        "required": ["overview", "mechanisms", "examples"]
                     },
                     "source_page": {"type": "integer"},
                     "questions": {
@@ -47,7 +69,7 @@ LEARNING_PATH_JSON_SCHEMA = {
                         }
                     }
                 },
-                "required": ["title", "concept_summary", "key_takeaways", "questions"]
+                "required": ["node_type", "title", "concept_summary", "key_takeaways", "substantive_content", "questions"]
             }
         }
     },
@@ -55,30 +77,45 @@ LEARNING_PATH_JSON_SCHEMA = {
 }
 
 
-def _generate_fallback_units(clean_sections: List[Dict[str, Any]], num_units: int) -> List[Dict[str, Any]]:
-    """Synthesizes high-yield structured units directly from clean syllabus text."""
+def _generate_fallback_units(
+    clean_sections: List[Dict[str, Any]],
+    num_units: int,
+    questions_per_unit: int = 3
+) -> List[Dict[str, Any]]:
+    """Synthesizes high-yield structured substantive units directly from clean syllabus text."""
     units = []
     chunk_size = max(1, len(clean_sections) // num_units)
+    node_types = ["lesson", "lesson", "scenario", "lesson", "checkpoint"]
+
     for u_idx in range(num_units):
         sub_slice = clean_sections[u_idx * chunk_size : (u_idx + 1) * chunk_size] or clean_sections[:1]
         first_sec = sub_slice[0]
         sec_heading = first_sec.get("heading") or f"Module {u_idx + 1}"
+        page_num = first_sec.get("page_number", 1)
         raw_text = " ".join([s.get("content", "") for s in sub_slice])
+
         sentences = [
             s.strip() for s in re.split(r"(?<=[.!?])\s+", raw_text)
             if len(s.strip()) > 30 and not any(kw in s.lower() for kw in [
-                "mit-wpu", "universal education", "subject code", "department of", "credit system"
+                "mit-wpu", "universal education", "subject code", "department of", "credit system", "all rights reserved"
             ])
         ]
-        if len(sentences) < 3:
+        if len(sentences) < 4:
             sentences = [
-                f"{sec_heading} explores the foundational mechanisms and interactions governing the topic.",
-                "Systematic evaluation enables learners to distinguish functional processes from dysfunctional disruptions.",
-                "Effective intervention addresses root causes through structured analysis and collaborative problem-solving."
+                f"{sec_heading} governs the systematic response and performance characteristics of the system.",
+                "Closed-loop feedback enables dynamic adjustment to external disturbances by comparing target and measured states.",
+                "Quantitative error metrics differentiate transient settling behaviors from steady-state equilibrium.",
+                "Empirical validation confirms whether parameter calibrations maintain stability across boundary conditions."
             ]
 
+        # Determine node type
+        n_type = node_types[u_idx % len(node_types)]
+        if u_idx == num_units - 1 and num_units >= 3:
+            n_type = "checkpoint"
+
+        # Generate questions
         q_list = []
-        for q_idx in range(min(3, len(sentences))):
+        for q_idx in range(min(questions_per_unit, len(sentences))):
             core_sentence = sentences[q_idx]
             words = [w for w in core_sentence.split() if len(w) > 4 and w.isalpha()]
             key_term = words[0].capitalize() if words else "The principle"
@@ -91,16 +128,34 @@ def _generate_fallback_units(clean_sections: List[Dict[str, Any]], num_units: in
                     {"id": "d", "text": "It completely inhibits all secondary pathways regardless of conditions."}
                 ],
                 "correct_answers": ["a"],
-                "explanation": f"Grounded in unit material: {core_sentence}"
+                "explanation": f"Grounded in syllabus material: {core_sentence}"
             }
-            # Shuffle options so correct answer is uniformly distributed
             q_list.append(shuffle_question_options(raw_q))
 
+        substantive = {
+            "overview": sentences[0] + " " + (sentences[1] if len(sentences) > 1 else ""),
+            "mechanisms": [
+                s for s in sentences[1:4]
+            ] if len(sentences) >= 4 else [
+                f"State transitions in {sec_heading} depend on initial conditions and feedback gains.",
+                "Error signals are integrated to drive actuator responses."
+            ],
+            "examples": [
+                f"Application: Setting boundary parameters for {sec_heading} during disturbance testing."
+            ],
+            "distinctions": f"Distinguishes nominal operation from edge-case instability in {sec_heading}.",
+            "exam_pitfalls": f"Do not assume {sec_heading} holds true without verifying baseline feedback conditions.",
+            "source_quote": sentences[0],
+            "source_page": page_num
+        }
+
         units.append({
+            "node_type": n_type,
             "title": f"Unit {u_idx + 1}: {sec_heading}",
             "concept_summary": sentences[0],
             "key_takeaways": sentences[1:4] if len(sentences) >= 4 else sentences,
-            "source_page": first_sec.get("page_number", 1),
+            "substantive_content": substantive,
+            "source_page": page_num,
             "questions": q_list
         })
     return units
@@ -108,20 +163,45 @@ def _generate_fallback_units(clean_sections: List[Dict[str, Any]], num_units: in
 
 async def generate_document_learning_path(
     sections: List[Dict[str, Any]],
-    doc_title: str
+    doc_title: str,
+    page_start: Optional[int] = None,
+    page_end: Optional[int] = None,
+    section_ids: Optional[List[str]] = None,
+    lesson_depth: str = "standard"
 ) -> List[Dict[str, Any]]:
     """
-    Analyzes document sections and synthesizes a progressive, multi-unit Duolingo-style
-    learning curriculum. Each unit contains a bite-sized concept lesson and 3 mini-quiz questions.
+    Analyzes document sections and synthesizes a progressive, multi-unit learning curriculum.
+    Supports Sandbox slide/page filtering and customizable depth (sprint, standard, deep_dive).
+    Each unit provides substantive study material first, followed by targeted verification questions.
     """
-    clean_sections = filter_studyable_sections(sections)
+    # 1. Sandbox Slide Range & Section Selection
+    target_sections = sections
+    if section_ids:
+        target_sections = [s for s in target_sections if s.get("id") in section_ids]
+    elif page_start is not None or page_end is not None:
+        start = page_start or 1
+        end = page_end or 9999
+        target_sections = [
+            s for s in target_sections
+            if start <= (s.get("page_number") or 1) <= end
+        ]
+
+    clean_sections = filter_studyable_sections(target_sections)
     if not clean_sections:
-        clean_sections = sections
+        clean_sections = target_sections if target_sections else sections
 
-    # Partition sections into 3 to 5 logical clusters
-    total_sections = len(clean_sections)
-    num_units = min(5, max(3, (total_sections + 2) // 3))
+    # 2. Depth Configuration
+    if lesson_depth == "sprint":
+        num_units = min(3, max(2, len(clean_sections) // 2 or 2))
+        questions_per_unit = 2
+    elif lesson_depth == "deep_dive":
+        num_units = min(7, max(4, (len(clean_sections) + 1) // 2 or 4))
+        questions_per_unit = 5
+    else:  # standard
+        num_units = min(5, max(3, (len(clean_sections) + 2) // 3 or 3))
+        questions_per_unit = 3
 
+    # Build context chunks
     context_chunks = []
     for s in clean_sections[:12]:
         heading = s.get("heading") or "Topic"
@@ -131,28 +211,27 @@ async def generate_document_learning_path(
 
     full_context = "\n\n---\n\n".join(context_chunks)
 
-    system_instruction = f"""You are the master curriculum architect for Recall, a personalized learning platform.
-Your task is to transform this academic document into a progressive, gamified {num_units}-unit learning path (like Duolingo).
+    system_instruction = f"""You are the master curriculum architect for Recall, an AI-powered personalized learning platform.
+Your task is to transform this technical syllabus material into a progressive {num_units}-unit learning curriculum.
 
-For each unit:
-1. Title: Engaging, clear academic unit name (e.g. "Unit 1: Fundamentals of Conflict Dynamics").
-2. Concept Summary: A concise 2-3 sentence overview that a student can read in 60 seconds.
-3. Key Takeaways: 3-4 bullet points highlighting the most essential principles or definitions.
-4. Questions: Exactly 3 high-yield active-recall questions specifically testing this unit.
-   - 4 options ('a', 'b', 'c', 'd') per question.
-   - Plausible academic distractors.
-   - Clear explanations.
+Requirements:
+- Target units: Exactly {num_units} units.
+- Node types: Mix 'lesson', 'scenario' (case study application), and finish with 'checkpoint' (mastery boss test).
+- Substantive Study Material: For each unit, provide substantial, authoritative educational theory in 'substantive_content' so learners can read and master complex concepts (mechanisms, equations/rules, real-world examples, exam pitfalls).
+- Practice Questions: Exactly {questions_per_unit} active-recall questions per unit.
+  - 4 options ('a', 'b', 'c', 'd') with plausible academic distractors.
+  - Clear explanations quoting the text.
 """
 
-    user_prompt = f"DOCUMENT TITLE: {doc_title}\nTARGET UNITS: {num_units}\n\nCURRICULUM CONTENT:\n{full_context}"
+    user_prompt = f"DOCUMENT TITLE: {doc_title}\nTARGET UNITS: {num_units}\nQUESTIONS PER UNIT: {questions_per_unit}\n\nCURRICULUM CONTENT:\n{full_context}"
 
     provider = get_ai_provider()
 
-    # If mock provider
+    # If mock provider or offline fallback
     if provider.__class__.__name__ == "MockAIProvider":
-        return _generate_fallback_units(clean_sections, num_units)
+        return _generate_fallback_units(clean_sections, num_units, questions_per_unit)
 
-    # For Gemini or hosted LLM provider with auto-fallback
+    # For Gemini or hosted LLM provider
     try:
         raw_payload = await provider.generate_structured_json(
             system_instruction=system_instruction,
@@ -166,13 +245,15 @@ For each unit:
             for q in u.get("questions", []):
                 q_list.append(shuffle_question_options(q))
             validated_units.append({
+                "node_type": u.get("node_type", "lesson"),
                 "title": u.get("title", "Learning Unit"),
                 "concept_summary": u.get("concept_summary", ""),
                 "key_takeaways": u.get("key_takeaways", []),
+                "substantive_content": u.get("substantive_content"),
                 "source_page": u.get("source_page", 1),
                 "questions": q_list
             })
-        return validated_units if validated_units else _generate_fallback_units(clean_sections, num_units)
+        return validated_units if validated_units else _generate_fallback_units(clean_sections, num_units, questions_per_unit)
     except Exception:
         # Fall back cleanly to high-yield local curriculum clustering if API hiccups
-        return _generate_fallback_units(clean_sections, num_units)
+        return _generate_fallback_units(clean_sections, num_units, questions_per_unit)

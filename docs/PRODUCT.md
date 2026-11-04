@@ -29,11 +29,20 @@ Rather than acting as a conversational chatbot, Recall functions as a structured
    - Text extraction preserving slide titles, chapter headings, and page boundaries.
    - **Front-Matter & Noise Filtering:** Automatically detects and filters out institutional covers, course codes, table of contents, and dean/founder speeches so only substantive curriculum is studied.
    - Document preview enabling users to read extracted sections and verify text fidelity prior to quiz generation.
-4. **Duolingo-Style Progressive Learning Path:**
-   - Automatically decomposes documents into 3–5 progressive learning units along a serpentine stepping-stone path.
-   - Each unit presents a 60-second concept bite and key takeaways, followed by a 3-question quick check.
-   - Immediate feedback with inline explanations; scoring $\ge 66\%$ marks the unit complete, awards +25 XP, and unlocks the next stepping stone.
-5. **Interactive Active-Recall Flashcards:**
+4. **Duolingo-Style Progressive Learning Path & Substantive Curriculum:**
+   - **Substantive Learn-First Phase:** Synthesizes genuine educational depth (theoretical overview, core mathematical/operational mechanisms, real-world engineering or clinical applications, key distinctions, and exam pitfalls) before testing.
+   - **Sandbox Scope & Range Controls:** Select custom slide/page ranges (e.g. Slides 10 to 25) and customize lesson pace (`sprint`, `standard`, `deep_dive`).
+   - **Diverse Map Stepping Stones:** Serpentine map featuring Lesson nodes, Case Study / Scenario nodes, and Unit Checkpoints.
+   - **Duolingo Mistake Recycling Loop:** Missed practice questions are re-queued to the end of the session, guaranteeing 100% mastery upon completion.
+   - **Native Web Audio Synthesizer:** Snappy major-chord chimes on correct answers, subtle low tones on error, and victory fanfares (with instant sound on/off toggle).
+5. **AI Pet Study Assistants (Grounded in Gemini):**
+   - In-lesson interactive study companions themed around the founder's pets, grounded in the syllabus context:
+     - 🐕 **Sydney:** American Golden Retriever — warm, enthusiastic, analogy-driven study buddy.
+     - 🐈 **Connie:** Himalayan Persian Cat (white fur with brown textures) — sharp, elegant, mathematically and technically precise.
+     - 🐕‍🦺 **Milo:** White & Black Indie Dog — street-smart, pragmatic, focused on practical memory hacks.
+     - 🐶 **Scooby:** Grey Lhasa Apso — calm, patient, protective guardian unraveling complex theory.
+     - 🐾 **Bunny:** Brown Lhasa Apso — bouncy, playful, high-energy cheerleader.
+6. **Interactive Active-Recall Flashcards:**
    - Synthesizes 3D flip study cards with concept prompts, detailed explanations, and source page citations.
    - Card randomization, keyboard navigation (Space to flip, $\leftarrow \rightarrow$ to navigate), and individual card mastery tracking.
 6. **Evidence-Backed Quiz Engine:**
