@@ -308,8 +308,28 @@ export const LearningPathPage: React.FC = () => {
                       }}>
                         "{cheerQuote}"
                       </div>
-                      <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}>
-                        {activeCompanion.avatarIcon}
+                      <div style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: 'var(--radius-lg)',
+                        overflow: 'hidden',
+                        border: '2px solid var(--color-border)',
+                        background: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                        fontSize: '2.5rem'
+                      }}>
+                        {activeCompanion.avatarImageUrl ? (
+                          <img
+                            src={activeCompanion.avatarImageUrl}
+                            alt={activeCompanion.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          activeCompanion.avatarIcon
+                        )}
                       </div>
                       <span style={{ fontSize: '0.7rem', fontWeight: 900, color: activeCompanion.badgeColor }}>
                         {activeCompanion.name}

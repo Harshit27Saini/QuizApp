@@ -98,3 +98,4 @@ export function triggerConfetti(originX?: number, originY?: number) {
 
   animationFrame = requestAnimationFrame(render);
 }
+

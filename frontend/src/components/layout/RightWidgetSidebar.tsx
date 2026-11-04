@@ -133,17 +133,26 @@ export const RightWidgetSidebar: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.875rem' }}>
           <div style={{
             fontSize: '2.5rem',
-            width: '56px',
-            height: '56px',
+            width: '60px',
+            height: '60px',
             borderRadius: 'var(--radius-lg)',
             background: 'var(--color-surface-hover)',
             border: '2px solid var(--color-border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            flexShrink: 0
+            flexShrink: 0,
+            overflow: 'hidden'
           }}>
-            {companion.avatarIcon}
+            {companion.avatarImageUrl ? (
+              <img
+                src={companion.avatarImageUrl}
+                alt={companion.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              companion.avatarIcon
+            )}
           </div>
 
           <div style={{ flex: 1 }}>
@@ -172,3 +181,4 @@ export const RightWidgetSidebar: React.FC = () => {
     </aside>
   );
 };
+

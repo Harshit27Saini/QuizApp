@@ -18,6 +18,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     category: 'vip',
     subtitle: 'Your #1 Supporter ❤️',
     avatarIcon: '👑',
+    avatarImageUrl: '/avatars/nandhini.jpg',
     badgeText: 'VIP CHEERLEADER',
     badgeColor: '#ff4b4b',
     cheerQuotes: [
@@ -34,6 +35,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     category: 'vip',
     subtitle: 'Focused & Determined',
     avatarIcon: '⚡',
+    avatarImageUrl: '/avatars/founder.jpg',
     badgeText: 'LEARNER',
     badgeColor: '#1cb0f6',
     cheerQuotes: [
@@ -65,6 +67,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     category: 'pet',
     subtitle: 'Himalayan Persian (White Fur & Brown)',
     avatarIcon: '🐈',
+    avatarImageUrl: '/avatars/connie.jpg',
     badgeText: 'PRECISION CAT',
     badgeColor: '#ce82ff',
     cheerQuotes: [
@@ -93,6 +96,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     category: 'pet',
     subtitle: 'Grey Lhasa Apso',
     avatarIcon: '🐶',
+    avatarImageUrl: '/avatars/scooby.jpg',
     badgeText: 'WISE GUARDIAN',
     badgeColor: '#64748b',
     cheerQuotes: [
@@ -189,3 +193,4 @@ class CompanionService {
 }
 
 export const companionService = new CompanionService();
+

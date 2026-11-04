@@ -90,7 +90,29 @@ export const SidebarNav: React.FC = () => {
         }}
         title="Click to switch study companion"
       >
-        <span style={{ fontSize: '1.75rem' }}>{activeCompanion.avatarIcon}</span>
+        <div style={{
+          width: '38px',
+          height: '38px',
+          borderRadius: 'var(--radius-md)',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#ffffff',
+          border: '1.5px solid var(--color-border)',
+          fontSize: '1.5rem',
+          flexShrink: 0
+        }}>
+          {activeCompanion.avatarImageUrl ? (
+            <img
+              src={activeCompanion.avatarImageUrl}
+              alt={activeCompanion.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            activeCompanion.avatarIcon
+          )}
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-subtle)', textTransform: 'uppercase' }}>
             Active Buddy
@@ -104,3 +126,4 @@ export const SidebarNav: React.FC = () => {
     </aside>
   );
 };
+

@@ -146,17 +146,27 @@ export const CompanionsPage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{
                     fontSize: '2.75rem',
-                    width: '64px',
-                    height: '64px',
+                    width: '68px',
+                    height: '68px',
                     borderRadius: 'var(--radius-lg)',
                     background: '#ffffff',
                     border: '2px solid var(--color-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                    overflow: 'hidden',
+                    flexShrink: 0
                   }}>
-                    {c.avatarIcon}
+                    {c.avatarImageUrl ? (
+                      <img
+                        src={c.avatarImageUrl}
+                        alt={c.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      c.avatarIcon
+                    )}
                   </div>
                   <div>
                     <h3 style={{ fontSize: '1.2rem', fontWeight: 900 }}>{c.name}</h3>
@@ -228,16 +238,26 @@ export const CompanionsPage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{
                     fontSize: '2.5rem',
-                    width: '60px',
-                    height: '60px',
+                    width: '64px',
+                    height: '64px',
                     borderRadius: 'var(--radius-lg)',
                     background: '#ffffff',
                     border: '2px solid var(--color-border)',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    flexShrink: 0
                   }}>
-                    {c.avatarIcon}
+                    {c.avatarImageUrl ? (
+                      <img
+                        src={c.avatarImageUrl}
+                        alt={c.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      c.avatarIcon
+                    )}
                   </div>
                   <div>
                     <h3 style={{ fontSize: '1.15rem', fontWeight: 900 }}>{c.name}</h3>
@@ -327,3 +347,4 @@ export const CompanionsPage: React.FC = () => {
     </div>
   );
 };
+
