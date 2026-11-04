@@ -37,7 +37,7 @@ export const QuizSetupPage: React.FC = () => {
   const toggleDocSelection = (id: string) => {
     setSelectedDocIds(prev =>
       prev.includes(id)
-        ? (prev.length > 1 ? prev.filter(item => item !== id) : prev) // keep at least one
+        ? (prev.length > 1 ? prev.filter(item => item !== id) : prev)
         : [...prev, id]
     );
   };
@@ -57,7 +57,7 @@ export const QuizSetupPage: React.FC = () => {
         document_ids: selectedDocIds,
         mode,
         difficulty,
-        question_count: questionCount,
+        question_count: Math.max(1, Math.min(25, questionCount)),
         question_types: ['MCQ', 'MSQ']
       });
       navigate(`/quizzes/${quiz.id}/session`);
@@ -66,6 +66,8 @@ export const QuizSetupPage: React.FC = () => {
       setGenerating(false);
     }
   };
+
+  const PRESET_COUNTS = [3, 5, 10, 15, 20];
 
   return (
     <div style={{ maxWidth: '640px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -151,7 +153,7 @@ export const QuizSetupPage: React.FC = () => {
               >
                 <div style={{ fontWeight: 700, fontSize: '0.925rem', marginBottom: '0.25rem' }}>📌 STRICT</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  Questions strictly answerable from text. Requires exact text quotes and page citations.
+                  Questions strictly grounded in document text with mandatory verifiable quotes and page citations.
                 </div>
               </div>
 
@@ -173,7 +175,7 @@ export const QuizSetupPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Difficulty & Count */}
+          {/* Difficulty & Granular Question Count */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
@@ -192,18 +194,50 @@ export const QuizSetupPage: React.FC = () => {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Question Count
+                Question Count: <strong>{questionCount}</strong>
               </label>
-              <select
-                className="select-input"
-                value={questionCount}
-                onChange={e => setQuestionCount(Number(e.target.value))}
-              >
-                <option value={3}>3 Questions (Quick check)</option>
-                <option value={5}>5 Questions (Standard session)</option>
-                <option value={10}>10 Questions (In-depth review)</option>
-                <option value={15}>15 Questions (Thorough mastery)</option>
-              </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="number"
+                  min={1}
+                  max={25}
+                  value={questionCount}
+                  onChange={e => setQuestionCount(Math.max(1, Math.min(25, Number(e.target.value) || 1)))}
+                  className="input-text"
+                  style={{ width: '80px', fontWeight: 700, textAlign: 'center' }}
+                />
+                <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                  (~{questionCount * 1} min)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Preset Chips */}
+          <div>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.375rem' }}>
+              Quick Presets
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {PRESET_COUNTS.map(preset => (
+                <button
+                  type="button"
+                  key={preset}
+                  onClick={() => setQuestionCount(preset)}
+                  style={{
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: 'var(--radius-full)',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    border: `1.5px solid ${questionCount === preset ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    background: questionCount === preset ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                    color: questionCount === preset ? 'var(--color-primary)' : 'var(--color-text-main)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {preset} Qs
+                </button>
+              ))}
             </div>
           </div>
 
@@ -213,7 +247,7 @@ export const QuizSetupPage: React.FC = () => {
             style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', marginTop: '0.5rem' }}
             disabled={generating}
           >
-            {generating ? 'Synthesizing grounded questions...' : '⚡ Launch Quiz Session'}
+            {generating ? 'Synthesizing grounded questions...' : `⚡ Launch Quiz Session (${questionCount} Questions)`}
           </button>
         </form>
       )}

@@ -24,3 +24,4 @@ class BaseDocumentParser(ABC):
     def parse_bytes(self, content_bytes: bytes, filename: str) -> ParsedDocument:
         """Parses raw document bytes and returns structured sections preserving pages & headings."""
         pass
+

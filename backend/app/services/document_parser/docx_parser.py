@@ -76,3 +76,4 @@ class DocxParser(BaseDocumentParser):
             sections=sections,
             raw_text=raw_text
         )
+

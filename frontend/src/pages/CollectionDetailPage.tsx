@@ -71,12 +71,20 @@ export const CollectionDetailPage: React.FC = () => {
         </div>
 
         {documents.length > 0 && (
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate(`/collections/${collectionId}/quiz-setup`)}
-          >
-            ⚡ Generate Quiz
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/collections/${collectionId}/cards`)}
+            >
+              🗂️ Study Cards
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate(`/collections/${collectionId}/quiz-setup`)}
+            >
+              ⚡ Generate Quiz
+            </button>
+          </div>
         )}
       </div>
 

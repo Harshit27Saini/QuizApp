@@ -49,3 +49,4 @@ async def delete_collection(
     if not deleted:
         raise not_found_error("Collection", collection_id)
     return None
+

@@ -30,3 +30,4 @@ def parse_document(content_bytes: bytes, filename: str) -> ParsedDocument:
     parser = parser_cls()
     parsed = parser.parse_bytes(content_bytes, filename)
     return parsed
+

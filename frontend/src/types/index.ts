@@ -109,3 +109,25 @@ export interface AttemptResult {
   completed_at?: string;
   question_results: EvaluatedQuestionResult[];
 }
+
+export interface FlashcardItem {
+  id: string;
+  deck_id: string;
+  front: string;
+  back: string;
+  source_page?: number;
+  source_quote?: string;
+  tags: string[];
+  mastered: boolean;
+  created_at: string;
+}
+
+export interface FlashcardDeck {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  title: string;
+  document_ids: string[];
+  created_at: string;
+  cards?: FlashcardItem[];
+}

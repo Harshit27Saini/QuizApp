@@ -71,3 +71,4 @@ class PptxParser(BaseDocumentParser):
             sections=sections,
             raw_text=raw_text
         )
+

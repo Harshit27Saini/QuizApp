@@ -5,7 +5,8 @@ import type {
   AttemptSubmitRequest,
   AttemptResult,
   QuestionPublic,
-  UserProfile
+  UserProfile,
+  FlashcardDeck
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -103,4 +104,20 @@ export const api = {
     const query = quizId ? `?quiz_id=${quizId}` : '';
     return request<AttemptResult[]>(`/attempts${query}`);
   },
+
+  // Flashcards & Learning Cards
+  generateFlashcards: (payload: {
+    collection_id: string;
+    document_ids: string[];
+    title?: string;
+    card_count?: number;
+  }) =>
+    request<FlashcardDeck>('/flashcards/generate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getFlashcardDeck: (deckId: string) =>
+    request<FlashcardDeck>(`/flashcards/${deckId}`),
+  listCollectionDecks: (collectionId: string) =>
+    request<FlashcardDeck[]>(`/flashcards/collections/${collectionId}`),
 };

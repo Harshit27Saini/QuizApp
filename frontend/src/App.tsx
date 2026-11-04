@@ -5,6 +5,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { CollectionDetailPage } from './pages/CollectionDetailPage';
 import { DocumentPreviewPage } from './pages/DocumentPreviewPage';
 import { QuizSetupPage } from './pages/QuizSetupPage';
+import { FlashcardsPage } from './pages/FlashcardsPage';
 import { QuizSessionPage } from './pages/QuizSessionPage';
 import { QuizResultPage } from './pages/QuizResultPage';
 import { QuizHistoryPage } from './pages/QuizHistoryPage';
@@ -21,6 +22,7 @@ export const App: React.FC = () => {
             <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
             <Route path="/documents/:documentId/preview" element={<DocumentPreviewPage />} />
             <Route path="/collections/:collectionId/quiz-setup" element={<QuizSetupPage />} />
+            <Route path="/collections/:collectionId/cards" element={<FlashcardsPage />} />
             <Route path="/quizzes/:quizId/session" element={<QuizSessionPage />} />
             <Route path="/attempts/:attemptId/result" element={<QuizResultPage />} />
             <Route path="/history" element={<QuizHistoryPage />} />

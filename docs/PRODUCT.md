@@ -48,3 +48,4 @@ Rather than acting as a conversational chatbot, Recall functions as a structured
 - **Duolingo-Inspired Engagement:** Focus on bite-sized sessions, clear progression, mastery indicators, and instant feedback.
 - **No Chatbot Aesthetics:** Avoid generic chat interfaces, purple glows, or ungrounded generative chatter.
 - **Design Independence:** The UI is constructed with CSS variables and clean React primitives so the founder can customize the visual identity at will without touching underlying application logic.
+

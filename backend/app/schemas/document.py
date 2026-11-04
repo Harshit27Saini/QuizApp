@@ -30,3 +30,4 @@ class DocumentResponse(BaseModel):
 
 class DocumentDetailResponse(DocumentResponse):
     sections: List[DocumentSectionResponse] = []
+

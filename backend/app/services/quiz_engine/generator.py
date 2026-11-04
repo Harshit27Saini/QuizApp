@@ -92,3 +92,4 @@ async def generate_quiz_questions(
     raw_questions = raw_payload.get("questions", [])
     validated = validate_generated_questions(raw_questions, mode=mode)
     return validated[:count]
+

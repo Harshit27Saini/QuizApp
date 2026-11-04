@@ -20,3 +20,4 @@ class BaseAIProvider(ABC):
         Raises AIProviderError on failure or invalid format.
         """
         pass
+

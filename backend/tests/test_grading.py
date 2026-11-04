@@ -58,3 +58,4 @@ def test_score_attempt_breakdown():
     assert len(result["question_results"]) == 2
     assert result["question_results"][0]["is_correct"] is True
     assert result["question_results"][1]["is_correct"] is False
+

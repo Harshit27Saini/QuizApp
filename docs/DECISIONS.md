@@ -42,3 +42,14 @@
 - **Context:** The founder intends to design the UI personally and wants full control over the visual identity without fighting opinionated CSS frameworks (like Tailwind utility bloat or rigid Material UI styling).
 - **Decision:** Build reusable, semantic React components powered by a clean CSS design token file (`src/styles/variables.css`).
 - **Consequences:** The founder can change themes, fonts, colors, and layout aesthetics directly by tweaking CSS variables without altering React component logic.
+
+
+
+---
+
+## ADR 006: Migration from Supabase to Firebase
+- **Date:** 2026-11-04
+- **Status:** Accepted
+- **Context:** The founder raised concerns regarding Supabase's free tier inactivity policy (free projects pause after 7 days of inactivity, causing connection drops for learners until manually unpaused). Additionally, the founder has prior experience with Firebase.
+- **Decision:** Migrate authentication, storage, and persistence integrations from Supabase to Firebase (Firebase Auth, Cloud Firestore, and Cloud Storage).
+- **Consequences:** Eliminates project dormancy/sleep risk, leverages generous 5GB storage, avoids vendor unfamiliarity, and retains clean database abstraction for offline local development.

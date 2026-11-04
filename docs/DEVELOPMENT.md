@@ -78,3 +78,4 @@ All test files reside in `backend/tests/` and cover:
 - Quiz generation & schema validation
 - Deterministic grading and attempt scoring
 - REST API endpoint verification
+

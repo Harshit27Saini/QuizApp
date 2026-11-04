@@ -1,8 +1,6 @@
 from typing import Optional, Dict, Any
 from fastapi import Header, HTTPException, status
-import jwt
 from app.core.config import settings
-
 
 DEV_USER: Dict[str, Any] = {
     "id": "00000000-0000-0000-0000-000000000001",
@@ -17,12 +15,12 @@ async def get_current_user(
     x_user_id: Optional[str] = Header(None)
 ) -> Dict[str, Any]:
     """
-    Extracts and validates user identity from the Supabase JWT Bearer token.
-    In local development / mock mode (when Supabase credentials are not set),
-    it allows seamless local development using a default dev user or X-User-Id.
+    Extracts and validates user identity from the Firebase Auth ID Bearer token.
+    In local development / mock mode (when Firebase credentials are not set),
+    it allows seamless offline development using DEV_USER or X-User-Id.
     """
-    # 1. Dev / Mock mode fallback when no Supabase secret is configured
-    if not settings.SUPABASE_JWT_SECRET and not settings.SUPABASE_URL:
+    # 1. Dev / Mock mode fallback when no Firebase credentials or in development
+    if not settings.FIREBASE_PROJECT_ID and not settings.FIREBASE_CREDENTIALS_PATH:
         user_id = x_user_id or DEV_USER["id"]
         return {
             "id": user_id,
@@ -31,39 +29,32 @@ async def get_current_user(
             "xp": DEV_USER["xp"]
         }
 
-    # 2. Production / configured Supabase JWT verification
+    # 2. Production / configured Firebase Auth token verification
     if not authorization or not authorization.startswith("Bearer "):
-        # If in dev environment, still permit fallback if no token provided
         if settings.ENVIRONMENT == "development":
             return DEV_USER
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or malformed Authorization header. Expected 'Bearer <token>'."
+            detail="Missing or malformed Authorization header. Expected 'Bearer <firebase_token>'."
         )
 
     token = authorization.split(" ")[1]
 
     try:
-        # Supabase JWTs are signed with the project JWT secret using HS256
-        payload = jwt.decode(
-            token,
-            settings.SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            audience="authenticated"
-        )
+        import firebase_admin
+        from firebase_admin import auth as fb_auth
+
+        decoded_token = fb_auth.verify_id_token(token)
         return {
-            "id": payload.get("sub"),
-            "email": payload.get("email"),
-            "display_name": payload.get("user_metadata", {}).get("full_name") or payload.get("email", "").split("@")[0],
+            "id": decoded_token.get("uid"),
+            "email": decoded_token.get("email", ""),
+            "display_name": decoded_token.get("name") or decoded_token.get("email", "").split("@")[0],
             "xp": 0
         }
-    except jwt.ExpiredSignatureError:
+    except Exception as e:
+        if settings.ENVIRONMENT == "development":
+            return DEV_USER
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication token has expired."
-        )
-    except jwt.InvalidTokenError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid authentication token: {str(e)}"
+            detail=f"Invalid or expired Firebase authentication token: {str(e)}"
         )

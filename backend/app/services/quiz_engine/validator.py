@@ -1,5 +1,49 @@
+import random
 from typing import Dict, Any, List
 from app.core.errors import QuizValidationError
+
+
+def shuffle_question_options(q: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Randomly permutes option order and reassigns IDs ('a', 'b', 'c', 'd')
+    while correctly tracking the new positions of correct_answers.
+    Eliminates model and prompt positional bias (e.g., favoring 'a' or 'b').
+    """
+    options = q.get("options", [])
+    if len(options) < 2:
+        return q
+
+    correct_ids = set(str(c).strip().lower() for c in q.get("correct_answers", []))
+    
+    # Associate each option text with whether it was marked correct
+    annotated = [
+        {"text": opt["text"], "is_correct": opt["id"].strip().lower() in correct_ids}
+        for opt in options
+    ]
+
+    # Permute randomly
+    random.shuffle(annotated)
+
+    # Re-assign standard keys 'a', 'b', 'c', 'd', ...
+    alphabet = ["a", "b", "c", "d", "e", "f"]
+    new_options = []
+    new_correct_answers = []
+
+    for i, item in enumerate(annotated):
+        new_id = alphabet[i] if i < len(alphabet) else f"opt_{i}"
+        new_options.append({"id": new_id, "text": item["text"]})
+        if item["is_correct"]:
+            new_correct_answers.append(new_id)
+
+    # Fallback safety in case of any anomaly
+    if not new_correct_answers and new_options:
+        new_correct_answers = [new_options[0]["id"]]
+
+    return {
+        **q,
+        "options": new_options,
+        "correct_answers": new_correct_answers
+    }
 
 
 def validate_question_dict(q: Dict[str, Any], mode: str = "STRICT") -> Dict[str, Any]:
@@ -11,6 +55,7 @@ def validate_question_dict(q: Dict[str, Any], mode: str = "STRICT") -> Dict[str,
     - MCQ must have exactly 1 correct answer
     - MSQ must have at least 2 correct answers
     - In STRICT mode, source_quote must not be empty
+    - Shuffles options so correct answer distribution is uniformly randomized across a, b, c, d
     """
     prompt = q.get("prompt", "").strip()
     if not prompt:
@@ -40,20 +85,16 @@ def validate_question_dict(q: Dict[str, Any], mode: str = "STRICT") -> Dict[str,
 
     q_type = q.get("question_type", "MCQ").upper()
     if q_type == "MCQ" and len(correct) != 1:
-        # If model marked multiple for MCQ, adjust to MSQ or take first
         q_type = "MSQ" if len(correct) > 1 else "MCQ"
 
     if q_type == "MSQ" and len(correct) < 2:
-        # If only one correct for MSQ, coerce to MCQ
         q_type = "MCQ"
 
-    # STRICT mode quote verification
     source_quote = (q.get("source_quote") or "").strip()
     if mode == "STRICT" and not source_quote:
-        # Provide a fallback marker if missing rather than completely discarding
         source_quote = prompt
 
-    return {
+    validated_dict = {
         "question_type": q_type,
         "prompt": prompt,
         "options": [{"id": opt["id"].strip().lower(), "text": opt["text"].strip()} for opt in options],
@@ -63,6 +104,9 @@ def validate_question_dict(q: Dict[str, Any], mode: str = "STRICT") -> Dict[str,
         "source_quote": source_quote,
         "difficulty": q.get("difficulty", "medium").lower()
     }
+
+    # Programmatically shuffle option positions and re-key to guarantee uniform distribution
+    return shuffle_question_options(validated_dict)
 
 
 def validate_generated_questions(raw_questions: List[Dict[str, Any]], mode: str = "STRICT") -> List[Dict[str, Any]]:

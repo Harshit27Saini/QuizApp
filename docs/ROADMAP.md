@@ -10,6 +10,10 @@
 - [x] Document preview endpoint & UI (inspect extracted sections)
 - [x] Provider-independent AI abstraction (Mock, Gemini Flash, Groq)
 - [x] STRICT & CONCEPTUAL quiz generation (MCQ & MSQ)
+- [x] Programmatic option shuffling (eliminates option a/b bias)
+- [x] Granular question count control (1-25 questions + presets)
+- [x] Interactive Learning Flashcards with 3D flip & mastery tracking
+- [x] Firebase integration (Auth, Firestore, Cloud Storage)
 - [x] Interactive quiz-taking flow with real-time progress
 - [x] Server-side deterministic grading with source citations
 - [x] Quiz history & "Retry Incorrect Questions" loop

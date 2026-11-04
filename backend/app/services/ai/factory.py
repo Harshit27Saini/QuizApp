@@ -19,3 +19,4 @@ def get_ai_provider() -> BaseAIProvider:
 
     # Default to Mock provider
     return MockAIProvider()
+

@@ -39,3 +39,4 @@ class AttemptResultResponse(BaseModel):
     started_at: datetime
     completed_at: Optional[datetime] = None
     question_results: List[EvaluatedQuestionResult]
+

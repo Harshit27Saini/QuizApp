@@ -79,3 +79,4 @@ def test_pptx_parser():
 def test_empty_document_raises_error():
     with pytest.raises(DocumentParsingError):
         parse_document(b"", "empty.txt")
+

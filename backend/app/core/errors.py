@@ -35,3 +35,4 @@ def bad_request_error(detail: str) -> HTTPException:
         status_code=status.HTTP_400_BAD_REQUEST,
         detail=detail
     )
+

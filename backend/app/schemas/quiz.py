@@ -49,3 +49,4 @@ class QuizResponse(BaseModel):
     difficulty: str
     created_at: datetime
     questions: Optional[List[QuestionPublic]] = None
+

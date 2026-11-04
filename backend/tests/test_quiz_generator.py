@@ -1,5 +1,5 @@
 import pytest
-from app.services.quiz_engine.validator import validate_question_dict, validate_generated_questions
+from app.services.quiz_engine.validator import validate_question_dict, validate_generated_questions, shuffle_question_options
 from app.services.quiz_engine.generator import generate_quiz_questions
 from app.core.errors import QuizValidationError
 
@@ -22,8 +22,13 @@ def test_validate_valid_mcq():
     }
     validated = validate_question_dict(q, mode="STRICT")
     assert validated["question_type"] == "MCQ"
-    assert validated["correct_answers"] == ["a"]
+    assert len(validated["correct_answers"]) == 1
     assert len(validated["options"]) == 4
+
+    # Verify that the option marked correct actually holds the correct text
+    correct_id = validated["correct_answers"][0]
+    matched_option = next(opt for opt in validated["options"] if opt["id"] == correct_id)
+    assert matched_option["text"] == "Cellular respiration and ATP generation"
 
 
 def test_validate_valid_msq():
@@ -44,7 +49,28 @@ def test_validate_valid_msq():
     }
     validated = validate_question_dict(q, mode="STRICT")
     assert validated["question_type"] == "MSQ"
-    assert set(validated["correct_answers"]) == {"a", "b", "d"}
+    assert len(validated["correct_answers"]) == 3
+
+    # Verify that all 3 correct options correspond to the actual correct texts
+    correct_ids = set(validated["correct_answers"])
+    matched_texts = {opt["text"] for opt in validated["options"] if opt["id"] in correct_ids}
+    assert matched_texts == {"Encapsulation", "Polymorphism", "Inheritance"}
+
+
+def test_shuffle_options_distributes_correctly():
+    q = {
+        "options": [
+            {"id": "a", "text": "Correct Option"},
+            {"id": "b", "text": "Distractor 1"},
+            {"id": "c", "text": "Distractor 2"},
+            {"id": "d", "text": "Distractor 3"}
+        ],
+        "correct_answers": ["a"]
+    }
+    shuffled = shuffle_question_options(q)
+    correct_id = shuffled["correct_answers"][0]
+    matched_opt = next(opt for opt in shuffled["options"] if opt["id"] == correct_id)
+    assert matched_opt["text"] == "Correct Option"
 
 
 def test_invalid_option_id_raises():
@@ -54,7 +80,7 @@ def test_invalid_option_id_raises():
             {"id": "a", "text": "Option 1"},
             {"id": "b", "text": "Option 2"}
         ],
-        "correct_answers": ["z"],  # 'z' is not in options!
+        "correct_answers": ["z"],
         "explanation": "Test explanation",
         "source_quote": "Quote"
     }

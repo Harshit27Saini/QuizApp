@@ -216,3 +216,4 @@ CREATE POLICY "Users can update own attempts" ON public.quiz_attempts FOR UPDATE
 -- Question Responses: users can CRUD their own question responses
 CREATE POLICY "Users can view own responses" ON public.question_responses FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own responses" ON public.question_responses FOR INSERT WITH CHECK (auth.uid() = user_id);
+

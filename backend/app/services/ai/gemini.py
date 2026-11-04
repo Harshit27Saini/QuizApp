@@ -68,3 +68,4 @@ class GeminiProvider(BaseAIProvider):
             return parsed_json
         except (KeyError, json.JSONDecodeError) as e:
             raise AIProviderError(f"Failed to parse structured JSON from Gemini response: {str(e)}")
+

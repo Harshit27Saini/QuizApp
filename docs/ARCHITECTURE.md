@@ -69,3 +69,4 @@ Recall is designed as a **Modular Monolith** with a decoupled single-page applic
 2. **Access Control:** Row Level Security (RLS) in PostgreSQL ensures users can only read and mutate their own collections, documents, quizzes, and attempts.
 3. **API Keys:** AI provider keys and service secrets remain strictly on the backend inside environment variables and are never exposed to the client.
 4. **Input Sanitization:** Uploaded files are validated against allowed MIME types and size limits (`MAX_UPLOAD_SIZE_MB`).
+

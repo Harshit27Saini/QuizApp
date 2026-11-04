@@ -141,3 +141,4 @@ async def list_user_attempts(
 ):
     """Lists past quiz attempts for history tracking."""
     return await db.list_attempts(user_id=current_user["id"], quiz_id=quiz_id)
+

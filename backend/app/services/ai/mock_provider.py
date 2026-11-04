@@ -39,7 +39,7 @@ class MockAIProvider(BaseAIProvider):
         questions: List[Dict[str, Any]] = []
 
         # Generate a balanced set of MCQ and MSQ
-        for idx, sentence in enumerate(sentences[:6]):
+        for idx, sentence in enumerate(sentences[:10]):
             is_msq = (idx % 2 == 1)
             clean_sentence = sentence.replace("\n", " ").strip()
             
@@ -76,10 +76,11 @@ class MockAIProvider(BaseAIProvider):
                         {"id": "d", "text": "This extraneous claim is never mentioned in the text."}
                     ],
                     "correct_answers": ["a", "b"],
-                    "explanation": f"Both (a) and (b) correctly reflect the verified evidence: '{clean_sentence}'",
+                    "explanation": f"Both options correctly reflect the verified evidence: '{clean_sentence}'",
                     "source_page": page_num,
                     "source_quote": clean_sentence,
                     "difficulty": "medium"
                 })
 
         return {"questions": questions}
+

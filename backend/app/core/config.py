@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -7,12 +7,12 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
-    # Supabase credentials (optional for offline mock mode)
-    SUPABASE_URL: str = ""
-    SUPABASE_KEY: str = ""
-    SUPABASE_JWT_SECRET: str = ""
+    # Firebase configuration (optional for offline mock mode)
+    FIREBASE_PROJECT_ID: str = ""
+    FIREBASE_CREDENTIALS_PATH: str = ""  # path to serviceAccountKey.json
+    FIREBASE_STORAGE_BUCKET: str = ""
 
-    # AI Configuration: 'mock', 'gemini', 'groq'
+    # AI Configuration: 'mock', 'gemini', or 'groq'
     AI_PROVIDER: str = "mock"
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
