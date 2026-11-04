@@ -15,6 +15,7 @@
 - [x] Interactive Learning Flashcards with 3D flip & mastery tracking
 - [x] Front-matter and institutional noise filtering (filters cover pages, founder speeches, and indices)
 - [x] Duolingo-style progressive learning path with substantive theory & mistake recycling
+- [x] Duolingo-themed interactive PDF & Document Reader with 5-color highlighters, sticky notes, and companion AI
 - [x] Sandbox Scope controls (custom slide/page ranges & depth: sprint, standard, deep dive)
 - [x] AI Pet Study Assistants (Sydney, Connie, Milo, Scooby, Bunny) powered by Gemini
 - [x] Zero-dependency Web Audio synthesizers (correct chimes, soft error tones, victory fanfare)
