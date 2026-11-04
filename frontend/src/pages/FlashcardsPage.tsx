@@ -158,16 +158,23 @@ export const FlashcardsPage: React.FC = () => {
         {cards.length > 0 && (
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
-              className="btn btn-secondary"
+              className="btn-3d btn-3d-white"
+              style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
               onClick={() => setShowGenerator(prev => !prev)}
             >
               {showGenerator ? '✕ Close Generator' : '➕ New Deck'}
             </button>
-            <button className="btn btn-secondary" onClick={handleShuffle} title="Randomize card order">
+            <button
+              className="btn-3d btn-3d-white"
+              style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
+              onClick={handleShuffle}
+              title="Randomize card order"
+            >
               🔀 Shuffle
             </button>
             <button
-              className="btn btn-primary"
+              className="btn-3d btn-3d-green"
+              style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
               onClick={() => navigate(`/collections/${collectionId}/quiz-setup`)}
             >
               ⚡ Test with Quiz
@@ -375,21 +382,21 @@ export const FlashcardsPage: React.FC = () => {
           {/* Navigation Controls */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
-              className="btn btn-secondary"
+              className="btn-3d btn-3d-white"
               onClick={handlePrev}
               disabled={currentIndex === 0}
             >
-              ← Previous (Left)
+              ← Previous
             </button>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>
               Use arrow keys ← →
             </span>
             <button
-              className="btn btn-primary"
+              className="btn-3d btn-3d-blue"
               onClick={handleNext}
               disabled={currentIndex === totalCards - 1}
             >
-              Next (Right) →
+              Next →
             </button>
           </div>
         </div>

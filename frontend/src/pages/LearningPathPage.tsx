@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { soundManager } from '../utils/sound';
+import { triggerConfetti } from '../utils/confetti';
+import { companionService } from '../services/companions';
 import { PetAssistantChat } from '../components/learning_path/PetAssistantChat';
 import { SandboxSetupModal } from '../components/learning_path/SandboxSetupModal';
 import type { LearningPath, PathNode, PathNodeQuestion, LearningPathGenerateOptions } from '../types';
@@ -16,9 +18,17 @@ export const LearningPathPage: React.FC = () => {
   // Sound state
   const [isMuted, setIsMuted] = useState(soundManager.isMuted);
 
+  // Active Companion Cheerleader
+  const activeCompanion = companionService.getActiveCompanion();
+  const [cheerQuote, setCheerQuote] = useState<string>('');
+
   // Sandbox Modal State
   const [showSandboxModal, setShowSandboxModal] = useState(false);
   const [lessonDepth, setLessonDepth] = useState<'sprint' | 'standard' | 'deep_dive'>('standard');
+
+  // Milestone Chest Reward Modal State
+  const [openedChestIndex, setOpenedChestIndex] = useState<number | null>(null);
+  const [claimedChests, setClaimedChests] = useState<Set<number>>(new Set());
 
   // Active Lesson Modal State
   const [activeNode, setActiveNode] = useState<PathNode | null>(null);
@@ -53,11 +63,19 @@ export const LearningPathPage: React.FC = () => {
 
   useEffect(() => {
     fetchPath();
+    setCheerQuote(companionService.getRandomCheer());
   }, [documentId]);
 
   const handleToggleSound = () => {
     const muted = soundManager.toggleMute();
     setIsMuted(muted);
+  };
+
+  const handleOpenChest = (chestIdx: number) => {
+    soundManager.playVictory();
+    triggerConfetti();
+    setOpenedChestIndex(chestIdx);
+    setClaimedChests(prev => new Set(prev).add(chestIdx));
   };
 
   const handleOpenNode = (node: PathNode) => {
@@ -71,6 +89,7 @@ export const LearningPathPage: React.FC = () => {
     setFeedback(null);
     setComboStreak(0);
     setUnitResult(null);
+    setCheerQuote(companionService.getRandomCheer());
   };
 
   const handleStartPractice = () => {
@@ -127,8 +146,8 @@ export const LearningPathPage: React.FC = () => {
       try {
         setSubmitting(true);
         soundManager.playVictory();
+        triggerConfetti();
 
-        // Complete unit and unlock next node
         const payload = activeNode.questions.map(q => ({
           question_id: q.id,
           selected_options: q.correct_answers
@@ -138,7 +157,7 @@ export const LearningPathPage: React.FC = () => {
         setUnitResult({
           score: 100,
           passed: true,
-          xp: res.xp_awarded + (comboStreak >= 3 ? 10 : 0)
+          xp: res.xp_awarded + (comboStreak >= 3 ? 15 : 0)
         });
         setPath(res.path);
         setLessonPhase('celebration');
@@ -155,66 +174,70 @@ export const LearningPathPage: React.FC = () => {
     : 0;
 
   return (
-    <div style={{ maxWidth: '720px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Header Bar */}
-      <div>
-        {path && (
-          <Link to={`/collections/${path.collection_id}`} style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-            ← Back to Collection
-          </Link>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>
-              {path?.title.replace('Path: ', '') || 'Learning Journey'}
-            </h1>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-              Master substantive theory step-by-step with your pet study companions.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button
-              className="btn btn-secondary"
-              onClick={handleToggleSound}
-              title={isMuted ? 'Unmute sounds' : 'Mute sounds'}
-              style={{ fontSize: '0.9rem', padding: '0.5rem 0.75rem' }}
-            >
-              {isMuted ? '🔇 Muted' : '🔊 Sound'}
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowSandboxModal(true)}
-              style={{ fontSize: '0.875rem', padding: '0.5rem 0.875rem' }}
-            >
-              ⚙️ Sandbox Scope
-            </button>
-            <div className="badge badge-xp" style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}>
-              ⚡ Path: {progressPercent}%
-            </div>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      {/* Top Banner Unit Header */}
+      <div style={{
+        background: 'var(--color-green)',
+        borderBottom: '4px solid var(--color-green-dark)',
+        borderRadius: 'var(--radius-xl)',
+        padding: '1.25rem 1.5rem',
+        color: '#ffffff',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        boxShadow: '0 4px 12px rgba(88, 204, 2, 0.25)'
+      }}>
+        <div>
+          {path && (
+            <Link to="/" style={{ fontSize: '0.8rem', color: '#ffffff', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              ← All Collections
+            </Link>
+          )}
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 900, marginTop: '0.25rem', letterSpacing: '0.5px' }}>
+            {path?.title.replace('Path: ', '') || 'Learning Journey'}
+          </h1>
+          <p style={{ fontSize: '0.85rem', opacity: 0.9 }}>
+            Mastering syllabus concepts step-by-step with {activeCompanion.name}!
+          </p>
         </div>
 
-        {/* Global Journey Progress Bar */}
-        <div className="progress-container" style={{ marginTop: '1rem', height: '10px' }}>
-          <div className="progress-bar" style={{ width: `${progressPercent}%`, backgroundColor: 'var(--color-xp)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="badge badge-xp" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}>
+            ⚡ {progressPercent}% Completed
+          </div>
+          <button
+            className="btn-3d btn-3d-white"
+            onClick={handleToggleSound}
+            style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
+          >
+            {isMuted ? '🔇 Muted' : '🔊 Sound'}
+          </button>
+          <button
+            className="btn-3d btn-3d-white"
+            onClick={() => setShowSandboxModal(true)}
+            style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
+          >
+            ⚙️ Sandbox Scope
+          </button>
         </div>
       </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🗺️</div>
-          <h3>Synthesizing substantive academic curriculum & study units...</h3>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem', animation: 'gentlePulse 1.5s infinite' }}>🗺️</div>
+          <h3 style={{ fontWeight: 800 }}>Synthesizing your 3D learning quest path...</h3>
         </div>
       ) : error ? (
-        <div className="card" style={{ borderLeft: '4px solid var(--color-error)' }}>
-          <p style={{ color: 'var(--color-error-dark)', fontWeight: 600 }}>{error}</p>
+        <div className="card" style={{ borderLeft: '4px solid var(--color-red)' }}>
+          <p style={{ color: 'var(--color-red-dark)', fontWeight: 700 }}>{error}</p>
         </div>
       ) : path && path.nodes ? (
-        /* Serpentine Duolingo Path of Diverse Nodes */
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0', gap: '2.5rem' }}>
+        /* Serpentine 3D Path of Diverse Nodes & Chests */
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0', gap: '3rem' }}>
           {path.nodes.map((node, index) => {
-            const offsets = [0, 50, 0, -50];
+            const offsets = [0, 60, 0, -60];
             const xOffset = offsets[index % offsets.length];
 
             const isCurrent = !node.is_locked && !node.is_completed;
@@ -227,81 +250,150 @@ export const LearningPathPage: React.FC = () => {
               ? '🎭'
               : '📖';
 
+            const showChest = index > 0 && index % 3 === 0;
+
             return (
-              <div
-                key={node.id}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  transform: `translateX(${xOffset}px)`,
-                  transition: 'transform var(--transition-normal)',
-                  position: 'relative'
-                }}
-              >
-                {/* Stepping Stone Node Button */}
+              <React.Fragment key={node.id}>
+                {/* Milestone Reward Chest between units */}
+                {showChest && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <div
+                      className="reward-chest-3d"
+                      onClick={() => handleOpenChest(index)}
+                      title="Click to claim Milestone Reward Chest!"
+                    >
+                      {claimedChests.has(index) ? '✨' : '🎁'}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-gold-dark)' }}>
+                      {claimedChests.has(index) ? 'Claimed ✓' : 'Milestone Chest'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Stepping Stone Node */}
                 <div
-                  onClick={() => handleOpenNode(node)}
                   style={{
-                    width: '84px',
-                    height: '84px',
-                    borderRadius: 'var(--radius-full)',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: isLocked ? 'not-allowed' : 'pointer',
-                    background: isCompleted
-                      ? 'var(--color-xp)'
-                      : isCurrent
-                      ? 'var(--color-primary)'
-                      : 'var(--color-border)',
-                    color: '#ffffff',
-                    fontSize: '1.75rem',
-                    fontWeight: 900,
-                    boxShadow: isCurrent
-                      ? '0 0 0 8px rgba(59, 91, 253, 0.2), var(--shadow-lg)'
-                      : isCompleted
-                      ? '0 0 0 6px rgba(245, 158, 11, 0.2), var(--shadow-md)'
-                      : 'var(--shadow-sm)',
-                    transition: 'all var(--transition-fast)'
+                    transform: `translateX(${xOffset}px)`,
+                    transition: 'transform var(--transition-normal)',
+                    position: 'relative'
                   }}
-                  title={isLocked ? 'Complete previous unit to unlock' : node.title}
                 >
-                  {isCompleted ? '👑' : isCurrent ? nodeTypeIcon : '🔒'}
-                </div>
-
-                {/* Node Title Label */}
-                <div style={{
-                  marginTop: '0.625rem',
-                  fontWeight: 700,
-                  fontSize: '0.875rem',
-                  textAlign: 'center',
-                  maxWidth: '180px',
-                  color: isLocked ? 'var(--color-text-subtle)' : 'var(--color-text-main)'
-                }}>
-                  {node.title}
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem' }}>
-                  <span className="badge" style={{ fontSize: '0.7rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
-                    {node.node_type === 'checkpoint' ? 'Checkpoint' : node.node_type === 'scenario' ? 'Scenario' : 'Lesson'}
-                  </span>
+                  {/* Floating Companion Cheerleader standing beside the current node */}
                   {isCurrent && (
-                    <span className="badge badge-mode" style={{ fontSize: '0.7rem' }}>
-                      START
-                    </span>
+                    <div style={{
+                      position: 'absolute',
+                      left: xOffset >= 0 ? '-140px' : '96px',
+                      top: '-10px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      width: '130px',
+                      zIndex: 10
+                    }}>
+                      <div style={{
+                        background: '#ffffff',
+                        border: '2px solid var(--color-border)',
+                        borderBottom: '3px solid var(--color-border-strong)',
+                        padding: '0.375rem 0.625rem',
+                        borderRadius: '12px',
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        lineHeight: 1.3,
+                        textAlign: 'center',
+                        marginBottom: '4px',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
+                      }}>
+                        "{cheerQuote}"
+                      </div>
+                      <div style={{ fontSize: '2.5rem', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}>
+                        {activeCompanion.avatarIcon}
+                      </div>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 900, color: activeCompanion.badgeColor }}>
+                        {activeCompanion.name}
+                      </span>
+                    </div>
                   )}
-                  {isCompleted && (
-                    <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
-                      MASTERED ✓
+
+                  {/* 3D Stepping Stone Button */}
+                  <div
+                    onClick={() => handleOpenNode(node)}
+                    className={`stepping-stone-3d ${isCompleted ? 'completed' : isCurrent ? 'active' : 'locked'}`}
+                    title={isLocked ? 'Complete previous unit to unlock' : node.title}
+                  >
+                    {isCompleted ? '👑' : isCurrent ? nodeTypeIcon : '🔒'}
+                  </div>
+
+                  {/* Node Title Label */}
+                  <div style={{
+                    marginTop: '0.75rem',
+                    fontWeight: 800,
+                    fontSize: '0.9rem',
+                    textAlign: 'center',
+                    maxWidth: '190px',
+                    color: isLocked ? 'var(--color-text-subtle)' : 'var(--color-text-main)'
+                  }}>
+                    {node.title}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem' }}>
+                    <span className="badge" style={{ fontSize: '0.7rem', background: '#ffffff', border: '1.5px solid var(--color-border)' }}>
+                      {node.node_type === 'checkpoint' ? 'Checkpoint' : node.node_type === 'scenario' ? 'Scenario' : 'Lesson'}
                     </span>
-                  )}
+                    {isCurrent && (
+                      <span className="badge badge-mode" style={{ fontSize: '0.7rem' }}>
+                        START
+                      </span>
+                    )}
+                    {isCompleted && (
+                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                        MASTERED ✓
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </React.Fragment>
             );
           })}
         </div>
       ) : null}
+
+      {/* Milestone Chest Opened Modal */}
+      {openedChestIndex !== null && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 300,
+          padding: '1rem'
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '0.5rem' }}>🎁✨</div>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 900 }}>Milestone Chest Unlocked!</h2>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.925rem', marginTop: '0.5rem' }}>
+              Awesome dedication! You've unlocked bonus XP and syllabus momentum!
+            </p>
+
+            <div className="badge badge-xp" style={{ fontSize: '1.25rem', padding: '0.75rem 1.5rem', margin: '1.5rem 0' }}>
+              ⚡ +50 BONUS XP EARNED!
+            </div>
+
+            <button
+              className="btn-3d btn-3d-green"
+              onClick={() => setOpenedChestIndex(null)}
+              style={{ width: '100%', padding: '0.875rem' }}
+            >
+              Claim & Continue Quest →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Interactive Substantive Lesson Modal */}
       {activeNode && (
@@ -329,9 +421,9 @@ export const LearningPathPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <h2 style={{ fontSize: '1.45rem', fontWeight: 800 }}>{activeNode.title}</h2>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 900 }}>{activeNode.title}</h2>
                   {activeNode.source_page && (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>
                       Grounded in Syllabus Slide/Page {activeNode.source_page}
                     </span>
                   )}
@@ -339,13 +431,13 @@ export const LearningPathPage: React.FC = () => {
 
                 {/* Substantive Theory Overview */}
                 <div style={{
-                  fontSize: '0.975rem',
+                  fontSize: '1rem',
                   lineHeight: 1.65,
                   color: 'var(--color-text-main)',
-                  background: 'var(--color-bg)',
+                  background: 'var(--color-surface-hover)',
                   padding: '1.125rem',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)'
+                  borderRadius: 'var(--radius-lg)',
+                  border: '2px solid var(--color-border)'
                 }}>
                   {activeNode.substantive_content?.overview || activeNode.concept_summary}
                 </div>
@@ -353,7 +445,7 @@ export const LearningPathPage: React.FC = () => {
                 {/* Core Mechanisms, Equations, or Operational Steps */}
                 {activeNode.substantive_content?.mechanisms && activeNode.substantive_content.mechanisms.length > 0 && (
                   <div>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
                       ⚙️ Core Principles & Mechanisms:
                     </h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -361,11 +453,15 @@ export const LearningPathPage: React.FC = () => {
                         <div
                           key={idx}
                           style={{
-                            background: 'var(--color-surface)',
-                            padding: '0.75rem 1rem',
+                            background: '#ffffff',
+                            padding: '0.875rem 1rem',
                             borderRadius: 'var(--radius-md)',
-                            borderLeft: '3px solid var(--color-primary)',
-                            fontSize: '0.9rem',
+                            borderLeft: '4px solid var(--color-blue)',
+                            border: '1.5px solid var(--color-border)',
+                            borderLeftWidth: '5px',
+                            borderLeftColor: 'var(--color-blue)',
+                            fontSize: '0.925rem',
+                            fontWeight: 600,
                             lineHeight: 1.5
                           }}
                         >
@@ -379,10 +475,10 @@ export const LearningPathPage: React.FC = () => {
                 {/* Concrete Examples */}
                 {activeNode.substantive_content?.examples && activeNode.substantive_content.examples.length > 0 && (
                   <div>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
                       💡 Concrete Application & Example:
                     </h4>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--color-text-main)', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', border: '1px dashed var(--color-border)' }}>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--color-text-main)', background: '#ffffff', padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)', border: '2px dashed var(--color-border)' }}>
                       {activeNode.substantive_content.examples.join(' ')}
                     </div>
                   </div>
@@ -391,12 +487,13 @@ export const LearningPathPage: React.FC = () => {
                 {/* Exam Pitfalls / Nuances */}
                 {activeNode.substantive_content?.exam_pitfalls && (
                   <div style={{
-                    background: 'rgba(239, 68, 68, 0.08)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    padding: '0.75rem 1rem',
+                    background: 'var(--color-red-light)',
+                    border: '2px solid var(--color-red-dark)',
+                    padding: '0.875rem 1rem',
                     borderRadius: 'var(--radius-md)',
-                    fontSize: '0.85rem',
-                    color: 'var(--color-text-main)'
+                    fontSize: '0.875rem',
+                    color: 'var(--color-text-main)',
+                    fontWeight: 600
                   }}>
                     <strong>⚠️ Common Exam Pitfall: </strong>
                     {activeNode.substantive_content.exam_pitfalls}
@@ -404,7 +501,7 @@ export const LearningPathPage: React.FC = () => {
                 )}
 
                 <button
-                  className="btn btn-primary"
+                  className="btn-3d btn-3d-green"
                   onClick={handleStartPractice}
                   style={{ padding: '0.875rem', fontSize: '1rem', marginTop: '0.5rem' }}
                 >
@@ -419,19 +516,19 @@ export const LearningPathPage: React.FC = () => {
                 {/* Progress bar within lesson */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>
                       Step {queueIndex + 1} of {Math.max(initialTotalQuestions, questionQueue.length)}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {comboStreak >= 2 && (
-                        <span className="badge badge-xp" style={{ fontSize: '0.75rem' }}>
+                        <span className="badge badge-xp" style={{ fontSize: '0.8rem' }}>
                           🔥 {comboStreak} in a row!
                         </span>
                       )}
                       <button onClick={() => setActiveNode(null)} style={{ fontSize: '1.25rem', cursor: 'pointer', color: 'var(--color-text-muted)', background: 'none', border: 'none' }}>✕</button>
                     </div>
                   </div>
-                  <div className="progress-container" style={{ height: '8px' }}>
+                  <div className="progress-container" style={{ height: '10px' }}>
                     <div
                       className="progress-bar"
                       style={{
@@ -441,12 +538,12 @@ export const LearningPathPage: React.FC = () => {
                   </div>
                 </div>
 
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, lineHeight: 1.4 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, lineHeight: 1.4 }}>
                   {questionQueue[queueIndex].prompt}
                 </h3>
 
                 {/* Options */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {questionQueue[queueIndex].options.map(opt => {
                     const isSelected = selectedOption === opt.id;
                     return (
@@ -454,10 +551,11 @@ export const LearningPathPage: React.FC = () => {
                         key={opt.id}
                         className={`quiz-option ${isSelected ? 'selected' : ''}`}
                         onClick={() => handleSelectOption(opt.id)}
-                        style={{ padding: '0.875rem 1rem' }}
                       >
-                        <span style={{ fontWeight: 700, width: '24px' }}>{opt.id.toUpperCase()}.</span>
-                        <span style={{ flex: 1, fontSize: '0.925rem' }}>{opt.text}</span>
+                        <span style={{ fontWeight: 900, width: '28px', color: isSelected ? 'var(--color-blue-dark)' : 'var(--color-text-muted)' }}>
+                          {opt.id.toUpperCase()}.
+                        </span>
+                        <span style={{ flex: 1, fontSize: '0.95rem', fontWeight: 600 }}>{opt.text}</span>
                       </div>
                     );
                   })}
@@ -466,29 +564,30 @@ export const LearningPathPage: React.FC = () => {
                 {/* Duolingo Feedback Banner */}
                 {feedback ? (
                   <div style={{
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-md)',
-                    background: feedback.isCorrect ? 'var(--color-success-bg)' : 'var(--color-error-bg)',
-                    border: `1.5px solid ${feedback.isCorrect ? 'var(--color-success)' : 'var(--color-error)'}`,
+                    padding: '1.25rem',
+                    borderRadius: 'var(--radius-lg)',
+                    background: feedback.isCorrect ? 'var(--color-green-light)' : 'var(--color-red-light)',
+                    border: `2px solid ${feedback.isCorrect ? 'var(--color-green)' : 'var(--color-red)'}`,
+                    borderBottomWidth: '4px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.5rem'
                   }}>
-                    <div style={{ fontWeight: 800, color: feedback.isCorrect ? 'var(--color-success-dark)' : 'var(--color-error-dark)' }}>
+                    <div style={{ fontWeight: 900, fontSize: '1.1rem', color: feedback.isCorrect ? 'var(--color-green-dark)' : 'var(--color-red-dark)' }}>
                       {feedback.isCorrect
                         ? comboStreak >= 3 ? `🔥 Amazing! ${comboStreak} in a row!` : '✓ Nicely done!'
                         : '✕ Let\'s review this:'}
                     </div>
-                    <div style={{ fontSize: '0.875rem', lineHeight: 1.4, color: 'var(--color-text-main)' }}>
+                    <div style={{ fontSize: '0.9rem', lineHeight: 1.4, color: 'var(--color-text-main)', fontWeight: 600 }}>
                       {feedback.explanation}
                     </div>
                     {feedback.wasRecycled && (
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-error-dark)' }}>
-                        ↻ Question will appear again at the end so you achieve 100% mastery!
+                      <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-red-dark)' }}>
+                        ↻ Missed! Re-queued to the end so you achieve 100% mastery!
                       </div>
                     )}
                     <button
-                      className={`btn ${feedback.isCorrect ? 'btn-success' : 'btn-primary'}`}
+                      className={`btn-3d ${feedback.isCorrect ? 'btn-3d-green' : 'btn-3d-red'}`}
                       onClick={handleNextQuestion}
                       style={{ marginTop: '0.5rem', alignSelf: 'flex-end' }}
                       disabled={submitting}
@@ -498,10 +597,10 @@ export const LearningPathPage: React.FC = () => {
                   </div>
                 ) : (
                   <button
-                    className="btn btn-primary"
+                    className="btn-3d btn-3d-green"
                     onClick={handleCheckAnswer}
                     disabled={!selectedOption}
-                    style={{ padding: '0.75rem', marginTop: '0.5rem' }}
+                    style={{ padding: '0.875rem', marginTop: '0.5rem' }}
                   >
                     Check Answer
                   </button>
@@ -512,22 +611,22 @@ export const LearningPathPage: React.FC = () => {
             {/* Stage 3: Celebration Modal */}
             {lessonPhase === 'celebration' && unitResult && (
               <div style={{ textAlign: 'center', padding: '1rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ fontSize: '3.5rem' }}>🎉</div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Unit Mastered!</h2>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
+                <div style={{ fontSize: '4rem' }}>🎉</div>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Unit Mastered!</h2>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '1rem', fontWeight: 600 }}>
                   You have conquered all concepts and questions in this unit!
                 </p>
 
-                <div className="badge badge-xp" style={{ fontSize: '1.1rem', padding: '0.625rem 1.5rem' }}>
+                <div className="badge badge-xp" style={{ fontSize: '1.25rem', padding: '0.75rem 1.75rem' }}>
                   ⚡ +{unitResult.xp} XP Earned!
                 </div>
 
                 <button
-                  className="btn btn-primary"
+                  className="btn-3d btn-3d-green"
                   onClick={() => setActiveNode(null)}
-                  style={{ width: '100%', padding: '0.875rem', fontSize: '1rem', marginTop: '1rem' }}
+                  style={{ width: '100%', padding: '0.875rem', fontSize: '1.05rem', marginTop: '1rem' }}
                 >
-                  Continue Learning Journey →
+                  Continue Quest Path →
                 </button>
               </div>
             )}

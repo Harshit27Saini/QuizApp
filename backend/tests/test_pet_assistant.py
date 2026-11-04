@@ -48,3 +48,4 @@ async def test_all_five_pets_respond():
         )
         assert res["pet_id"] == p_id
         assert len(res["reply"]) > 15
+

@@ -20,3 +20,4 @@ class PetChatResponse(BaseModel):
     pet_name: str
     reply: str
     suggested_followups: List[str] = Field(default_factory=list)
+

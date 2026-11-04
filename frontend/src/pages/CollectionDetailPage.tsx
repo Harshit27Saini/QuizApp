@@ -73,19 +73,19 @@ export const CollectionDetailPage: React.FC = () => {
         {documents.length > 0 && (
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button
-              className="btn btn-secondary"
+              className="btn-3d btn-3d-white"
               onClick={() => navigate(`/collections/${collectionId}/cards`)}
             >
               🗂️ Study Cards
             </button>
             <button
-              className="btn btn-secondary"
+              className="btn-3d btn-3d-gold"
               onClick={() => navigate(`/documents/${documents[0].id}/path`)}
             >
               🗺️ Learning Path
             </button>
             <button
-              className="btn btn-primary"
+              className="btn-3d btn-3d-green"
               onClick={() => navigate(`/collections/${collectionId}/quiz-setup`)}
             >
               ⚡ Generate Quiz
@@ -181,24 +181,24 @@ export const CollectionDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
                   <Link
                     to={`/documents/${doc.id}/path`}
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.8125rem', backgroundColor: 'var(--color-xp)', borderColor: 'var(--color-xp)' }}
+                    className="btn-3d btn-3d-gold"
+                    style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
                   >
                     🗺️ Learning Path
                   </Link>
                   <Link
                     to={`/documents/${doc.id}/preview`}
-                    className="btn btn-secondary"
-                    style={{ fontSize: '0.8125rem' }}
+                    className="btn-3d btn-3d-white"
+                    style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
                   >
-                    🔍 Preview Sections
+                    🔍 Preview
                   </Link>
                   <button
-                    className="btn btn-secondary"
-                    style={{ fontSize: '0.8125rem' }}
+                    className="btn-3d btn-3d-blue"
+                    style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
                     onClick={() => navigate(`/collections/${collectionId}/quiz-setup?doc=${doc.id}`)}
                   >
                     ⚡ Quiz

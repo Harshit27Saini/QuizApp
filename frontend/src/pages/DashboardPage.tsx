@@ -52,12 +52,12 @@ export const DashboardPage: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Study Collections</h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.925rem' }}>
+          <h1 style={{ fontSize: '1.85rem', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--color-text-main)' }}>Study Collections</h1>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
             Organize your course materials, lecture notes, and reading packets.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn-3d btn-3d-green" onClick={() => setShowModal(true)}>
           + New Collection
         </button>
       </div>
@@ -162,7 +162,7 @@ export const DashboardPage: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn-3d btn-3d-white"
                   onClick={() => setShowModal(false)}
                   disabled={submitting}
                 >
@@ -170,7 +170,7 @@ export const DashboardPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn-3d btn-3d-green"
                   disabled={submitting || !title.trim()}
                 >
                   {submitting ? 'Creating...' : 'Create Collection'}

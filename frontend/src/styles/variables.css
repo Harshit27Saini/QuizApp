@@ -1,35 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+
 :root {
-  /* Colors */
-  --color-primary: #3b5bfd;
-  --color-primary-hover: #2947d4;
-  --color-primary-light: #eef2ff;
+  /* Duolingo Brand Palette */
+  --color-green: #58cc02;
+  --color-green-dark: #46a302;
+  --color-green-light: #d7ffb8;
 
-  --color-xp: #f59e0b;
-  --color-xp-dark: #d97706;
-  --color-xp-bg: #fffbeb;
+  --color-blue: #1cb0f6;
+  --color-blue-dark: #1899d6;
+  --color-blue-light: #ddf4ff;
 
-  --color-success: #10b981;
-  --color-success-dark: #059669;
-  --color-success-bg: #ecfdf5;
-  --color-success-border: #a7f3d0;
+  --color-gold: #ffc800;
+  --color-gold-dark: #e5a500;
+  --color-gold-light: #fff5cc;
 
-  --color-error: #ef4444;
-  --color-error-dark: #dc2626;
-  --color-error-bg: #fef2f2;
-  --color-error-border: #fecaca;
+  --color-red: #ff4b4b;
+  --color-red-dark: #ea2b2b;
+  --color-red-light: #ffdfe0;
 
-  --color-bg: #f8fafc;
+  --color-purple: #ce82ff;
+  --color-purple-dark: #a559d9;
+  --color-purple-light: #f5e5ff;
+
+  --color-orange: #ff9600;
+  --color-orange-dark: #e08400;
+
+  /* Primary mapped alias */
+  --color-primary: var(--color-green);
+  --color-primary-hover: var(--color-green-dark);
+  --color-primary-light: var(--color-green-light);
+
+  --color-xp: var(--color-gold);
+  --color-xp-dark: var(--color-gold-dark);
+  --color-xp-bg: var(--color-gold-light);
+
+  --color-success: var(--color-green);
+  --color-success-dark: var(--color-green-dark);
+  --color-success-bg: #d7ffb8;
+  --color-success-border: #b8f28d;
+
+  --color-error: var(--color-red);
+  --color-error-dark: var(--color-red-dark);
+  --color-error-bg: #ffdfe0;
+  --color-error-border: #ffb8b8;
+
+  /* Neutral Surfaces & Crisp Backgrounds */
+  --color-bg: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
+  --color-surface-hover: #f7f7f7;
+  --color-border: #e5e5e5;
+  --color-border-strong: #cecece;
 
-  --color-text-main: #0f172a;
-  --color-text-muted: #64748b;
-  --color-text-subtle: #94a3b8;
+  --color-text-main: #3c3c3c;
+  --color-text-muted: #777777;
+  --color-text-subtle: #afafaf;
 
   /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  --font-family: 'Nunito', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -38,29 +65,19 @@
   --font-size-2xl: 1.5rem;
   --font-size-3xl: 1.875rem;
 
-  /* Spacing */
-  --spacing-1: 0.25rem;
-  --spacing-2: 0.5rem;
-  --spacing-3: 0.75rem;
-  --spacing-4: 1rem;
-  --spacing-5: 1.25rem;
-  --spacing-6: 1.5rem;
-  --spacing-8: 2rem;
-  --spacing-12: 3rem;
-
   /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  /* Tactile 3D Shadows */
+  --shadow-sm: 0 2px 0 var(--color-border);
+  --shadow-md: 0 4px 0 var(--color-border);
+  --shadow-lg: 0 6px 0 var(--color-border-strong);
 
   /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
+  --transition-fast: 100ms ease;
+  --transition-normal: 200ms ease;
 }
-

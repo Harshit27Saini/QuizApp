@@ -12,6 +12,7 @@ body {
   color: var(--color-text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 a {
@@ -26,179 +27,388 @@ button {
   background: none;
 }
 
-/* App Container */
-.app-container {
+/* -------------------------------------------------------------------------
+   3-COLUMN DUOLINGO WEB LAYOUT
+   ------------------------------------------------------------------------- */
+.app-layout-3col {
+  display: flex;
   min-height: 100vh;
+  background-color: #ffffff;
+}
+
+/* Left Sidebar Navigation */
+.sidebar-left {
+  width: 256px;
+  min-width: 256px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  border-right: 2px solid var(--color-border);
+  padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
+  justifyContent: space-between;
+  background: #ffffff;
+  z-index: 50;
 }
 
-.main-content {
+/* Center Feed */
+.main-feed {
   flex: 1;
-  max-width: 1024px;
-  width: 100%;
+  max-width: 680px;
+  min-width: 320px;
   margin: 0 auto;
-  padding: var(--spacing-6) var(--spacing-4);
+  padding: 2rem 1.5rem;
+  min-height: 100vh;
 }
 
-/* Cards */
+/* Right Sidebar (Widgets & Companions) */
+.sidebar-right {
+  width: 360px;
+  min-width: 340px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+  background: #ffffff;
+}
+
+@media (max-width: 1180px) {
+  .sidebar-right {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar-left {
+    display: none;
+  }
+  .main-feed {
+    padding: 1rem;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   TACTILE 3D BUTTONS (DUOLINGO SPEC)
+   ------------------------------------------------------------------------- */
+.btn-3d {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.925rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-lg);
+  border: 2px solid transparent;
+  border-bottom-width: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  text-align: center;
+}
+
+.btn-3d:active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+
+.btn-3d:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-bottom-width: 2px;
+  transform: none;
+}
+
+/* Button Color Variants */
+.btn-3d-green {
+  background-color: var(--color-green);
+  border-color: var(--color-green);
+  border-bottom-color: var(--color-green-dark);
+  color: #ffffff;
+}
+.btn-3d-green:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.btn-3d-blue {
+  background-color: var(--color-blue);
+  border-color: var(--color-blue);
+  border-bottom-color: var(--color-blue-dark);
+  color: #ffffff;
+}
+.btn-3d-blue:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.btn-3d-gold {
+  background-color: var(--color-gold);
+  border-color: var(--color-gold);
+  border-bottom-color: var(--color-gold-dark);
+  color: #ffffff;
+}
+.btn-3d-gold:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.btn-3d-red {
+  background-color: var(--color-red);
+  border-color: var(--color-red);
+  border-bottom-color: var(--color-red-dark);
+  color: #ffffff;
+}
+.btn-3d-red:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.btn-3d-white {
+  background-color: #ffffff;
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-border-strong);
+  color: var(--color-text-main);
+}
+.btn-3d-white:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+}
+
+/* Legacy .btn mapping for seamless compatibility */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 800;
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 2px solid transparent;
+  border-bottom-width: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+.btn-primary {
+  background-color: var(--color-green);
+  border-color: var(--color-green);
+  border-bottom-color: var(--color-green-dark);
+  color: #ffffff;
+}
+.btn-secondary {
+  background-color: #ffffff;
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-border-strong);
+  color: var(--color-text-main);
+}
+.btn-success {
+  background-color: var(--color-green);
+  border-color: var(--color-green);
+  border-bottom-color: var(--color-green-dark);
+  color: #ffffff;
+}
+
+/* -------------------------------------------------------------------------
+   CARDS & PANELS
+   ------------------------------------------------------------------------- */
 .card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-6);
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  box-shadow: 0 4px 0 var(--color-border);
+  transition: border-color var(--transition-fast);
 }
 
 .card:hover {
   border-color: var(--color-border-strong);
 }
 
-/* Buttons */
-.btn {
-  display: inline-flex;
+/* -------------------------------------------------------------------------
+   3D SERPENTINE PATH STEPPING STONES
+   ------------------------------------------------------------------------- */
+.stepping-stone-3d {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: var(--font-size-sm);
-  padding: var(--spacing-3) var(--spacing-5);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-  gap: var(--spacing-2);
+  font-size: 1.85rem;
+  font-weight: 900;
+  border: 3px solid;
+  border-bottom-width: 7px;
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-bottom-width var(--transition-fast);
+  user-select: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.btn-primary {
-  background-color: var(--color-primary);
+.stepping-stone-3d:active:not(.locked) {
+  transform: translateY(4px);
+  border-bottom-width: 3px;
+}
+
+.stepping-stone-3d.active {
+  background-color: var(--color-green);
+  border-color: var(--color-green);
+  border-bottom-color: var(--color-green-dark);
+  color: #ffffff;
+  animation: gentlePulse 2s infinite ease-in-out;
+}
+
+.stepping-stone-3d.completed {
+  background-color: var(--color-gold);
+  border-color: var(--color-gold);
+  border-bottom-color: var(--color-gold-dark);
   color: #ffffff;
 }
 
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--color-primary-hover);
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background-color: var(--color-surface);
-  color: var(--color-text-main);
-  border: 1px solid var(--color-border-strong);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--color-surface-hover);
-}
-
-.btn-success {
-  background-color: var(--color-success);
-  color: #ffffff;
-}
-
-.btn-success:hover:not(:disabled) {
-  background-color: var(--color-success-dark);
-}
-
-.btn:disabled {
-  opacity: 0.6;
+.stepping-stone-3d.locked {
+  background-color: #e5e5e5;
+  border-color: #e5e5e5;
+  border-bottom-color: #cccccc;
+  color: #a0a0a0;
   cursor: not-allowed;
 }
 
-/* Badges */
-.badge {
-  display: inline-flex;
+@keyframes gentlePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(88, 204, 2, 0.4), 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(88, 204, 2, 0), 0 6px 16px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* Milestone Reward Chest */
+.reward-chest-3d {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-lg);
+  background: var(--color-gold-light);
+  border: 3px solid var(--color-gold);
+  border-bottom-width: 6px;
+  border-bottom-color: var(--color-gold-dark);
+  display: flex;
   align-items: center;
-  padding: var(--spacing-1) var(--spacing-3);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  border-radius: var(--radius-full);
+  justify-content: center;
+  font-size: 1.85rem;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
 }
 
-.badge-xp {
-  background-color: var(--color-xp-bg);
-  color: var(--color-xp-dark);
-  border: 1px solid #fde68a;
+.reward-chest-3d:hover {
+  transform: scale(1.08);
+}
+.reward-chest-3d:active {
+  transform: translateY(3px) scale(1.04);
+  border-bottom-width: 3px;
 }
 
-.badge-mode {
-  background-color: var(--color-primary-light);
-  color: var(--color-primary);
-}
-
-.badge-success {
-  background-color: var(--color-success-bg);
-  color: var(--color-success-dark);
-  border: 1px solid var(--color-success-border);
-}
-
-.badge-error {
-  background-color: var(--color-error-bg);
-  color: var(--color-error-dark);
-  border: 1px solid var(--color-error-border);
-}
-
-/* Form Controls */
-.input-text, .select-input, .textarea-input {
-  width: 100%;
-  padding: var(--spacing-3) var(--spacing-4);
-  font-size: var(--font-size-base);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  color: var(--color-text-main);
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.input-text:focus, .select-input:focus, .textarea-input:focus {
-  border-color: var(--color-primary);
-}
-
-/* Quiz Option Card */
+/* -------------------------------------------------------------------------
+   QUIZ OPTIONS (3D PRESSABLE)
+   ------------------------------------------------------------------------- */
 .quiz-option {
   display: flex;
   align-items: center;
-  gap: var(--spacing-4);
-  padding: var(--spacing-4) var(--spacing-5);
-  background: var(--color-surface);
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #ffffff;
   border: 2px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-bottom-width: 4px;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: all var(--transition-fast);
   user-select: none;
 }
 
 .quiz-option:hover {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary-light);
+  background-color: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.quiz-option:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
 }
 
 .quiz-option.selected {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary-light);
-  font-weight: 600;
+  border-color: var(--color-blue);
+  border-bottom-color: var(--color-blue-dark);
+  background-color: var(--color-blue-light);
+  font-weight: 700;
 }
 
 .quiz-option.correct {
-  border-color: var(--color-success);
-  background-color: var(--color-success-bg);
+  border-color: var(--color-green);
+  border-bottom-color: var(--color-green-dark);
+  background-color: var(--color-green-light);
 }
 
 .quiz-option.incorrect {
-  border-color: var(--color-error);
-  background-color: var(--color-error-bg);
+  border-color: var(--color-red);
+  border-bottom-color: var(--color-red-dark);
+  background-color: var(--color-red-light);
 }
 
-/* Progress Bar */
+/* -------------------------------------------------------------------------
+   PROGRESS BARS & BADGES
+   ------------------------------------------------------------------------- */
 .progress-container {
   width: 100%;
-  height: 8px;
-  background-color: var(--color-border);
+  height: 14px;
+  background-color: #e5e5e5;
   border-radius: var(--radius-full);
   overflow: hidden;
+  position: relative;
 }
 
 .progress-bar {
   height: 100%;
-  background-color: var(--color-primary);
-  transition: width var(--transition-normal);
+  background-color: var(--color-green);
+  border-radius: var(--radius-full);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: var(--radius-full);
+}
+
+.badge-xp {
+  background-color: var(--color-gold-light);
+  color: var(--color-gold-dark);
+  border: 1.5px solid #fde68a;
+}
+
+.badge-mode {
+  background-color: var(--color-blue-light);
+  color: var(--color-blue);
+}
+
+.badge-success {
+  background-color: var(--color-green-light);
+  color: var(--color-green-dark);
+}
+
+.badge-error {
+  background-color: var(--color-red-light);
+  color: var(--color-red-dark);
+}

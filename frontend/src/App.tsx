@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Navbar } from './components/layout/Navbar';
+import { AppLayout } from './components/layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { CollectionDetailPage } from './pages/CollectionDetailPage';
 import { DocumentPreviewPage } from './pages/DocumentPreviewPage';
@@ -10,27 +10,26 @@ import { QuizSessionPage } from './pages/QuizSessionPage';
 import { QuizResultPage } from './pages/QuizResultPage';
 import { QuizHistoryPage } from './pages/QuizHistoryPage';
 import { LearningPathPage } from './pages/LearningPathPage';
+import { CompanionsPage } from './pages/CompanionsPage';
 import './styles/global.css';
 
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <div className="app-container">
-        <Navbar />
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
-            <Route path="/documents/:documentId/preview" element={<DocumentPreviewPage />} />
-            <Route path="/documents/:documentId/path" element={<LearningPathPage />} />
-            <Route path="/collections/:collectionId/quiz-setup" element={<QuizSetupPage />} />
-            <Route path="/collections/:collectionId/cards" element={<FlashcardsPage />} />
-            <Route path="/quizzes/:quizId/session" element={<QuizSessionPage />} />
-            <Route path="/attempts/:attemptId/result" element={<QuizResultPage />} />
-            <Route path="/history" element={<QuizHistoryPage />} />
-          </Routes>
-        </main>
-      </div>
+      <AppLayout>
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
+          <Route path="/documents/:documentId/preview" element={<DocumentPreviewPage />} />
+          <Route path="/documents/:documentId/path" element={<LearningPathPage />} />
+          <Route path="/collections/:collectionId/quiz-setup" element={<QuizSetupPage />} />
+          <Route path="/collections/:collectionId/cards" element={<FlashcardsPage />} />
+          <Route path="/quizzes/:quizId/session" element={<QuizSessionPage />} />
+          <Route path="/attempts/:attemptId/result" element={<QuizResultPage />} />
+          <Route path="/history" element={<QuizHistoryPage />} />
+          <Route path="/companions" element={<CompanionsPage />} />
+        </Routes>
+      </AppLayout>
     </BrowserRouter>
   );
 };
