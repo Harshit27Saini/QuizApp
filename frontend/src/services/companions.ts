@@ -5,6 +5,7 @@ export interface Companion {
   subtitle: string;
   avatarIcon: string;
   avatarImageUrl?: string;
+  cartoonImageUrl?: string;
   badgeText: string;
   badgeColor: string;
   cheerQuotes: string[];
@@ -19,6 +20,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     subtitle: 'Your #1 Supporter ❤️',
     avatarIcon: '👑',
     avatarImageUrl: '/avatars/nandhini.jpg',
+    cartoonImageUrl: '/avatars/nandhini_cartoon.jpg',
     badgeText: 'VIP CHEERLEADER',
     badgeColor: '#ff4b4b',
     cheerQuotes: [
@@ -36,6 +38,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     subtitle: 'Focused & Determined',
     avatarIcon: '⚡',
     avatarImageUrl: '/avatars/founder.jpg',
+    cartoonImageUrl: '/avatars/founder_cartoon.jpg',
     badgeText: 'LEARNER',
     badgeColor: '#1cb0f6',
     cheerQuotes: [
@@ -68,6 +71,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     subtitle: 'Himalayan Persian (White Fur & Brown)',
     avatarIcon: '🐈',
     avatarImageUrl: '/avatars/connie.jpg',
+    cartoonImageUrl: '/avatars/connie_cartoon.jpg',
     badgeText: 'PRECISION CAT',
     badgeColor: '#ce82ff',
     cheerQuotes: [
@@ -97,6 +101,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
     subtitle: 'Grey Lhasa Apso',
     avatarIcon: '🐶',
     avatarImageUrl: '/avatars/scooby.jpg',
+    cartoonImageUrl: '/avatars/scooby_cartoon.jpg',
     badgeText: 'WISE GUARDIAN',
     badgeColor: '#64748b',
     cheerQuotes: [
@@ -123,6 +128,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
 
 class CompanionService {
   private activeId: string = 'nandhini'; // Nandhini is default VIP companion!
+  private avatarStyle: 'cartoon' | 'photo' = 'cartoon'; // Default to Duolingo cartoon!
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -130,7 +136,29 @@ class CompanionService {
       if (saved) {
         this.activeId = saved;
       }
+      const savedStyle = localStorage.getItem('recall_companion_style');
+      if (savedStyle === 'cartoon' || savedStyle === 'photo') {
+        this.avatarStyle = savedStyle;
+      }
     }
+  }
+
+  public getAvatarStyle(): 'cartoon' | 'photo' {
+    return this.avatarStyle;
+  }
+
+  public setAvatarStyle(style: 'cartoon' | 'photo') {
+    this.avatarStyle = style;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('recall_companion_style', style);
+    }
+  }
+
+  public getAvatarUrl(companion: Companion): string | undefined {
+    if (this.avatarStyle === 'cartoon') {
+      return companion.cartoonImageUrl || companion.avatarImageUrl;
+    }
+    return companion.avatarImageUrl || companion.cartoonImageUrl;
   }
 
   public listCompanions(): Companion[] {
@@ -193,4 +221,3 @@ class CompanionService {
 }
 
 export const companionService = new CompanionService();
-

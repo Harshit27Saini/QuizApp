@@ -321,9 +321,9 @@ export const LearningPathPage: React.FC = () => {
                         boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
                         fontSize: '2.5rem'
                       }}>
-                        {activeCompanion.avatarImageUrl ? (
+                        {companionService.getAvatarUrl(activeCompanion) ? (
                           <img
-                            src={activeCompanion.avatarImageUrl}
+                            src={companionService.getAvatarUrl(activeCompanion)}
                             alt={activeCompanion.name}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />

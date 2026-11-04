@@ -144,9 +144,9 @@ export const RightWidgetSidebar: React.FC = () => {
             flexShrink: 0,
             overflow: 'hidden'
           }}>
-            {companion.avatarImageUrl ? (
+            {companionService.getAvatarUrl(companion) ? (
               <img
-                src={companion.avatarImageUrl}
+                src={companionService.getAvatarUrl(companion)}
                 alt={companion.name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />

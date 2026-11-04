@@ -103,9 +103,9 @@ export const SidebarNav: React.FC = () => {
           fontSize: '1.5rem',
           flexShrink: 0
         }}>
-          {activeCompanion.avatarImageUrl ? (
+          {companionService.getAvatarUrl(activeCompanion) ? (
             <img
-              src={activeCompanion.avatarImageUrl}
+              src={companionService.getAvatarUrl(activeCompanion)}
               alt={activeCompanion.name}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
