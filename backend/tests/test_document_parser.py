@@ -80,3 +80,23 @@ def test_empty_document_raises_error():
     with pytest.raises(DocumentParsingError):
         parse_document(b"", "empty.txt")
 
+
+
+def test_front_matter_filtering():
+    from app.services.document_parser.filter import is_front_matter_or_index
+
+    # Institutional title page
+    cover = "Department of Peace Studies Study Material Managing Conflict Peacefully Subject Code: PCE3UC03A"
+    assert is_front_matter_or_index(cover, page_number=1) is True
+
+    # University Founder quote
+    founder_quote = "With the synergy of academia with technology, we are committed to make MIT-WPU a world class space."
+    assert is_front_matter_or_index(founder_quote, page_number=2) is True
+
+    # Table of Contents
+    toc = "1 Analyzing Conflicts 2 Conflicts Functional and Dysfunctional 3 Conflict Handling Mechanism 4 Conflict Management"
+    assert is_front_matter_or_index(toc, page_number=3) is True
+
+    # Real academic content
+    academic_text = "Conflict analysis examines the root causes, stakeholders, and dynamics of disputes to identify pathways for resolution."
+    assert is_front_matter_or_index(academic_text, page_number=5) is False

@@ -20,10 +20,19 @@ class MockAIProvider(BaseAIProvider):
         text_matches = re.findall(r"\[Topic:.*?\]\s*(.*?)(?=(?:\[Topic|\Z))", user_prompt, re.DOTALL)
         combined_text = " ".join(text_matches).strip() if text_matches else user_prompt
 
-        # Clean into high-value academic sentences
-        sentences = [
+        # Clean into high-value academic sentences, filtering institutional boilerplate
+        raw_sentences = [
             s.strip() for s in re.split(r"(?<=[.!?])\s+", combined_text)
             if len(s.strip()) > 35 and not s.strip().startswith("[") and not s.strip().startswith("#")
+        ]
+        
+        sentences = [
+            s for s in raw_sentences
+            if not any(kw in s.lower() for kw in [
+                "subject code", "department of", "mit-wpu", "universal education",
+                "credit system", "table of contents", "index sr", "all rights reserved",
+                "managing conflict peacefully: tools and techniques"
+            ])
         ]
 
         if not sentences:

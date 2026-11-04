@@ -9,11 +9,11 @@ from app.core.errors import AIProviderError
 class GeminiProvider(BaseAIProvider):
     """
     Google AI Studio Gemini Flash provider.
-    Free tier: 15 RPM, 1M TPM, 1,500 RPD.
-    Supports constrained JSON output via generationConfig.
+    Uses active gemini-3.5-flash model with native structured JSON output.
     """
 
-    API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    PRIMARY_MODEL = "gemini-3.5-flash"
+    FALLBACK_MODELS = ["gemini-3-flash-preview"]
 
     def __init__(self, api_key: str = ""):
         self.api_key = api_key or settings.GEMINI_API_KEY
@@ -46,26 +46,33 @@ class GeminiProvider(BaseAIProvider):
             }
         }
 
+        models_to_try = [self.PRIMARY_MODEL] + self.FALLBACK_MODELS
+        last_error = "Unknown error"
+
         async with httpx.AsyncClient(timeout=45.0) as client:
-            try:
-                response = await client.post(self.API_URL, headers=headers, params=params, json=payload)
-            except httpx.RequestError as e:
-                raise AIProviderError(f"Network error connecting to Gemini API: {str(e)}")
+            for model_name in models_to_try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+                try:
+                    response = await client.post(url, headers=headers, params=params, json=payload)
+                except httpx.RequestError as e:
+                    last_error = f"Network error connecting to Gemini API: {str(e)}"
+                    continue
 
-        if response.status_code == 429:
-            raise AIProviderError("Gemini API rate limit exceeded. Please wait a few seconds and try again.")
-        if response.status_code != 200:
-            raise AIProviderError(f"Gemini API returned error HTTP {response.status_code}: {response.text}")
+                if response.status_code == 429:
+                    raise AIProviderError("Gemini API rate limit reached. Please wait a few seconds and try again.")
 
-        try:
-            result = response.json()
-            candidates = result.get("candidates", [])
-            if not candidates:
-                raise AIProviderError("Gemini returned empty candidates.")
-            
-            raw_text = candidates[0]["content"]["parts"][0]["text"]
-            parsed_json = json.loads(raw_text)
-            return parsed_json
-        except (KeyError, json.JSONDecodeError) as e:
-            raise AIProviderError(f"Failed to parse structured JSON from Gemini response: {str(e)}")
+                if response.status_code == 200:
+                    try:
+                        result = response.json()
+                        candidates = result.get("candidates", [])
+                        if not candidates:
+                            continue
+                        raw_text = candidates[0]["content"]["parts"][0]["text"]
+                        return json.loads(raw_text)
+                    except (KeyError, json.JSONDecodeError) as e:
+                        last_error = f"Failed to parse JSON response: {str(e)}"
+                        continue
+                else:
+                    last_error = f"HTTP {response.status_code}: {response.text}"
 
+        raise AIProviderError(f"Gemini API generation failed across models: {last_error}")

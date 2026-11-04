@@ -1,7 +1,7 @@
-import re
 from typing import List, Dict, Any
 from app.services.ai.factory import get_ai_provider
 from app.services.quiz_engine.validator import validate_generated_questions
+from app.services.document_parser.filter import filter_studyable_sections
 from app.core.errors import QuizValidationError
 
 QUESTION_JSON_SCHEMA = {
@@ -42,30 +42,6 @@ QUESTION_JSON_SCHEMA = {
 }
 
 
-def filter_academic_content(sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Filters out administrative noise such as syllabi, professor emails,
-    grading rubrics, copyright notices, and tables of contents.
-    """
-    noise_keywords = [
-        "syllabus", "grading scale", "office hours", "course policy",
-        "attendance", "prerequisites:", "email:", "isbn", "all rights reserved",
-        "table of contents", "instructor:", "teaching assistant"
-    ]
-    
-    clean_sections = []
-    for s in sections:
-        content = s.get("content", "").lower()
-        heading = (s.get("heading") or "").lower()
-        
-        # Skip sections dominated by administrative metadata
-        is_noise = any(kw in heading for kw in noise_keywords)
-        if not is_noise and len(content.strip()) > 40:
-            clean_sections.append(s)
-            
-    return clean_sections if clean_sections else sections
-
-
 async def generate_quiz_questions(
     sections: List[Dict[str, Any]],
     mode: str = "EXAMINATION",
@@ -76,12 +52,13 @@ async def generate_quiz_questions(
     """
     Orchestrates prompt creation, LLM invocation via BaseAIProvider, and strict validation.
     Generates authentic, high-yield academic exam questions.
+    Filters out front-matter, title pages, indices, and university vision statements.
     """
     if not sections:
         raise QuizValidationError("Cannot generate quiz: No document content provided.")
 
     allowed_types = allowed_types or ["MCQ", "MSQ"]
-    clean_sections = filter_academic_content(sections)
+    clean_sections = filter_studyable_sections(sections)
 
     # Build context from clean sections
     context_chunks = []
@@ -94,28 +71,30 @@ async def generate_quiz_questions(
     full_context = "\n\n---\n\n".join(context_chunks)
 
     system_instruction = f"""You are a senior university professor and competitive examination author for Recall.
-Your goal is to write realistic, high-yield exam questions that thoroughly test a student's mastery of the subject matter.
+Your goal is to write realistic, high-yield exam questions that test real domain mastery.
 
 CRITICAL RULES:
 1. BAN META-LANGUAGE:
    - NEVER write "According to the passage", "As stated in the text", "The document discusses", or "Which of the following is mentioned".
    - The question must read like a real standardized board/university exam question evaluating domain knowledge.
 
-2. QUESTION TYPES TO TARGET:
+2. ACADEMIC SUBSTANCE ONLY:
+   - NEVER test administrative text, university names, author prefaces, course codes, or tables of contents.
+   - Focus exclusively on academic definitions, mechanisms, causality, and theoretical models.
+
+3. QUESTION TYPES TO TARGET:
    - Mechanism & Function: "What is the primary role of X in Y process?"
    - Causality & Consequences: "What occurs when X is inhibited/modified?"
    - Comparative Analysis: "How does X differ from Y?"
    - Problem-solving & Application: "Given scenario X, which outcome is expected?"
    - Mode: {mode}.
-     * If EXAMINATION or STRICT: Questions must test verifiable factual mechanisms from the text.
-     * If CONCEPTUAL: Test deep understanding of why systems behave the way they do.
 
-3. PLAUSIBLE, HIGH-QUALITY DISTRACTORS:
+4. PLAUSIBLE, HIGH-QUALITY DISTRACTORS:
    - Distractors MUST be plausible terms/mechanisms from the same academic domain that test common student misconceptions.
    - NEVER use throwaway/joke options, meta-commentary, or obvious giveaways like "None of the above" or "The author does not say".
    - All 4 options must be similar in length and tone.
 
-4. SPECIFICATIONS:
+5. SPECIFICATIONS:
    - Target difficulty: {difficulty}.
    - Generate exactly {count} questions.
    - Allowed types: {', '.join(allowed_types)}.
@@ -124,7 +103,7 @@ CRITICAL RULES:
    - Write clear explanations explaining WHY the correct option is right and why the distractors are wrong.
 """
 
-    user_prompt = f"TARGET QUESTION COUNT: {count}\nDIFFICULTY: {difficulty}\nMODE: {mode}\n\nSTUDY MATERIAL:\n{full_context}"
+    user_prompt = f"TARGET QUESTION COUNT: {count}\nDIFFICULTY: {difficulty}\nMODE: {mode}\n\nCURRICULUM MATERIAL:\n{full_context}"
 
     provider = get_ai_provider()
     raw_payload = await provider.generate_structured_json(

@@ -11,10 +11,12 @@ def get_ai_provider() -> BaseAIProvider:
     """
     provider_name = settings.AI_PROVIDER.lower().strip()
 
-    if provider_name == "gemini":
+    if "gemini" in provider_name:
         if settings.GEMINI_API_KEY:
             return GeminiProvider(settings.GEMINI_API_KEY)
-        # Fall back to mock if key not yet entered
+        return MockAIProvider()
+
+    if "groq" in provider_name:
         return MockAIProvider()
 
     # Default to Mock provider
