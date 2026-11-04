@@ -6,6 +6,7 @@ import { soundManager } from '../utils/sound';
 export const CompanionsPage: React.FC = () => {
   const [companions, setCompanions] = useState<Companion[]>(companionService.listCompanions());
   const [activeId, setActiveId] = useState<string>(companionService.getActiveCompanion().id);
+  const [lockedNotice, setLockedNotice] = useState<string | null>(null);
 
   // Add friend state
   const [showAddFriend, setShowAddFriend] = useState(false);
@@ -13,11 +14,23 @@ export const CompanionsPage: React.FC = () => {
   const [friendNickname, setFriendNickname] = useState('');
   const [friendCheer, setFriendCheer] = useState('');
 
+  const currentProgress = companionService.getOverallProgress();
+
   const handleSelect = (comp: Companion) => {
-    companionService.setActiveCompanion(comp.id);
-    setActiveId(comp.id);
-    soundManager.playCorrect();
-    triggerConfetti();
+    if (!companionService.isCompanionUnlocked(comp)) {
+      soundManager.playError();
+      const req = comp.unlockRequirement?.threshold || 90;
+      setLockedNotice(`🔒 ${comp.name} is locked! Reach ${req}% syllabus mastery to unlock. Your highest progress is currently ${currentProgress}%. Keep conquering units on your learning path!`);
+      setTimeout(() => setLockedNotice(null), 6000);
+      return;
+    }
+    const success = companionService.setActiveCompanion(comp.id);
+    if (success) {
+      setActiveId(comp.id);
+      soundManager.playCorrect();
+      triggerConfetti();
+      setLockedNotice(null);
+    }
   };
 
   const handleAddFriend = (e: React.FormEvent) => {
@@ -65,6 +78,29 @@ export const CompanionsPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Locked Companion Notice Banner */}
+      {lockedNotice && (
+        <div className="card" style={{
+          background: 'rgba(255, 75, 75, 0.1)',
+          borderLeft: '4px solid var(--color-error)',
+          padding: '1rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-error-dark)', fontSize: '0.9rem' }}>
+            {lockedNotice}
+          </p>
+          <button
+            onClick={() => setLockedNotice(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--color-text-muted)' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Add Friend Form Drawer */}
       {showAddFriend && (
@@ -120,30 +156,44 @@ export const CompanionsPage: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
           {vipCompanions.map(c => {
             const isSelected = c.id === activeId;
+            const isLocked = !companionService.isCompanionUnlocked(c);
             return (
               <div
                 key={c.id}
                 onClick={() => handleSelect(c)}
                 className="card"
                 style={{
-                  cursor: 'pointer',
-                  border: isSelected ? '3px solid var(--color-green)' : '2px solid var(--color-border)',
-                  background: isSelected ? 'var(--color-green-light)' : 'var(--color-surface)',
+                  cursor: isLocked ? 'not-allowed' : 'pointer',
+                  border: isSelected
+                    ? '3px solid var(--color-green)'
+                    : isLocked
+                    ? '2px dashed var(--color-border)'
+                    : '2px solid var(--color-border)',
+                  background: isSelected
+                    ? 'var(--color-green-light)'
+                    : isLocked
+                    ? 'var(--color-surface-hover)'
+                    : 'var(--color-surface)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '0.75rem',
-                  position: 'relative'
+                  position: 'relative',
+                  opacity: isLocked ? 0.88 : 1
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="badge" style={{ background: c.badgeColor + '25', color: c.badgeColor, border: `1.5px solid ${c.badgeColor}` }}>
                     {c.badgeText}
                   </span>
-                  {isSelected && (
+                  {isSelected ? (
                     <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>
                       ACTIVE ✓
                     </span>
-                  )}
+                  ) : isLocked ? (
+                    <span className="badge" style={{ background: 'rgba(255, 75, 75, 0.2)', color: '#ff4b4b', fontSize: '0.75rem', fontWeight: 800 }}>
+                      🔒 90% REQUIRED
+                    </span>
+                  ) : null}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -159,28 +209,64 @@ export const CompanionsPage: React.FC = () => {
                     justifyContent: 'center',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                     overflow: 'hidden',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    position: 'relative'
                   }}>
                     {companionService.getAvatarUrl(c) ? (
                       <img
                         src={companionService.getAvatarUrl(c)}
                         alt={c.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          filter: isLocked ? 'grayscale(0.7) brightness(0.9)' : 'none'
+                        }}
                       />
                     ) : (
                       c.avatarIcon
                     )}
+                    {isLocked && (
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.5rem'
+                      }}>
+                        🔒
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900 }}>{c.name}</h3>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>{c.subtitle}</p>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 900, margin: 0 }}>{c.name}</h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0 0' }}>{c.subtitle}</p>
                   </div>
                 </div>
+
+                {isLocked && c.unlockRequirement && (
+                  <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
+                      <span>Unlock Progress</span>
+                      <span>{currentProgress}% / {c.unlockRequirement.threshold}%</span>
+                    </div>
+                    <div style={{ height: '8px', background: 'var(--color-surface-hover)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${Math.min(100, (currentProgress / c.unlockRequirement.threshold) * 100)}%`,
+                        height: '100%',
+                        background: 'var(--color-green)',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  </div>
+                )}
 
                 <div style={{
                   fontSize: '0.825rem',
                   color: 'var(--color-text-main)',
-                  background: '#ffffff',
+                  background: isLocked ? 'var(--color-bg)' : '#ffffff',
                   padding: '0.625rem 0.875rem',
                   borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--color-border)',
@@ -190,10 +276,10 @@ export const CompanionsPage: React.FC = () => {
                 </div>
 
                 <button
-                  className={`btn-3d ${isSelected ? 'btn-3d-green' : 'btn-3d-white'}`}
+                  className={`btn-3d ${isLocked ? 'btn-3d-white' : isSelected ? 'btn-3d-green' : 'btn-3d-white'}`}
                   style={{ width: '100%', padding: '0.625rem', fontSize: '0.85rem' }}
                 >
-                  {isSelected ? 'Active Companion' : 'Select Companion'}
+                  {isLocked ? '🔒 90% Mastery Required' : isSelected ? 'Active Companion' : 'Select Companion'}
                 </button>
               </div>
             );

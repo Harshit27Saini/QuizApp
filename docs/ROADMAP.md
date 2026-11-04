@@ -31,16 +31,26 @@
 ## Phase 2: Post-MVP & Enhanced Formats
 *Goal: Broaden question formats, document coverage, and examination simulations.*
 
+- [x] Timed Examination Hall Simulator:
+  - Strict countdown timer with auditory time-critical feedback
+  - Configurable negative marking (-0.25 / -0.33 marks per incorrect answer)
+  - Interactive Question Palette drawer (Answered, Flagged, Unattempted)
+  - Official university examination scorecard with net scaled scores and pass/fail verdict
+- [x] Scientific Spaced Repetition (SuperMemo SM-2) on flashcards with dynamic review intervals & "Due for Review Today" filter
+- [x] Daily Quests & Streaks Gamification (Daily challenges, Daily Chest XP reward, and Streak Freeze shield)
+- [x] Gated Endgame Companion: Nandhini locked behind 90% syllabus mastery with victory unlock ceremony
+- [x] Supercharged PDF Study Reader:
+  - 3-Way Mode (Interactive Reader, Split-Screen PDF + Notes, Raw PDF)
+  - Instant Flashcard Creation from text highlights
+  - Smart AI Page Summaries with core thesis, mechanism & exam triggers
+  - Pinned Marginalia / Sticky Notes
+  - Exam Readiness Heatmap on page navigation
 - [ ] OCR integration (Tesseract / EasyOCR) for scanned PDFs and handwritten notes
 - [ ] Additional question formats:
   - Fill in the blanks
   - True / False
   - Matching pairs
   - Numerical problem solving with unit checking
-- [ ] Timed Examination Mode:
-  - Negative marking configuration
-  - Configurable pass/fail thresholds
-  - Full session result analysis
 - [ ] Export quizzes to PDF and Anki flashcard format (`.apkg`)
 
 ---

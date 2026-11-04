@@ -9,6 +9,11 @@ export interface Companion {
   badgeText: string;
   badgeColor: string;
   cheerQuotes: string[];
+  unlockRequirement?: {
+    type: 'progress';
+    threshold: number;
+    label: string;
+  };
 }
 
 export const INITIAL_COMPANIONS: Companion[] = [
@@ -23,6 +28,11 @@ export const INITIAL_COMPANIONS: Companion[] = [
     cartoonImageUrl: '/avatars/nandhini_3d.png',
     badgeText: 'TOP CHEERLEADER',
     badgeColor: '#10b981',
+    unlockRequirement: {
+      type: 'progress',
+      threshold: 90,
+      label: 'Unlock at 90% syllabus mastery'
+    },
     cheerQuotes: [
       "You've got this! Keep pushing forward! ⭐",
       "Look at you mastering these concepts! Let's go!",
@@ -127,7 +137,7 @@ export const INITIAL_COMPANIONS: Companion[] = [
 ];
 
 class CompanionService {
-  private activeId: string = 'nandhini';
+  private activeId: string = 'founder';
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -135,7 +145,37 @@ class CompanionService {
       if (saved) {
         this.activeId = saved;
       }
+      // If active companion is currently locked, fallback to founder
+      const active = this.getActiveCompanion();
+      if (!this.isCompanionUnlocked(active)) {
+        this.activeId = 'founder';
+      }
     }
+  }
+
+  public getOverallProgress(): number {
+    if (typeof window === 'undefined') return 0;
+    const saved = localStorage.getItem('recall_highest_progress');
+    return saved ? Math.min(100, Math.max(0, Number(saved))) : 0;
+  }
+
+  public setOverallProgress(progress: number): boolean {
+    if (typeof window === 'undefined') return false;
+    const prev = this.getOverallProgress();
+    const cleanProgress = Math.min(100, Math.max(0, progress));
+    if (cleanProgress > prev) {
+      localStorage.setItem('recall_highest_progress', String(cleanProgress));
+      // Returns true if Nandhini was just unlocked!
+      if (prev < 90 && cleanProgress >= 90) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public isCompanionUnlocked(companion: Companion): boolean {
+    if (!companion.unlockRequirement) return true;
+    return this.getOverallProgress() >= companion.unlockRequirement.threshold;
   }
 
   public getAvatarUrl(companion: Companion): string | undefined {
@@ -158,14 +198,27 @@ class CompanionService {
 
   public getActiveCompanion(): Companion {
     const list = this.listCompanions();
-    return list.find(c => c.id === this.activeId) || list[0];
+    let current = list.find(c => c.id === this.activeId);
+    if (!current || !this.isCompanionUnlocked(current)) {
+      current = list.find(c => c.id === 'founder') || list[0];
+    }
+    return current;
   }
 
-  public setActiveCompanion(id: string) {
+  public setActiveCompanion(id: string): boolean {
+    const list = this.listCompanions();
+    const target = list.find(c => c.id === id);
+    if (!target) return false;
+
+    if (!this.isCompanionUnlocked(target)) {
+      return false;
+    }
+
     this.activeId = id;
     if (typeof window !== 'undefined') {
       localStorage.setItem('recall_active_companion', id);
     }
+    return true;
   }
 
   public addFriendCompanion(name: string, nickname: string, cheer: string, avatarUrl?: string): Companion {

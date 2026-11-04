@@ -14,6 +14,9 @@ export const QuizSetupPage: React.FC = () => {
   const [mode, setMode] = useState<'EXAMINATION' | 'STRICT' | 'CONCEPTUAL'>('EXAMINATION');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [questionCount, setQuestionCount] = useState<number>(5);
+  const [isExamMode, setIsExamMode] = useState(false);
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState(15);
+  const [negativeMarking, setNegativeMarking] = useState(0.25);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +63,13 @@ export const QuizSetupPage: React.FC = () => {
         question_count: Math.max(1, Math.min(25, questionCount)),
         question_types: ['MCQ', 'MSQ']
       });
-      navigate(`/quizzes/${quiz.id}/session`);
+      navigate(`/quizzes/${quiz.id}/session`, {
+        state: {
+          isExamMode,
+          timeLimitMinutes: isExamMode ? timeLimitMinutes : 0,
+          negativeMarking: isExamMode ? negativeMarking : 0
+        }
+      });
     } catch (err: any) {
       setError(err.message || 'Quiz generation failed');
       setGenerating(false);
@@ -191,6 +200,75 @@ export const QuizSetupPage: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Timed Exam Hall Simulator Section */}
+          <div style={{
+            background: isExamMode ? 'rgba(28, 176, 246, 0.08)' : 'var(--color-surface)',
+            border: `2px solid ${isExamMode ? 'var(--color-blue)' : 'var(--color-border)'}`,
+            borderRadius: 'var(--radius-lg)',
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🏛️</span>
+                  <span>Exam Hall Simulator</span>
+                  <span className="badge badge-mode" style={{ fontSize: '0.65rem' }}>NEW</span>
+                </div>
+                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  Simulates authentic university conditions with countdown timers, flagging, and negative marking.
+                </p>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 800, fontSize: '0.85rem' }}>
+                <input
+                  type="checkbox"
+                  checked={isExamMode}
+                  onChange={e => setIsExamMode(e.target.checked)}
+                  style={{ width: '18px', height: '18px', accentColor: 'var(--color-blue)' }}
+                />
+                Enable
+              </label>
+            </div>
+
+            {isExamMode && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
+                    ⏱️ Strict Time Limit
+                  </label>
+                  <select
+                    value={timeLimitMinutes}
+                    onChange={e => setTimeLimitMinutes(Number(e.target.value))}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-main)', fontSize: '0.85rem' }}
+                  >
+                    <option value={5}>5 Minutes (Blitz)</option>
+                    <option value={10}>10 Minutes (Standard)</option>
+                    <option value={15}>15 Minutes</option>
+                    <option value={20}>20 Minutes</option>
+                    <option value={30}>30 Minutes (Deep Exam)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
+                    ⚠️ Negative Marking
+                  </label>
+                  <select
+                    value={negativeMarking}
+                    onChange={e => setNegativeMarking(Number(e.target.value))}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-bg)', color: 'var(--color-text-main)', fontSize: '0.85rem' }}
+                  >
+                    <option value={0}>No penalty (0 marks)</option>
+                    <option value={0.25}>-0.25 marks per wrong answer (GRE/GATE)</option>
+                    <option value={0.33}>-0.33 marks per wrong answer (UPSC / Standard)</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Difficulty & Granular Question Count */}
