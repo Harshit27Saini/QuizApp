@@ -13,12 +13,14 @@
 - [x] Programmatic option shuffling (eliminates option a/b bias)
 - [x] Granular question count control (1-25 questions + presets)
 - [x] Interactive Learning Flashcards with 3D flip & mastery tracking
+- [x] Front-matter and institutional noise filtering (filters cover pages, founder speeches, and indices)
+- [x] Duolingo-style progressive learning path (60s study bites + mini-quizzes + stepping-stone unlock)
 - [x] Firebase integration (Auth, Firestore, Cloud Storage)
 - [x] Interactive quiz-taking flow with real-time progress
 - [x] Server-side deterministic grading with source citations
 - [x] Quiz history & "Retry Incorrect Questions" loop
 - [x] Clean responsive frontend using CSS variables
-- [x] Automated test suite (14/14 unit & E2E tests passing)
+- [x] Automated test suite (18/18 unit & E2E tests passing)
 
 ---
 

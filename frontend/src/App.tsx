@@ -9,6 +9,7 @@ import { FlashcardsPage } from './pages/FlashcardsPage';
 import { QuizSessionPage } from './pages/QuizSessionPage';
 import { QuizResultPage } from './pages/QuizResultPage';
 import { QuizHistoryPage } from './pages/QuizHistoryPage';
+import { LearningPathPage } from './pages/LearningPathPage';
 import './styles/global.css';
 
 export const App: React.FC = () => {
@@ -21,6 +22,7 @@ export const App: React.FC = () => {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
             <Route path="/documents/:documentId/preview" element={<DocumentPreviewPage />} />
+            <Route path="/documents/:documentId/path" element={<LearningPathPage />} />
             <Route path="/collections/:collectionId/quiz-setup" element={<QuizSetupPage />} />
             <Route path="/collections/:collectionId/cards" element={<FlashcardsPage />} />
             <Route path="/quizzes/:quizId/session" element={<QuizSessionPage />} />

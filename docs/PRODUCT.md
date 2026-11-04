@@ -24,20 +24,29 @@ Rather than acting as a conversational chatbot, Recall functions as a structured
    - User profile tracking progress, XP points, and completed sessions.
 2. **Study Collections:**
    - Organize documents into logical folders or course collections (e.g. "Biology 101", "Operating Systems").
-3. **Document Ingestion & Preview:**
+3. **Document Ingestion, Filtering & Preview:**
    - Support for PDF, DOCX, PPTX, and plain text (`.txt`).
    - Text extraction preserving slide titles, chapter headings, and page boundaries.
+   - **Front-Matter & Noise Filtering:** Automatically detects and filters out institutional covers, course codes, table of contents, and dean/founder speeches so only substantive curriculum is studied.
    - Document preview enabling users to read extracted sections and verify text fidelity prior to quiz generation.
-4. **Evidence-Backed Quiz Engine:**
+4. **Duolingo-Style Progressive Learning Path:**
+   - Automatically decomposes documents into 3–5 progressive learning units along a serpentine stepping-stone path.
+   - Each unit presents a 60-second concept bite and key takeaways, followed by a 3-question quick check.
+   - Immediate feedback with inline explanations; scoring $\ge 66\%$ marks the unit complete, awards +25 XP, and unlocks the next stepping stone.
+5. **Interactive Active-Recall Flashcards:**
+   - Synthesizes 3D flip study cards with concept prompts, detailed explanations, and source page citations.
+   - Card randomization, keyboard navigation (Space to flip, $\leftarrow \rightarrow$ to navigate), and individual card mastery tracking.
+6. **Evidence-Backed Quiz Engine:**
    - **STRICT Mode:** Generates questions answerable directly from source text. Requires verifiable text citations and page numbers.
    - **CONCEPTUAL Mode:** Evaluates comprehension and conceptual connections within the source material.
+   - **EXAMINATION Mode:** Simulates exam conditions with customizable difficulty and question counts.
    - Configurable question types: Single-select Multiple Choice (MCQ) and Multi-select (MSQ).
-   - Configurable question volume (e.g., 5, 10, 15) and difficulty levels (Easy, Medium, Hard).
-5. **Interactive Quiz Experience:**
+   - Uniform option distribution: Programmatic permutation ensures answers are not biased toward option 'A' or 'B'.
+7. **Interactive Quiz Experience & Deterministic Grading:**
    - Clean, distraction-free interface with progress indicators.
-   - Instant or end-of-session submission with automated, deterministic grading.
+   - Instant or end-of-session submission with automated, deterministic server-side grading.
    - Explanations highlighting correct answers and quoting source document sections.
-6. **Quiz History & Retry Loop:**
+8. **Quiz History & Retry Loop:**
    - Review past quiz attempts and historical scores.
    - "Retry Incorrect Questions": 1-click generation of a remediation session containing only questions missed on a previous attempt.
 

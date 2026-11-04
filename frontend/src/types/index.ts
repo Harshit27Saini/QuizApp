@@ -131,3 +131,39 @@ export interface FlashcardDeck {
   created_at: string;
   cards?: FlashcardItem[];
 }
+
+
+export interface PathNodeQuestion {
+  id: string;
+  prompt: string;
+  options: QuestionOption[];
+  correct_answers: string[];
+  explanation: string;
+}
+
+export interface PathNode {
+  id: string;
+  path_id: string;
+  unit_index: number;
+  title: string;
+  concept_summary: string;
+  key_takeaways: string[];
+  source_page?: number;
+  questions: PathNodeQuestion[];
+  is_completed: boolean;
+  is_locked: boolean;
+  score?: number;
+  xp_reward: number;
+}
+
+export interface LearningPath {
+  id: string;
+  user_id: string;
+  collection_id: string;
+  document_id: string;
+  title: string;
+  total_units: number;
+  completed_units: number;
+  created_at: string;
+  nodes: PathNode[];
+}

@@ -14,6 +14,7 @@ export const FlashcardsPage: React.FC = () => {
   const [masteredIds, setMasteredIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [showGenerator, setShowGenerator] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Deck generation form
@@ -75,6 +76,7 @@ export const FlashcardsPage: React.FC = () => {
       setCards(newDeck.cards || []);
       setCurrentIndex(0);
       setIsFlipped(false);
+      setShowGenerator(false);
     } catch (err: any) {
       setError(err.message || 'Failed to generate flashcards');
     } finally {
@@ -154,7 +156,13 @@ export const FlashcardsPage: React.FC = () => {
         </div>
 
         {cards.length > 0 && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowGenerator(prev => !prev)}
+            >
+              {showGenerator ? '✕ Close Generator' : '➕ New Deck'}
+            </button>
             <button className="btn btn-secondary" onClick={handleShuffle} title="Randomize card order">
               🔀 Shuffle
             </button>
@@ -179,7 +187,88 @@ export const FlashcardsPage: React.FC = () => {
         <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
           Loading your study cards...
         </div>
-      ) : cards.length > 0 && currentCard ? (
+      ) : showGenerator || cards.length === 0 ? (
+        /* Deck Generation Card */
+        <div className="card" style={{ padding: '2rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>
+            Generate Study Cards from Material
+          </h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+            Extract key principles, definitions, and relationships into bite-sized study cards.
+          </p>
+
+          <form onSubmit={handleGenerate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Select Source Document(s)
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {documents.map(d => {
+                  const isSelected = selectedDocIds.includes(d.id);
+                  return (
+                    <div
+                      key={d.id}
+                      onClick={() => setSelectedDocIds(prev =>
+                        prev.includes(d.id)
+                          ? (prev.length > 1 ? prev.filter(id => id !== d.id) : prev)
+                          : [...prev, d.id]
+                      )}
+                      style={{
+                        padding: '0.75rem 1rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                        background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <input type="checkbox" checked={isSelected} readOnly />
+                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{d.filename}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Number of Cards: {cardCount}
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {[5, 8, 12, 16].map(count => (
+                  <button
+                    type="button"
+                    key={count}
+                    onClick={() => setCardCount(count)}
+                    style={{
+                      padding: '0.375rem 0.75rem',
+                      borderRadius: 'var(--radius-full)',
+                      fontWeight: 700,
+                      fontSize: '0.8125rem',
+                      border: `1.5px solid ${cardCount === count ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      background: cardCount === count ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {count} Cards
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ width: '100%', padding: '0.875rem', fontSize: '1rem' }}
+              disabled={generating || documents.length === 0}
+            >
+              {generating ? 'Synthesizing concept cards...' : '🗂️ Generate Flashcard Deck'}
+            </button>
+          </form>
+        </div>
+      ) : currentCard ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Progress Indicator */}
           <div>
@@ -304,88 +393,7 @@ export const FlashcardsPage: React.FC = () => {
             </button>
           </div>
         </div>
-      ) : (
-        /* Deck Generation Card if none exist */
-        <div className="card" style={{ padding: '2rem' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>
-            Generate Study Cards from Material
-          </h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-            Extract key principles, definitions, and relationships into bite-sized study cards.
-          </p>
-
-          <form onSubmit={handleGenerate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Select Source Document(s)
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {documents.map(d => {
-                  const isSelected = selectedDocIds.includes(d.id);
-                  return (
-                    <div
-                      key={d.id}
-                      onClick={() => setSelectedDocIds(prev =>
-                        prev.includes(d.id)
-                          ? (prev.length > 1 ? prev.filter(id => id !== d.id) : prev)
-                          : [...prev, d.id]
-                      )}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        borderRadius: 'var(--radius-md)',
-                        border: `1.5px solid ${isSelected ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                        background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <input type="checkbox" checked={isSelected} readOnly />
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{d.filename}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                Number of Cards: {cardCount}
-              </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {[5, 8, 12, 16].map(count => (
-                  <button
-                    type="button"
-                    key={count}
-                    onClick={() => setCardCount(count)}
-                    style={{
-                      padding: '0.375rem 0.75rem',
-                      borderRadius: 'var(--radius-full)',
-                      fontWeight: 700,
-                      fontSize: '0.8125rem',
-                      border: `1.5px solid ${cardCount === count ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                      background: cardCount === count ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {count} Cards
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '0.875rem', fontSize: '1rem' }}
-              disabled={generating || documents.length === 0}
-            >
-              {generating ? 'Synthesizing concept cards...' : '🗂️ Generate Flashcard Deck'}
-            </button>
-          </form>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 };

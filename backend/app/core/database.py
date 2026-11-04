@@ -18,6 +18,8 @@ class InMemoryDB:
         self.question_responses: Dict[str, Dict[str, Any]] = {}
         self.flashcard_decks: Dict[str, Dict[str, Any]] = {}
         self.flashcards: Dict[str, Dict[str, Any]] = {}
+        self.learning_paths: Dict[str, Dict[str, Any]] = {}
+        self.path_nodes: Dict[str, Dict[str, Any]] = {}
 
     def now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -469,6 +471,169 @@ class Repository:
             docs = self.firestore.collection("flashcards").where("deck_id", "==", deck_id).stream()
             return [d.to_dict() for d in docs]
         return [c for c in memory_db.flashcards.values() if c["deck_id"] == deck_id]
+
+    # -------------------------------------------------------------------------
+    # Learning Paths (Duolingo-style progression)
+    # -------------------------------------------------------------------------
+    async def create_learning_path(
+        self,
+        user_id: str,
+        collection_id: str,
+        document_id: str,
+        title: str,
+        raw_units: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        path_id = str(uuid.uuid4())
+        now = memory_db.now_iso()
+
+        nodes = []
+        for idx, u in enumerate(raw_units):
+            node_id = str(uuid.uuid4())
+            # Format questions with unique IDs
+            questions = []
+            for q_idx, q in enumerate(u.get("questions", [])):
+                q_id = str(uuid.uuid4())
+                options = q.get("options", [])
+                questions.append({
+                    "id": q_id,
+                    "prompt": q["prompt"],
+                    "options": options,
+                    "correct_answers": q["correct_answers"],
+                    "explanation": q.get("explanation", "Grounded in unit material.")
+                })
+
+            node = {
+                "id": node_id,
+                "path_id": path_id,
+                "unit_index": idx,
+                "title": u.get("title", f"Unit {idx + 1}"),
+                "concept_summary": u.get("concept_summary", ""),
+                "key_takeaways": u.get("key_takeaways", []),
+                "source_page": u.get("source_page"),
+                "questions": questions,
+                "is_completed": False,
+                "is_locked": idx > 0,  # First node is unlocked by default!
+                "score": None,
+                "xp_reward": 25
+            }
+            nodes.append(node)
+            if self.firestore:
+                self.firestore.collection("path_nodes").document(node_id).set(node)
+            else:
+                memory_db.path_nodes[node_id] = node
+
+        path_data = {
+            "id": path_id,
+            "user_id": user_id,
+            "collection_id": collection_id,
+            "document_id": document_id,
+            "title": title,
+            "total_units": len(nodes),
+            "completed_units": 0,
+            "created_at": now
+        }
+        if self.firestore:
+            self.firestore.collection("learning_paths").document(path_id).set(path_data)
+        else:
+            memory_db.learning_paths[path_id] = path_data
+
+        return {
+            **path_data,
+            "nodes": nodes
+        }
+
+    async def get_learning_path(self, path_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        path_data = None
+        if self.firestore:
+            doc = self.firestore.collection("learning_paths").document(path_id).get()
+            if doc.exists and doc.to_dict().get("user_id") == user_id:
+                path_data = doc.to_dict()
+        else:
+            p = memory_db.learning_paths.get(path_id)
+            if p and p["user_id"] == user_id:
+                path_data = p
+
+        if not path_data:
+            return None
+
+        # Fetch nodes
+        if self.firestore:
+            docs = self.firestore.collection("path_nodes").where("path_id", "==", path_id).stream()
+            nodes = [d.to_dict() for d in docs]
+        else:
+            nodes = [n for n in memory_db.path_nodes.values() if n["path_id"] == path_id]
+
+        nodes = sorted(nodes, key=lambda x: x["unit_index"])
+        completed_count = sum(1 for n in nodes if n.get("is_completed"))
+
+        return {
+            **path_data,
+            "completed_units": completed_count,
+            "nodes": nodes
+        }
+
+    async def get_document_learning_path(self, document_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        path_id = None
+        if self.firestore:
+            docs = self.firestore.collection("learning_paths").where("document_id", "==", document_id).where("user_id", "==", user_id).limit(1).stream()
+            items = [d.to_dict() for d in docs]
+            if items:
+                path_id = items[0]["id"]
+        else:
+            for p in memory_db.learning_paths.values():
+                if p["document_id"] == document_id and p["user_id"] == user_id:
+                    path_id = p["id"]
+                    break
+
+        if path_id:
+            return await self.get_learning_path(path_id, user_id)
+        return None
+
+    async def complete_path_node(
+        self,
+        path_id: str,
+        node_id: str,
+        user_id: str,
+        score: float
+    ) -> Dict[str, Any]:
+        """Marks the current unit node as completed and unlocks the next unit."""
+        path = await self.get_learning_path(path_id, user_id)
+        if not path:
+            return {}
+
+        nodes = path["nodes"]
+        target_idx = None
+        for i, n in enumerate(nodes):
+            if n["id"] == node_id:
+                target_idx = i
+                n["is_completed"] = True
+                n["score"] = score
+                if self.firestore:
+                    self.firestore.collection("path_nodes").document(node_id).update({
+                        "is_completed": True,
+                        "score": score
+                    })
+                else:
+                    memory_db.path_nodes[node_id]["is_completed"] = True
+                    memory_db.path_nodes[node_id]["score"] = score
+                break
+
+        # Unlock the next node if it exists
+        if target_idx is not None and target_idx + 1 < len(nodes):
+            next_node = nodes[target_idx + 1]
+            next_node["is_locked"] = False
+            if self.firestore:
+                self.firestore.collection("path_nodes").document(next_node["id"]).update({
+                    "is_locked": False
+                })
+            else:
+                memory_db.path_nodes[next_node["id"]]["is_locked"] = False
+
+        # Award user XP (25 XP for passing unit)
+        if user_id in memory_db.profiles:
+            memory_db.profiles[user_id]["xp"] = memory_db.profiles[user_id].get("xp", 0) + 25
+
+        return await self.get_learning_path(path_id, user_id)
 
 
 db = Repository()

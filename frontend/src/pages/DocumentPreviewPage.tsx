@@ -39,12 +39,21 @@ export const DocumentPreviewPage: React.FC = () => {
         </div>
 
         {document && (
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate(`/collections/${document.collection_id}/quiz-setup?doc=${document.id}`)}
-          >
-            ⚡ Generate Quiz from this Document
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <Link
+              to={`/documents/${document.id}/path`}
+              className="btn btn-primary"
+              style={{ backgroundColor: 'var(--color-xp)', borderColor: 'var(--color-xp)' }}
+            >
+              🗺️ Start Learning Journey
+            </Link>
+            <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/collections/${document.collection_id}/quiz-setup?doc=${document.id}`)}
+            >
+              ⚡ Generate Quiz
+            </button>
+          </div>
         )}
       </div>
 

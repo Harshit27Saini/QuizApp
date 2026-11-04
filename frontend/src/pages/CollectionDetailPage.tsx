@@ -79,6 +79,12 @@ export const CollectionDetailPage: React.FC = () => {
               🗂️ Study Cards
             </button>
             <button
+              className="btn btn-secondary"
+              onClick={() => navigate(`/documents/${documents[0].id}/path`)}
+            >
+              🗺️ Learning Path
+            </button>
+            <button
               className="btn btn-primary"
               onClick={() => navigate(`/collections/${collectionId}/quiz-setup`)}
             >
@@ -175,7 +181,14 @@ export const CollectionDetailPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <Link
+                    to={`/documents/${doc.id}/path`}
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.8125rem', backgroundColor: 'var(--color-xp)', borderColor: 'var(--color-xp)' }}
+                  >
+                    🗺️ Learning Path
+                  </Link>
                   <Link
                     to={`/documents/${doc.id}/preview`}
                     className="btn btn-secondary"
@@ -184,11 +197,11 @@ export const CollectionDetailPage: React.FC = () => {
                     🔍 Preview Sections
                   </Link>
                   <button
-                    className="btn btn-primary"
+                    className="btn btn-secondary"
                     style={{ fontSize: '0.8125rem' }}
                     onClick={() => navigate(`/collections/${collectionId}/quiz-setup?doc=${doc.id}`)}
                   >
-                    Quiz This Document
+                    ⚡ Quiz
                   </button>
                 </div>
               </div>

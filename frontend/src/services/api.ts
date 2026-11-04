@@ -6,7 +6,8 @@ import type {
   AttemptResult,
   QuestionPublic,
   UserProfile,
-  FlashcardDeck
+  FlashcardDeck,
+  LearningPath
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -120,4 +121,24 @@ export const api = {
     request<FlashcardDeck>(`/flashcards/${deckId}`),
   listCollectionDecks: (collectionId: string) =>
     request<FlashcardDeck[]>(`/flashcards/collections/${collectionId}`),
+
+  // Learning Paths (Duolingo Mode)
+  generateLearningPath: (documentId: string) =>
+    request<LearningPath>(`/learning-paths/generate?document_id=${documentId}`, {
+      method: 'POST',
+    }),
+  getLearningPath: (pathId: string) =>
+    request<LearningPath>(`/learning-paths/${pathId}`),
+  completePathNode: (pathId: string, nodeId: string, answers: any[]) =>
+    request<{
+      passed: boolean;
+      score: number;
+      correct_count: number;
+      total_questions: number;
+      xp_awarded: number;
+      path: LearningPath;
+    }>(`/learning-paths/${pathId}/nodes/${nodeId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ answers }),
+    }),
 };

@@ -13,21 +13,29 @@ def is_front_matter_or_index(content: str, heading: str = "", page_number: int =
     # 1. Obvious Table of Contents / Index patterns
     if "table of contents" in heading_lower or "index" in heading_lower:
         return True
+    if "table of contents" in text_lower or "index sr" in text_lower or "sr. no" in text_lower or "sr no" in text_lower:
+        return True
+    if re.search(r"\bindex\b", heading_lower) or re.search(r"\bindex\s+sr\b", text_lower):
+        return True
     
     # Check for index patterns like "1 Analyzing Conflicts 2 Conflicts Functional 3 ..."
     numbered_titles = len(re.findall(r"\b\d{1,2}\s+[A-Z][a-z]+", content))
-    if numbered_titles >= 4:
+    if numbered_titles >= 3 and page_number <= 5:
         return True
 
     # 2. Institutional Boilerplate & Welcome Speeches
     institutional_markers = [
-        "department of", "subject code:", "course code:", "syllabus",
-        "from the founders", "founder's message", "chancellor's message",
+        "department of", "subject code:", "subject code", "course code:", "course code", "syllabus",
+        "from the founders", "from the founder", "founder's message", "chancellor's message",
         "vice-chancellor", "all rights reserved", "world class space of intellectual excellence",
-        "universal education system", "credit system", "study material", "mit-wpu", "mit wpu"
+        "universal education system", "credit system", "study material", "mit-wpu", "mit wpu",
+        "faculty of", "course outline", "objective of the course", "course objectives",
+        "learning objectives", "prescribed textbooks", "recommended reading"
     ]
     matches = sum(1 for marker in institutional_markers if marker in text_lower)
-    if matches >= 2 and page_number <= 4:
+    if matches >= 1 and page_number <= 3:
+        return True
+    if matches >= 2:
         return True
 
     # 3. High title-to-content ratio on early pages (Cover page)
