@@ -39,6 +39,12 @@
 - [x] Scientific Spaced Repetition (SuperMemo SM-2) on flashcards with dynamic review intervals & "Due for Review Today" filter
 - [x] Daily Quests & Streaks Gamification (Daily challenges, Daily Chest XP reward, and Streak Freeze shield)
 - [x] Gated Endgame Companion: Nandhini locked behind 90% syllabus mastery with victory unlock ceremony
+- [x] ADHD-Friendly "Just Start Mode":
+  - "I don't feel like studying" low-activation energy button
+  - Auto-selects 1 single bite-sized micro-task (e.g. 3 micro-cards, 1 short paragraph, or 30s breather)
+  - Calming 5-minute timer with "Make it even smaller" button
+  - Zero-dependency Web Audio ambient focus generator (Soft Rain pink noise & Lo-Fi focus drone)
+  - Guilt-free finish screen: exit with pride or ride the momentum (+5 mins)
 - [x] Supercharged PDF Study Reader:
   - 3-Way Mode (Interactive Reader, Split-Screen PDF + Notes, Raw PDF)
   - Instant Flashcard Creation from text highlights

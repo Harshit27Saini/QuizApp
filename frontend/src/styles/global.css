@@ -168,6 +168,16 @@ button {
   filter: brightness(1.05);
 }
 
+.btn-3d-purple {
+  background-color: var(--color-purple);
+  border-color: var(--color-purple);
+  border-bottom-color: var(--color-purple-dark);
+  color: #ffffff;
+}
+.btn-3d-purple:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
 .btn-3d-white {
   background-color: #ffffff;
   border-color: var(--color-border);

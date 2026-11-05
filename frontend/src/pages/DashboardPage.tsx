@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import type { Collection } from '../types';
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,39 @@ export const DashboardPage: React.FC = () => {
         </div>
         <button className="btn-3d btn-3d-green" onClick={() => setShowModal(true)}>
           + New Collection
+        </button>
+      </div>
+
+      {/* Just Start Mode Banner (ADHD / Low-Activation Energy) */}
+      <div className="card" style={{
+        background: 'linear-gradient(135deg, rgba(206, 130, 255, 0.12) 0%, rgba(28, 176, 246, 0.1) 100%)',
+        border: '2px solid rgba(206, 130, 255, 0.35)',
+        padding: '1.25rem 1.5rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        borderRadius: 'var(--radius-xl)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ fontSize: '2.5rem' }}>🛋️</div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 900, margin: 0 }}>Feeling Overwhelmed or Stuck?</h2>
+              <span className="badge" style={{ background: '#ce82ff', color: '#fff', fontSize: '0.65rem' }}>JUST START MODE</span>
+            </div>
+            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+              No overwhelming lists. We pick <strong>one tiny micro-task</strong> and start a peaceful <strong>5-minute timer</strong>. Stop whenever you want.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => navigate('/just-start')}
+          className="btn-3d btn-3d-purple"
+          style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
+        >
+          🥱 "I don't feel like studying"
         </button>
       </div>
 
