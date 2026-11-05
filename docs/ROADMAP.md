@@ -51,6 +51,20 @@
   - Smart AI Page Summaries with core thesis, mechanism & exam triggers
   - Pinned Marginalia / Sticky Notes
   - Exam Readiness Heatmap on page navigation
+- [x] Granular 4–8 Slides/Stone Learning Paths:
+  - Strict 4–8 slides per stepping stone chunking formula
+  - Synthesizes 16–25+ stepping stones for large slide decks (e.g. 129 slides)
+  - Periodic Milestone Reward Chests along serpentine path
+  - Explicit slide range labeling (`Slides 1–6`, etc.)
+- [x] Interactive Study To-Do List & Action Plan:
+  - Bite-sized study goals with category tags (📑 Slides, ⚡ Quiz, 📖 Reading, 🔁 Review)
+  - Auto-chunking generator that breaks 129 slides into 4–8 slide tasks
+  - Completing tasks rewards spendable XP coins (+10 to +25 XP) with sound chimes and confetti
+- [x] Centralized XP Economy & Cheerleader Shop:
+  - Unified XP wallet tracking spendable balance and lifetime earnings
+  - Storefront to redeem XP coins for companions (Sydney, Connie, Milo, Scooby, Bunny, Duo Owl, Archimedes)
+  - Power-up shields: Streak Freeze Shield, 2X XP Booster Potion, Exam Espresso
+  - Real-time event broadcasting updating header and sidebar XP meters across the entire app
 - [ ] OCR integration (Tesseract / EasyOCR) for scanned PDFs and handwritten notes
 - [ ] Additional question formats:
   - Fill in the blanks

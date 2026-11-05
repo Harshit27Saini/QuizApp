@@ -50,3 +50,37 @@ async def test_sandbox_slide_range_and_depth():
     # Check that page 30 was not included in the sandbox units
     assert all(u.get("source_page", 10) <= 20 for u in units)
     assert units[0]["substantive_content"] is not None
+
+
+@pytest.mark.asyncio
+async def test_granular_129_slides_learning_path():
+    # 129 slides as reported by user
+    mock_129_slides = [
+        {
+            "section_index": i,
+            "page_number": i + 1,
+            "heading": f"Slide {i + 1}: Strategic Interaction Principle {i + 1}",
+            "content": f"Slide {i + 1} details equilibrium dynamics, game theory payoffs, and institutional negotiation mechanisms for collective decision making."
+        }
+        for i in range(129)
+    ]
+
+    units = await generate_document_learning_path(
+        sections=mock_129_slides,
+        doc_title="Lecture 129 Slides - Conflict Management",
+        lesson_depth="standard"
+    )
+
+    # Standard depth: ~6 slides per stone => 129 / 6 ≈ 22 stepping stones
+    assert 16 <= len(units) <= 26, f"Expected 16-26 units for 129 slides, got {len(units)}"
+    
+    # Check that each stepping stone covers between 4 and 8 slides
+    for u in units:
+        assert "substantive_content" in u
+        assert "questions" in u
+        start_p = u["source_page"]
+        end_p = u.get("source_page_end", start_p)
+        span = end_p - start_p + 1
+        assert 1 <= span <= 10, f"Stepping stone covers {span} slides, expected ~4-8"
+        assert "Slides " in u["title"] or "Slide " in u["title"]
+

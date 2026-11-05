@@ -53,3 +53,22 @@
 - **Context:** The founder raised concerns regarding Supabase's free tier inactivity policy (free projects pause after 7 days of inactivity, causing connection drops for learners until manually unpaused). Additionally, the founder has prior experience with Firebase.
 - **Decision:** Migrate authentication, storage, and persistence integrations from Supabase to Firebase (Firebase Auth, Cloud Firestore, and Cloud Storage).
 - **Consequences:** Eliminates project dormancy/sleep risk, leverages generous 5GB storage, avoids vendor unfamiliarity, and retains clean database abstraction for offline local development.
+
+---
+
+## ADR 007: Granular Curriculum Chunking (4–8 Slides per Stepping Stone)
+- **Date:** 2026-11-05
+- **Status:** Accepted
+- **Context:** Previous path generation capped units at 5–7 regardless of document size. When studying large slide decks (e.g. 129 slides), learners encountered huge jumps and sparse milestones.
+- **Decision:** Implement a granular stepping stone standard where each path node corresponds directly to 4–8 slides (`slides_per_stone = 6` standard, `4` deep dive, `8` sprint). Large documents synthesize 16–25+ stepping stones with milestone chests placed periodically.
+- **Consequences:** True slide-by-slide progression, zero skipped material, explicit slide range labeling (e.g. `Slides 1–6`), and manageable cognitive load for long lectures.
+
+---
+
+## ADR 008: Centralized XP Economy & Cheerleader Store
+- **Date:** 2026-11-05
+- **Status:** Accepted
+- **Context:** Learners need tangible incentives to complete tasks, quizzes, and reading sessions. Cheerleader companions should be unlockable via earned XP coins.
+- **Decision:** Build a unified XP wallet service (`xpService`) managing spendable XP coins, lifetime totals, inventory power-ups (Streak Freeze, Double XP), and unlocked companions. Connect to a dedicated Shop (`/shop`) and Interactive To-Do List (`/todos`).
+- **Consequences:** High motivation, satisfying reward loop with Web Audio fanfares and confetti, and clear gamification economy without external paywalls.
+

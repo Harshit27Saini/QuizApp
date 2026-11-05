@@ -1,3 +1,5 @@
+import { xpService } from './xp';
+
 export interface Companion {
   id: string;
   name: string;
@@ -10,8 +12,9 @@ export interface Companion {
   badgeColor: string;
   cheerQuotes: string[];
   unlockRequirement?: {
-    type: 'progress';
-    threshold: number;
+    type: 'progress' | 'xp';
+    threshold?: number;
+    cost?: number;
     label: string;
   };
 }
@@ -59,7 +62,47 @@ export const INITIAL_COMPANIONS: Companion[] = [
     ]
   },
 
-  // Priority 2: Pets
+  // Priority 2: Mascot & Scholars (Shop)
+  {
+    id: 'duo',
+    name: 'Duo Owl',
+    category: 'vip',
+    subtitle: 'Mascot & Streak Guardian',
+    avatarIcon: '🦉',
+    badgeText: 'STREAK GUARDIAN',
+    badgeColor: '#58cc02',
+    unlockRequirement: {
+      type: 'xp',
+      cost: 600,
+      label: 'Unlock for 600 XP'
+    },
+    cheerQuotes: [
+      "Practice now or face my wrath! 🦉",
+      "Streak is life. Do not break it!",
+      "5 minutes of focus and you're golden! Let's crush this unit!"
+    ]
+  },
+  {
+    id: 'archimedes',
+    name: 'Prof. Archimedes',
+    category: 'vip',
+    subtitle: 'First-Principles Scholar',
+    avatarIcon: '🧙‍♂️',
+    badgeText: 'DEEP SCHOLAR',
+    badgeColor: '#8b5cf6',
+    unlockRequirement: {
+      type: 'xp',
+      cost: 750,
+      label: 'Unlock for 750 XP'
+    },
+    cheerQuotes: [
+      "Eureka! First principles reveal all truths.",
+      "Deconstruct the question to its foundational axioms.",
+      "Brilliant deduction, scholar! Knowledge compounds."
+    ]
+  },
+
+  // Priority 3: Pets
   {
     id: 'sydney',
     name: 'Sydney',
@@ -68,6 +111,11 @@ export const INITIAL_COMPANIONS: Companion[] = [
     avatarIcon: '🐕',
     badgeText: 'GOLDEN BUDDY',
     badgeColor: '#ffc800',
+    unlockRequirement: {
+      type: 'xp',
+      cost: 100,
+      label: 'Unlock for 100 XP'
+    },
     cheerQuotes: [
       "Woof! *Happy tail wag!* You're doing amazing!",
       "Break down the concept like a yummy treat! You got this!",
@@ -84,6 +132,11 @@ export const INITIAL_COMPANIONS: Companion[] = [
     cartoonImageUrl: '/avatars/connie_3d.png',
     badgeText: 'PRECISION CAT',
     badgeColor: '#ce82ff',
+    unlockRequirement: {
+      type: 'xp',
+      cost: 200,
+      label: 'Unlock for 200 XP'
+    },
     cheerQuotes: [
       "*Gentle purr.* Meticulous focus on the definitions.",
       "Elegant work. No room for sloppy errors today.",
@@ -98,6 +151,11 @@ export const INITIAL_COMPANIONS: Companion[] = [
     avatarIcon: '🐕‍🦺',
     badgeText: 'STREET-SMART',
     badgeColor: '#58cc02',
+    unlockRequirement: {
+      type: 'xp',
+      cost: 300,
+      label: 'Unlock for 300 XP'
+    },
     cheerQuotes: [
       "Street-smart trick: remember the practical feedback loop!",
       "Don't overthink it! Keep moving and keep the streak alive!",
@@ -114,6 +172,11 @@ export const INITIAL_COMPANIONS: Companion[] = [
     cartoonImageUrl: '/avatars/scooby_3d.png',
     badgeText: 'WISE GUARDIAN',
     badgeColor: '#64748b',
+    unlockRequirement: {
+      type: 'xp',
+      cost: 400,
+      label: 'Unlock for 400 XP'
+    },
     cheerQuotes: [
       "Deep breath. We untangle complex concepts one step at a time.",
       "Steady and calm. You're building deep understanding.",
@@ -128,6 +191,11 @@ export const INITIAL_COMPANIONS: Companion[] = [
     avatarIcon: '🐾',
     badgeText: 'HIGH-ENERGY',
     badgeColor: '#f97316',
+    unlockRequirement: {
+      type: 'xp',
+      cost: 500,
+      label: 'Unlock for 500 XP'
+    },
     cheerQuotes: [
       "*Bouncing with joy!* Level up! That was brilliant!",
       "Energy is soaring! Let's conquer the next stepping stone!",
@@ -175,7 +243,13 @@ class CompanionService {
 
   public isCompanionUnlocked(companion: Companion): boolean {
     if (!companion.unlockRequirement) return true;
-    return this.getOverallProgress() >= companion.unlockRequirement.threshold;
+    if (companion.unlockRequirement.type === 'progress') {
+      return this.getOverallProgress() >= (companion.unlockRequirement.threshold || 90);
+    }
+    if (companion.unlockRequirement.type === 'xp') {
+      return xpService.isCompanionUnlocked(companion.id);
+    }
+    return true;
   }
 
   public getAvatarUrl(companion: Companion): string | undefined {

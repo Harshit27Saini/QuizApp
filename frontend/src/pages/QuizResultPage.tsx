@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { soundManager } from '../utils/sound';
 import { triggerConfetti } from '../utils/confetti';
 import { questService } from '../services/quests';
+import { xpService } from '../services/xp';
 import type { AttemptResult } from '../types';
 
 export const QuizResultPage: React.FC = () => {
@@ -32,6 +33,8 @@ export const QuizResultPage: React.FC = () => {
       .then(res => {
         setResult(res);
         questService.recordQuizScore(res.score);
+        const earnedXp = Math.max(10, Math.round(res.score * 0.5));
+        xpService.awardXp(earnedXp, `Quiz Attempt Completed (${res.score}%)`);
         if (res.score >= 70) {
           soundManager.playVictory();
           triggerConfetti();

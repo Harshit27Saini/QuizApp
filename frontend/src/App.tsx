@@ -12,6 +12,8 @@ import { QuizHistoryPage } from './pages/QuizHistoryPage';
 import { LearningPathPage } from './pages/LearningPathPage';
 import { CompanionsPage } from './pages/CompanionsPage';
 import { JustStartPage } from './pages/JustStartPage';
+import { TodoListPage } from './pages/TodoListPage';
+import { ShopPage } from './pages/ShopPage';
 import './styles/global.css';
 
 export const App: React.FC = () => {
@@ -20,6 +22,8 @@ export const App: React.FC = () => {
       <AppLayout>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/todos" element={<TodoListPage />} />
+          <Route path="/shop" element={<ShopPage />} />
           <Route path="/just-start" element={<JustStartPage />} />
           <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
           <Route path="/documents/:documentId/preview" element={<DocumentPreviewPage />} />

@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { companionService } from '../services/companions';
 import { questService } from '../services/quests';
+import { xpService } from '../services/xp';
 import { soundManager } from '../utils/sound';
 import { triggerConfetti } from '../utils/confetti';
 import { PetAssistantChat } from '../components/learning_path/PetAssistantChat';
@@ -222,6 +223,7 @@ export const DocumentPreviewPage: React.FC = () => {
 
       soundManager.playCorrect();
       triggerConfetti();
+      xpService.awardXp(10, `Created Flashcard from ${document.filename}`);
       setCompanionCheer(`Flashcard saved to your deck! Active recall mode active! ⚡`);
       setFlashcardModal(null);
     } catch (err: any) {

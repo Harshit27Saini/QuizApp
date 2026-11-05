@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { companionService, type Companion } from '../services/companions';
 import { triggerConfetti } from '../utils/confetti';
 import { soundManager } from '../utils/sound';
@@ -19,8 +20,13 @@ export const CompanionsPage: React.FC = () => {
   const handleSelect = (comp: Companion) => {
     if (!companionService.isCompanionUnlocked(comp)) {
       soundManager.playError();
-      const req = comp.unlockRequirement?.threshold || 90;
-      setLockedNotice(`🔒 ${comp.name} is locked! Reach ${req}% syllabus mastery to unlock. Your highest progress is currently ${currentProgress}%. Keep conquering units on your learning path!`);
+      if (comp.unlockRequirement?.type === 'xp') {
+        const cost = comp.unlockRequirement.cost || 100;
+        setLockedNotice(`🔒 ${comp.name} is available in the Shop for ${cost} XP! Go to the Shop to unlock.`);
+      } else {
+        const req = comp.unlockRequirement?.threshold || 90;
+        setLockedNotice(`🔒 ${comp.name} is locked! Reach ${req}% syllabus mastery to unlock. Your highest progress is currently ${currentProgress}%. Keep conquering units on your learning path!`);
+      }
       setTimeout(() => setLockedNotice(null), 6000);
       return;
     }
@@ -69,8 +75,11 @@ export const CompanionsPage: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Link to="/shop" className="btn-3d btn-3d-gold" style={{ fontSize: '0.85rem' }}>
+            🛒 XP Cheerleader Shop
+          </Link>
           <button
-            className="btn-3d btn-3d-gold"
+            className="btn-3d btn-3d-white"
             onClick={() => setShowAddFriend(prev => !prev)}
             style={{ fontSize: '0.85rem' }}
           >
@@ -250,11 +259,11 @@ export const CompanionsPage: React.FC = () => {
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
                       <span>Unlock Progress</span>
-                      <span>{currentProgress}% / {c.unlockRequirement.threshold}%</span>
+                      <span>{currentProgress}% / {c.unlockRequirement.threshold || 90}%</span>
                     </div>
                     <div style={{ height: '8px', background: 'var(--color-surface-hover)', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{
-                        width: `${Math.min(100, (currentProgress / c.unlockRequirement.threshold) * 100)}%`,
+                        width: `${Math.min(100, (currentProgress / (c.unlockRequirement.threshold || 90)) * 100)}%`,
                         height: '100%',
                         background: 'var(--color-green)',
                         transition: 'width 0.3s ease'
@@ -299,27 +308,46 @@ export const CompanionsPage: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
           {petCompanions.map(c => {
             const isSelected = c.id === activeId;
+            const isLocked = !companionService.isCompanionUnlocked(c);
+            const cost = c.unlockRequirement?.cost || 100;
             return (
               <div
                 key={c.id}
                 onClick={() => handleSelect(c)}
                 className="card"
                 style={{
-                  cursor: 'pointer',
-                  border: isSelected ? '3px solid var(--color-green)' : '2px solid var(--color-border)',
-                  background: isSelected ? 'var(--color-green-light)' : 'var(--color-surface)',
+                  cursor: isLocked ? 'not-allowed' : 'pointer',
+                  border: isSelected
+                    ? '3px solid var(--color-green)'
+                    : isLocked
+                    ? '2px dashed var(--color-border)'
+                    : '2px solid var(--color-border)',
+                  background: isSelected
+                    ? 'var(--color-green-light)'
+                    : isLocked
+                    ? 'var(--color-surface-hover)'
+                    : 'var(--color-surface)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.75rem'
+                  gap: '0.75rem',
+                  opacity: isLocked ? 0.88 : 1
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="badge" style={{ background: c.badgeColor + '20', color: c.badgeColor, border: `1.5px solid ${c.badgeColor}` }}>
                     {c.badgeText}
                   </span>
-                  {isSelected && (
+                  {isSelected ? (
                     <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>
                       ACTIVE ✓
+                    </span>
+                  ) : isLocked ? (
+                    <span className="badge badge-xp" style={{ fontSize: '0.75rem' }}>
+                      🔒 {cost} XP
+                    </span>
+                  ) : (
+                    <span className="badge" style={{ background: 'rgba(88, 204, 2, 0.15)', color: 'var(--color-green-dark)', fontSize: '0.75rem', fontWeight: 800 }}>
+                      UNLOCKED ✓
                     </span>
                   )}
                 </div>
@@ -342,7 +370,12 @@ export const CompanionsPage: React.FC = () => {
                       <img
                         src={companionService.getAvatarUrl(c)}
                         alt={c.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          filter: isLocked ? 'grayscale(0.6)' : 'none'
+                        }}
                       />
                     ) : (
                       c.avatarIcon
@@ -367,10 +400,10 @@ export const CompanionsPage: React.FC = () => {
                 </div>
 
                 <button
-                  className={`btn-3d ${isSelected ? 'btn-3d-green' : 'btn-3d-white'}`}
+                  className={`btn-3d ${isSelected ? 'btn-3d-green' : isLocked ? 'btn-3d-gold' : 'btn-3d-white'}`}
                   style={{ width: '100%', padding: '0.625rem', fontSize: '0.85rem' }}
                 >
-                  {isSelected ? 'Active Companion' : 'Select Companion'}
+                  {isSelected ? 'Active Companion' : isLocked ? `🔒 Unlock in Shop (${cost} XP)` : 'Select Companion'}
                 </button>
               </div>
             );

@@ -5,6 +5,7 @@ import { soundManager } from '../utils/sound';
 import { triggerConfetti } from '../utils/confetti';
 import { companionService } from '../services/companions';
 import { questService } from '../services/quests';
+import { xpService } from '../services/xp';
 import { PetAssistantChat } from '../components/learning_path/PetAssistantChat';
 import { SandboxSetupModal } from '../components/learning_path/SandboxSetupModal';
 import type { LearningPath, PathNode, PathNodeQuestion, LearningPathGenerateOptions } from '../types';
@@ -90,6 +91,7 @@ export const LearningPathPage: React.FC = () => {
     triggerConfetti();
     setOpenedChestIndex(chestIdx);
     setClaimedChests(prev => new Set(prev).add(chestIdx));
+    xpService.awardXp(50, 'Milestone Chest Unlocked');
   };
 
   const handleOpenNode = (node: PathNode) => {
@@ -169,10 +171,12 @@ export const LearningPathPage: React.FC = () => {
 
         const res = await api.completePathNode(path!.id, activeNode.id, payload);
         questService.recordProgress('learning_unit', 1);
+        const earned = res.xp_awarded + (comboStreak >= 3 ? 15 : 0);
+        xpService.awardXp(earned, `Mastered Unit: ${activeNode.title}`);
         setUnitResult({
           score: 100,
           passed: true,
-          xp: res.xp_awarded + (comboStreak >= 3 ? 15 : 0)
+          xp: earned
         });
         setPath(res.path);
         setLessonPhase('celebration');
@@ -218,10 +222,18 @@ export const LearningPathPage: React.FC = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div className="badge badge-xp" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}>
             ⚡ {progressPercent}% Completed
           </div>
+          <button
+            className="btn-3d btn-3d-white"
+            onClick={() => fetchPath({ force_regenerate: true, lesson_depth: 'standard' })}
+            title="Re-chunk path into granular 4-8 slide stepping stones"
+            style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
+          >
+            🔄 Re-chunk (4–8 Slides/Stone)
+          </button>
           <button
             className="btn-3d btn-3d-white"
             onClick={handleToggleSound}

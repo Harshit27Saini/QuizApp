@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { todoService, type TodoItem } from '../services/todos';
+import { soundManager } from '../utils/sound';
+import { triggerConfetti } from '../utils/confetti';
 import type { Collection } from '../types';
 
 export const DashboardPage: React.FC = () => {
@@ -8,6 +11,7 @@ export const DashboardPage: React.FC = () => {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [todos, setTodos] = useState<TodoItem[]>(todoService.getTodos());
 
   // New collection modal state
   const [showModal, setShowModal] = useState(false);
@@ -29,7 +33,20 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchCollections();
+    const handleTodos = () => setTodos(todoService.getTodos());
+    window.addEventListener('recall:todos-changed', handleTodos);
+    return () => window.removeEventListener('recall:todos-changed', handleTodos);
   }, []);
+
+  const handleToggleTodo = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const { todo } = todoService.toggleTodo(id);
+    setTodos(todoService.getTodos());
+    if (todo.completed) {
+      soundManager.playCorrect();
+      triggerConfetti();
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +111,68 @@ export const DashboardPage: React.FC = () => {
         >
           🥱 "I don't feel like studying"
         </button>
+      </div>
+
+      {/* Mini Study To-Do & Momentum Card */}
+      <div className="card" style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '1.25rem' }}>📝</span>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 900, margin: 0 }}>Today's Study Checklist</h2>
+            <span className="badge badge-xp" style={{ fontSize: '0.7rem' }}>+XP REWARDS</span>
+          </div>
+          <Link to="/todos" style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-blue)' }}>
+            Full Queue ({todos.filter(t => !t.completed).length} pending) →
+          </Link>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          {todos.slice(0, 3).map(todo => (
+            <div
+              key={todo.id}
+              onClick={(e) => handleToggleTodo(todo.id, e)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.625rem 0.875rem',
+                borderRadius: 'var(--radius-md)',
+                background: todo.completed ? 'rgba(88, 204, 2, 0.08)' : 'var(--color-bg)',
+                border: `1.5px solid ${todo.completed ? 'var(--color-green)' : 'var(--color-border)'}`,
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '6px',
+                  border: `2px solid ${todo.completed ? 'var(--color-green)' : 'var(--color-border)'}`,
+                  background: todo.completed ? 'var(--color-green)' : '#ffffff',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.8rem',
+                  fontWeight: 900
+                }}>
+                  {todo.completed ? '✓' : ''}
+                </div>
+                <span style={{
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  color: todo.completed ? 'var(--color-text-muted)' : 'var(--color-text-main)',
+                  textDecoration: todo.completed ? 'line-through' : 'none'
+                }}>
+                  {todo.title}
+                </span>
+              </div>
+              <span className="badge badge-xp" style={{ fontSize: '0.7rem' }}>
+                +{todo.xpReward} XP
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {loading ? (

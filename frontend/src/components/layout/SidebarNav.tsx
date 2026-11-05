@@ -7,6 +7,8 @@ export const SidebarNav: React.FC = () => {
 
   const navItems = [
     { to: '/', label: 'Learn', icon: '🗺️' },
+    { to: '/todos', label: 'To-Do', icon: '📝', badge: 'XP' },
+    { to: '/shop', label: 'Shop', icon: '🛒', badge: 'NEW' },
     { to: '/just-start', label: 'Just Start', icon: '🛋️', badge: '5 MIN' },
     { to: '/history', label: 'History', icon: '⚡' },
     { to: '/companions', label: 'Companions', icon: '🐾', badge: 'VIP' },

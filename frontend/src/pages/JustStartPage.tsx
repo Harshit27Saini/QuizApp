@@ -5,6 +5,7 @@ import { companionService } from '../services/companions';
 import { soundManager } from '../utils/sound';
 import { triggerConfetti } from '../utils/confetti';
 import { questService } from '../services/quests';
+import { xpService } from '../services/xp';
 
 interface MicroTask {
   type: 'flashcard' | 'reading' | 'breather';
@@ -197,6 +198,7 @@ export const JustStartPage: React.FC = () => {
     soundManager.playVictory();
     triggerConfetti();
     questService.recordProgress('read_pages', 1);
+    xpService.awardXp(20, 'Just Start 5-Minute Session Completed');
     setShowFinished(true);
   };
 

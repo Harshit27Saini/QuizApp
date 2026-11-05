@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { companionService } from '../../services/companions';
 import { questService, type DailyQuestState } from '../../services/quests';
+import { xpService } from '../../services/xp';
 import { soundManager } from '../../utils/sound';
 import { triggerConfetti } from '../../utils/confetti';
 
@@ -9,10 +10,18 @@ export const RightWidgetSidebar: React.FC = () => {
   const companion = companionService.getActiveCompanion();
   const [cheer, setCheer] = useState<string>('');
   const [questState, setQuestState] = useState<DailyQuestState>(questService.getState());
+  const [xpBalance, setXpBalance] = useState<number>(xpService.getBalance());
 
   useEffect(() => {
     setCheer(companionService.getRandomCheer());
     setQuestState(questService.getState());
+    setXpBalance(xpService.getBalance());
+
+    const handleXpChanged = () => {
+      setXpBalance(xpService.getBalance());
+    };
+    window.addEventListener('recall:xp-changed', handleXpChanged);
+    return () => window.removeEventListener('recall:xp-changed', handleXpChanged);
   }, [companion.id]);
 
   const handleClaimQuest = () => {
@@ -20,8 +29,8 @@ export const RightWidgetSidebar: React.FC = () => {
     if (res) {
       soundManager.playVictory();
       triggerConfetti();
+      xpService.awardXp(res.xp, 'Daily Quest Chest Claimed');
       setQuestState(questService.getState());
-      alert(`🎉 Claimed Daily Chest! +${res.xp} XP & Streak Freeze shield activated!`);
     }
   };
 
@@ -39,6 +48,31 @@ export const RightWidgetSidebar: React.FC = () => {
 
   return (
     <aside className="sidebar-right">
+      {/* 0. XP Wallet Balance & Shop Link */}
+      <div className="card" style={{
+        padding: '0.875rem 1.125rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'linear-gradient(135deg, rgba(255, 200, 0, 0.15), rgba(255, 150, 0, 0.08))',
+        border: '2px solid var(--color-gold)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <span style={{ fontSize: '1.5rem' }}>⚡</span>
+          <div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--color-gold-dark)', lineHeight: 1.1 }}>
+              {xpBalance} XP
+            </div>
+            <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+              Spendable Balance
+            </div>
+          </div>
+        </div>
+        <Link to="/shop" className="btn-3d btn-3d-gold" style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}>
+          🛒 Shop
+        </Link>
+      </div>
+
       {/* 1. Daily Streak & Freeze Protection Card */}
       <div className="card" style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
