@@ -4,6 +4,7 @@ import { RightWidgetSidebar } from './RightWidgetSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { FeedbackModal } from '../common/FeedbackModal';
 import { AuthModal } from '../auth/AuthModal';
+import { LoginPage } from '../../pages/LoginPage';
 import { themeService, type ThemeMode } from '../../services/theme';
 import { xpService } from '../../services/xp';
 import { questService } from '../../services/quests';
@@ -22,6 +23,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [hasToken, setHasToken] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return Boolean(localStorage.getItem('recall_auth_token'));
+  });
+  const [guestBypass, setGuestBypass] = useState<boolean>(false);
   const [authUser, setAuthUser] = useState<any>(() => {
     try {
       return JSON.parse(localStorage.getItem('recall_user_profile') || 'null');
@@ -43,6 +49,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     };
     const handleAuthChanged = (e: any) => {
       setAuthUser(e.detail || null);
+      setHasToken(Boolean(localStorage.getItem('recall_auth_token')));
     };
 
     window.addEventListener('recall:theme-changed', handleThemeChanged);
@@ -63,6 +70,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       localStorage.removeItem('recall_auth_token');
       localStorage.removeItem('recall_user_profile');
       setAuthUser(null);
+      setHasToken(false);
+      setGuestBypass(false);
       window.dispatchEvent(new CustomEvent('recall:auth-changed', { detail: null }));
     }
   };
@@ -83,6 +92,19 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     const next = themeService.toggleTheme();
     setTheme(next);
   };
+
+  // Immediate Login Gate: Prompt unauthenticated visitors as soon as they open the site
+  if (!hasToken && !guestBypass) {
+    return (
+      <LoginPage
+        onSuccess={(user) => {
+          setAuthUser(user);
+          setHasToken(true);
+        }}
+        onContinueAsGuest={() => setGuestBypass(true)}
+      />
+    );
+  }
 
   return (
     <div className="app-layout-3col">

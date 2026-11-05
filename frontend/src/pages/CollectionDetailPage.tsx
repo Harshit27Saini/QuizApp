@@ -52,14 +52,36 @@ export const CollectionDetailPage: React.FC = () => {
     }
   };
 
+  const handleDeleteCollection = async () => {
+    if (!collectionId || !collection) return;
+    if (window.confirm(`Are you sure you want to delete "${collection.title}" and all its documents?`)) {
+      try {
+        await api.deleteCollection(collectionId);
+        navigate('/');
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete collection');
+      }
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Breadcrumb & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <Link to="/" style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-            ← Back to Collections
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Link to="/" style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+              ← Back to Collections
+            </Link>
+            <button
+              onClick={handleDeleteCollection}
+              className="btn-3d btn-3d-white"
+              style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: 'var(--color-red)' }}
+              title="Delete this collection"
+            >
+              🗑️ Delete Collection
+            </button>
+          </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>
             {collection?.title || 'Collection'}
           </h1>

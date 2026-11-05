@@ -66,6 +66,20 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  const handleDeleteCollection = async (id: string, title: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete the collection "${title}" and all its documents?`)) {
+      try {
+        await api.deleteCollection(id);
+        soundManager.playCorrect();
+        fetchCollections();
+      } catch (err: any) {
+        alert(err.message || 'Failed to delete collection');
+      }
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -204,9 +218,19 @@ export const DashboardPage: React.FC = () => {
             <Link key={c.id} to={`/collections/${c.id}`} style={{ textDecoration: 'none' }}>
               <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '1.25rem' }}>📁</span>
-                    <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text-main)' }}>{c.title}</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.25rem' }}>📁</span>
+                      <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text-main)' }}>{c.title}</h2>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteCollection(c.id, c.title, e)}
+                      className="btn-3d btn-3d-white"
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: 'var(--color-error)' }}
+                      title="Delete Collection"
+                    >
+                      🗑️
+                    </button>
                   </div>
                   {c.description && (
                     <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', lineHeight: 1.4 }}>
