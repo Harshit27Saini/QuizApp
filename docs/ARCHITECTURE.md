@@ -38,10 +38,10 @@ Recall is designed as a **Modular Monolith** with a decoupled single-page applic
 
 ### Frontend (`frontend/`)
 - **Technology:** React 18, TypeScript, Vite.
-- **Layout:** Production 3-Column Duolingo Architecture:
-  - **Left Sidebar:** Sticky navigation (Learn, History, Companions) with 3D pressable tabs.
+- **Layout:** Production 3-Column Duolingo Architecture with Adaptive Mobile/Tablet Modes:
+  - **Left Sidebar:** Sticky navigation (Learn, History, Companions, Bug Inbox) on desktop; transitions to `MobileBottomNav` on mobile (`<= 768px`).
   - **Center Feed:** Serpentine 3D stepping stone quest path, substantive study stage, and practice runner.
-  - **Right Sidebar:** Sticky Daily Streak flame, circular SVG Daily Goal XP ring, and Active Companion showcase.
+  - **Right Sidebar & Mobile Drawer:** Sticky Daily Streak flame, circular SVG Daily Goal XP ring, and Active Companion showcase on desktop; opens as a slide-up drawer on mobile/tablets (`< 1180px`).
 - **Visual Design System:** Duolingo-grade tactile 3D buttons (`btn-3d`, depressing on active state with bottom border depth), `#58cc02` emerald, `#1cb0f6` cobalt, `#ffc800` gold, `#ff4b4b` coral.
 - **Companions & Particle FX:** VIP Girlfriend Nandhini & Founder cheerleaders, the 5 Pet study squad (Sydney, Connie, Milo, Scooby, Bunny), and zero-dependency HTML5 canvas confetti explosions.
 - **Routing:** React Router v6.

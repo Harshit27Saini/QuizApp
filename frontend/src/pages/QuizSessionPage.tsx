@@ -352,11 +352,12 @@ export const QuizSessionPage: React.FC = () => {
       </div>
 
       {/* Navigation Footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <button
           className="btn-3d btn-3d-white"
           onClick={handlePrev}
           disabled={currentIndex === 0 || submitting}
+          style={{ flex: '1 1 auto', fontSize: '0.85rem', padding: '0.6rem 1rem' }}
         >
           ← Previous
         </button>
@@ -366,6 +367,7 @@ export const QuizSessionPage: React.FC = () => {
             className="btn-3d btn-3d-green"
             onClick={handleSubmit}
             disabled={submitting}
+            style={{ flex: '2 1 auto', fontSize: '0.85rem', padding: '0.6rem 1rem' }}
           >
             {submitting ? 'Grading answers...' : 'Complete & Submit Exam ✓'}
           </button>
@@ -374,6 +376,7 @@ export const QuizSessionPage: React.FC = () => {
             className="btn-3d btn-3d-blue"
             onClick={handleNext}
             disabled={submitting}
+            style={{ flex: '2 1 auto', fontSize: '0.85rem', padding: '0.6rem 1rem' }}
           >
             Next Question →
           </button>

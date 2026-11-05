@@ -89,7 +89,7 @@ button {
 }
 
 @media (max-width: 1180px) {
-  .sidebar-right {
+  .app-layout-3col > .sidebar-right {
     display: none;
   }
 }
@@ -99,7 +99,167 @@ button {
     display: none;
   }
   .main-feed {
-    padding: 1rem;
+    padding: 1rem 0.875rem;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* -------------------------------------------------------------------------
+   MOBILE BOTTOM NAVIGATION & DRAWERS
+   ------------------------------------------------------------------------- */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--color-surface);
+    border-top: 2px solid var(--color-border);
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    color: var(--color-text-muted);
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    gap: 3px;
+    transition: all var(--transition-fast);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-nav-item.active {
+    color: var(--color-blue-dark);
+  }
+
+  .mobile-nav-icon {
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
+  .mobile-nav-item.active .mobile-nav-icon {
+    transform: scale(1.1);
+  }
+}
+
+/* Slide-Up Bottom Drawers & Mobile Study Center */
+.mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 1100;
+  display: flex;
+  justifyContent: center;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+.mobile-drawer-sheet {
+  background: var(--color-surface);
+  border-top: 2px solid var(--color-border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem 1.25rem 2rem 1.25rem;
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-drawer-handle {
+  width: 40px;
+  height: 5px;
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+  margin: 0 auto 1rem auto;
+}
+
+.mobile-study-drawer {
+  background: var(--color-surface);
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.mobile-study-drawer .sidebar-right {
+  display: flex !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  height: auto !important;
+  position: static !important;
+  border-left: none !important;
+  padding: 1.25rem !important;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .top-app-bar {
+    gap: 0.5rem !important;
+    margin-bottom: 1rem !important;
+  }
+  .study-workspace-label {
+    display: none !important;
+  }
+  .top-app-bar button,
+  .top-app-bar .stat-pill {
+    padding: 0.35rem 0.55rem !important;
+    font-size: 0.75rem !important;
+  }
+  .chevron-toggle {
+    display: none !important;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   RESPONSIVE DOCUMENT READER GRID
+   ------------------------------------------------------------------------- */
+.reader-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  width: 100%;
+}
+
+.reader-grid.split-mode {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 900px) {
+  .reader-grid,
+  .reader-grid.split-mode {
+    grid-template-columns: 1fr !important;
   }
 }
 

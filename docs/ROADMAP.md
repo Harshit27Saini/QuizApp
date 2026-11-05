@@ -96,6 +96,11 @@
 - [x] 4–8 Slides/Stepping Stone Re-chunker:
   - Automated detection and banner for older 5-node paths
   - 1-click re-chunk action yielding ~22 granular stones for 129 slides with milestone chests
+- [x] Full Mobile & Tablet Responsiveness:
+  - Fixed mobile bottom navigation (`MobileBottomNav`) with safe-area insets
+  - Slide-over mobile drawer for Study Center (streaks, quests, cheerleader) on screens `< 1180px`
+  - Dynamic serpentine stepping stone scaling and centered companion callouts for 360px phones
+  - Single-column adaptive document reader and fluid card grids
 - [ ] OCR integration (Tesseract / EasyOCR) for scanned PDFs and handwritten notes
 - [ ] Additional question formats:
   - Fill in the blanks

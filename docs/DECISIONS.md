@@ -106,5 +106,19 @@
   4. 4–8 Slides Re-chunking: Provide an explicit `🔄 Re-chunk` action on learning paths to upgrade existing cached paths to the 22+ granular stepping stones standard.
 - **Consequences:** Safe, seamless playtesting with real friends; immediate founder feedback loop; zero vendor lock-in.
 
+---
+
+## ADR 012: Responsive Mobile & Tablet Architecture
+- **Date:** 2026-11-06
+- **Status:** Accepted
+- **Context:** Playtesters study from smartphones (iPhone, Android) and tablets (iPad portrait & landscape). Desktop 3-column layouts without mobile navigation leave mobile learners unable to browse pages, view daily quests, or fit learning paths on 360px screens.
+- **Decision:**
+  1. Mobile Bottom Navigation: Implement `MobileBottomNav` fixed at the viewport bottom with safe-area insets (`env(safe-area-inset-bottom)`), providing 1-tap navigation across Learn, Backpack, Leagues, To-Do, and a slide-up "More" drawer.
+  2. Slide-Over Study Center: On screens `< 1180px`, clicking the top stat pill opens the Study Center (streaks, quests, cheerleader) in an animated slide-up drawer rather than being hidden.
+  3. Dynamic Serpentine Path Scaling: Reduce path lateral offsets on `<= 640px` viewports (`[0, 18, 0, -18]` vs `[0, 60, 0, -60]`) and center companion callouts above the node to eliminate horizontal scrolling.
+  4. Responsive Reader & Cards Grid: Collapse split-screen reader to 1-column on `< 900px` and set card auto-fit minimums to 250px-260px.
+- **Consequences:** Flawless experience on every device size from 320px phones to large desktop monitors.
+
+
 
 

@@ -77,7 +77,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       <div className="card" style={{
         maxWidth: '440px',
         width: '100%',
-        padding: '2rem',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        padding: '1.75rem 1.5rem',
         display: 'flex',
         flexDirection: 'column',
         gap: '1.25rem',
@@ -276,3 +279,4 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     </div>
   );
 };
+

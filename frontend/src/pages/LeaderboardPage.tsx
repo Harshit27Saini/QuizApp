@@ -274,7 +274,7 @@ export const LeaderboardPage: React.FC = () => {
       {/* Top Podium (Top 3) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
         gap: '1rem',
         alignItems: 'flex-end'
       }}>

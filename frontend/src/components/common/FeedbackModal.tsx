@@ -66,7 +66,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
       <div className="card" style={{
         maxWidth: '460px',
         width: '100%',
-        padding: '1.75rem',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        padding: '1.5rem',
         display: 'flex',
         flexDirection: 'column',
         gap: '1.25rem',

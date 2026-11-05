@@ -48,3 +48,4 @@ async def resolve_feedback(
     """Marks a bug report as resolved / deleted."""
     await db.delete_feedback(feedback_id)
     return {"success": True}
+

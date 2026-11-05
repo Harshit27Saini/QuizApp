@@ -19,6 +19,7 @@ export const LearningPathPage: React.FC = () => {
 
   // Sound state
   const [isMuted, setIsMuted] = useState(soundManager.isMuted);
+  const [isMobile, setIsMobile] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth <= 640);
 
   // Active Companion Cheerleader
   const activeCompanion = companionService.getActiveCompanion();
@@ -67,6 +68,12 @@ export const LearningPathPage: React.FC = () => {
   useEffect(() => {
     fetchPath();
     setCheerQuote(companionService.getRandomCheer());
+
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [documentId]);
 
   useEffect(() => {
@@ -262,7 +269,7 @@ export const LearningPathPage: React.FC = () => {
         </div>
       ) : path && path.nodes ? (
         /* Serpentine 3D Path of Diverse Nodes & Chests */
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0', gap: '3rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0', gap: '3rem', width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
           {/* Re-chunk callout for legacy short paths */}
           {path.nodes.length <= 6 && (
             <div className="card" style={{
@@ -296,7 +303,7 @@ export const LearningPathPage: React.FC = () => {
           )}
 
           {path.nodes.map((node, index) => {
-            const offsets = [0, 60, 0, -60];
+            const offsets = isMobile ? [0, 18, 0, -18] : [0, 60, 0, -60];
             const xOffset = offsets[index % offsets.length];
 
             const isCurrent = !node.is_locked && !node.is_completed;
@@ -340,16 +347,17 @@ export const LearningPathPage: React.FC = () => {
                     position: 'relative'
                   }}
                 >
-                  {/* Floating Companion Cheerleader standing beside the current node */}
+                  {/* Floating Companion Cheerleader standing beside or above current node */}
                   {isCurrent && (
                     <div style={{
                       position: 'absolute',
-                      left: xOffset >= 0 ? '-140px' : '96px',
-                      top: '-10px',
+                      left: isMobile ? '50%' : (xOffset >= 0 ? '-140px' : '96px'),
+                      top: isMobile ? '-96px' : '-10px',
+                      transform: isMobile ? 'translateX(-50%)' : 'none',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      width: '130px',
+                      width: isMobile ? '150px' : '130px',
                       zIndex: 10
                     }}>
                       <div style={{

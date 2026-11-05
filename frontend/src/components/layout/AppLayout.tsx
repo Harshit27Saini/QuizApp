@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SidebarNav } from './SidebarNav';
 import { RightWidgetSidebar } from './RightWidgetSidebar';
+import { MobileBottomNav } from './MobileBottomNav';
 import { FeedbackModal } from '../common/FeedbackModal';
 import { AuthModal } from '../auth/AuthModal';
 import { themeService, type ThemeMode } from '../../services/theme';
@@ -18,6 +19,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('recall_sidebar_collapsed') === 'true';
   });
+  const [showMobileDrawer, setShowMobileDrawer] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authUser, setAuthUser] = useState<any>(() => {
@@ -66,11 +68,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   };
 
   const toggleSidebar = () => {
-    setIsSidebarCollapsed(prev => {
-      const next = !prev;
-      localStorage.setItem('recall_sidebar_collapsed', String(next));
-      return next;
-    });
+    if (typeof window !== 'undefined' && window.innerWidth < 1180) {
+      setShowMobileDrawer(prev => !prev);
+    } else {
+      setIsSidebarCollapsed(prev => {
+        const next = !prev;
+        localStorage.setItem('recall_sidebar_collapsed', String(next));
+        return next;
+      });
+    }
   };
 
   const handleToggleTheme = () => {
@@ -86,7 +92,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       {/* Column 2: Center Main Feed with Top Utility Header */}
       <main className={`main-feed ${isSidebarCollapsed ? 'expanded-view' : ''}`}>
         {/* Top Floating App Bar */}
-        <div style={{
+        <div className="top-app-bar" style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -98,7 +104,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         }}>
           {/* Quick Breadcrumbs / Title Space */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-subtle)', letterSpacing: '0.5px' }}>
+            <span className="study-workspace-label" style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-subtle)', letterSpacing: '0.5px' }}>
               Study Workspace
             </span>
           </div>
@@ -108,7 +114,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             {/* Stat Pill (Dropdown / Sidebar Toggle) */}
             <button
               onClick={toggleSidebar}
-              className="btn-3d btn-3d-white"
+              className="btn-3d btn-3d-white stat-pill"
               style={{
                 fontSize: '0.8rem',
                 padding: '0.4rem 0.75rem',
@@ -177,7 +183,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             {/* Toggle Sidebar Chevron Button */}
             <button
               onClick={toggleSidebar}
-              className="btn-3d btn-3d-white"
+              className="btn-3d btn-3d-white chevron-toggle"
               style={{ fontSize: '0.8rem', padding: '0.4rem 0.65rem' }}
               title={isSidebarCollapsed ? 'Expand Study Center' : 'Collapse Study Center'}
             >
@@ -190,10 +196,33 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         {children}
       </main>
 
-      {/* Column 3: Right Widget & Companion Sidebar (Tucked away when collapsed) */}
+      {/* Column 3: Right Widget & Companion Sidebar (Desktop >= 1180px) */}
       {!isSidebarCollapsed && (
         <RightWidgetSidebar onClose={toggleSidebar} />
       )}
+
+      {/* Mobile Slide-Over Study Center Drawer (< 1180px) */}
+      {showMobileDrawer && (
+        <div
+          className="mobile-drawer-backdrop"
+          onClick={() => setShowMobileDrawer(false)}
+        >
+          <div
+            className="mobile-study-drawer"
+            onClick={e => e.stopPropagation()}
+          >
+            <RightWidgetSidebar onClose={() => setShowMobileDrawer(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Navigation Bar (Fixed for phones & small tablets <= 768px) */}
+      <MobileBottomNav
+        onOpenFeedback={() => setShowFeedback(true)}
+        onOpenAuth={() => setShowAuthModal(true)}
+        authUser={authUser}
+        onLogout={handleLogout}
+      />
 
       {/* Playtester Feedback Modal */}
       <FeedbackModal

@@ -12,6 +12,7 @@ Inspired by Duolingo's bite-sized progression, XP indicators, and immediate feed
 - **Granular 4–8 Slides/Stone Learning Paths:** Transforms 129-slide decks into 16–25+ bite-sized stepping stones (4–8 slides per stone) with substantive theory, practice quizzes, and periodic milestone chests.
 - **Study To-Do Queue & Action Plan:** Micro-task study checklist that auto-chunks long slide decks into manageable daily tasks with +10 to +25 XP rewards.
 - **Centralized XP Economy & Cheerleader Shop:** Earn spendable XP coins through study milestones, to-do completion, and quizzes to unlock companions (Sydney, Connie, Milo, Scooby, Bunny, Duo Owl, Archimedes) and streak freeze power-ups.
+- **Mobile & Tablet Optimized:** Native Duolingo-style bottom navigation bar, safe-area inset support, slide-up study center drawers, and responsive serpentine paths designed for iPhones, Android, and iPads.
 - **Backpack Inventory & Auto-Armed Streak Freeze:** Dedicated `/inventory` page managing held shields, 30-minute 2X XP boosters, and cheerleaders. Missed study days are auto-protected by held Streak Freezes.
 - **Weekly Leagues & Social Leaderboards:** Compete in the weekly Gold League (`/leaderboard`), filter by friends, send friend requests, copy your shareable playtest handle, and exchange +5 XP High-Five cheers.
 - **Collapsible Study Center & Midnight Dark Mode:** One-click dark mode toggle (🌙 / ☀️), interactive daily quests with 1-click jump shortcuts, and a collapsible right sidebar that expands the center reading feed up to 1080px.

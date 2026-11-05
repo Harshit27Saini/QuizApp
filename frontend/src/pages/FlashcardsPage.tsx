@@ -493,24 +493,27 @@ export const FlashcardsPage: React.FC = () => {
             </div>
           ) : (
             /* Navigation Controls when un-flipped */
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <button
                 className="btn-3d btn-3d-white"
                 onClick={handlePrev}
                 disabled={currentIndex === 0}
+                style={{ flex: '1 1 auto', fontSize: '0.8rem', padding: '0.5rem' }}
               >
-                ← Previous
+                ← Prev
               </button>
               <button
                 className="btn-3d btn-3d-blue"
                 onClick={handleFlip}
+                style={{ flex: '2 1 auto', fontSize: '0.85rem', padding: '0.5rem 0.75rem' }}
               >
-                Flip to Review Answer ↺
+                Flip ↺
               </button>
               <button
                 className="btn-3d btn-3d-white"
                 onClick={handleNext}
                 disabled={currentIndex === totalCards - 1}
+                style={{ flex: '1 1 auto', fontSize: '0.8rem', padding: '0.5rem' }}
               >
                 Next →
               </button>

@@ -432,9 +432,7 @@ export const DocumentPreviewPage: React.FC = () => {
         </div>
       ) : (
         /* Interactive Study Reader (Full width or Split View) */
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: viewMode === 'split' ? '1fr 1fr' : '280px 1fr',
+        <div className={`reader-grid ${viewMode === 'split' ? 'split-mode' : ''}`} style={{
           gap: '1.25rem',
           alignItems: 'start'
         }}>
