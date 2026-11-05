@@ -122,7 +122,22 @@ export const CollectionDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Upload Dropzone */}
+      {!collection && !loading && error ? (
+        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📁</div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem' }}>Collection Unavailable</h2>
+          <p style={{ color: 'var(--color-text-muted)', maxWidth: '440px', margin: '0 auto 1.5rem auto', fontSize: '0.925rem' }}>
+            {error.includes('not found')
+              ? 'This collection may have been created in a previous session or was reset during a server deploy. Head back to your dashboard to create or open an active collection.'
+              : error}
+          </p>
+          <button className="btn-3d btn-3d-green" onClick={() => navigate('/')}>
+            ← Back to Collections Dashboard
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Upload Dropzone */}
       <div
         className="card"
         style={{
@@ -231,6 +246,8 @@ export const CollectionDetailPage: React.FC = () => {
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 };

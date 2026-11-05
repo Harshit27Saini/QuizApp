@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.core.config import settings
 
-# Global in-memory storage instance for offline dev & test suite
+import json
+
+# Global in-memory storage instance for offline dev & test suite (with local disk persistence)
 class InMemoryDB:
     def __init__(self):
         self.profiles: Dict[str, Dict[str, Any]] = {}
@@ -25,9 +27,57 @@ class InMemoryDB:
         self.telemetry_logs: Dict[str, Dict[str, Any]] = {}
         self.friend_requests: Dict[str, Dict[str, Any]] = {}
         self.friendships: List[Dict[str, Any]] = []
+        self._load_from_disk()
+
+    def _get_disk_path(self) -> str:
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        data_dir = os.path.join(base_dir, "uploads")
+        os.makedirs(data_dir, exist_ok=True)
+        return os.path.join(data_dir, "recall_local_state.json")
+
+    def _save_to_disk(self):
+        try:
+            path = self._get_disk_path()
+            data = {
+                "profiles": self.profiles,
+                "collections": self.collections,
+                "documents": self.documents,
+                "document_sections": self.document_sections,
+                "quizzes": self.quizzes,
+                "quiz_documents": self.quiz_documents,
+                "questions": self.questions,
+                "quiz_attempts": self.quiz_attempts,
+                "question_responses": self.question_responses,
+                "flashcard_decks": self.flashcard_decks,
+                "flashcards": self.flashcards,
+                "learning_paths": self.learning_paths,
+                "path_nodes": self.path_nodes,
+                "users": self.users,
+                "feedback": self.feedback,
+                "telemetry_logs": self.telemetry_logs,
+                "friend_requests": self.friend_requests,
+                "friendships": self.friendships,
+            }
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+        except Exception:
+            pass
+
+    def _load_from_disk(self):
+        try:
+            path = self._get_disk_path()
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                for key, val in data.items():
+                    if hasattr(self, key):
+                        setattr(self, key, val)
+        except Exception:
+            pass
 
     def now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat()
+
 
 
 memory_db = InMemoryDB()
@@ -87,6 +137,7 @@ class Repository:
             return item
 
         memory_db.collections[item["id"]] = item
+        memory_db._save_to_disk()
         return item
 
     async def list_collections(self, user_id: str) -> List[Dict[str, Any]]:
@@ -94,7 +145,7 @@ class Repository:
             docs = self.firestore.collection("collections").where("user_id", "==", user_id).stream()
             items = [d.to_dict() for d in docs]
             return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
-        return [c for c in memory_db.collections.values() if c["user_id"] == user_id]
+        return [c for c in memory_db.collections.values() if c["user_id"] == user_id or user_id == "00000000-0000-0000-0000-000000000001"]
 
     async def get_collection(self, collection_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         if self.firestore:
@@ -105,8 +156,14 @@ class Repository:
                     return data
             return None
         item = memory_db.collections.get(collection_id)
-        if item and item["user_id"] == user_id:
-            return item
+        if item:
+            if item.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
+                return item
+            # Auto-adopt guest collection if a visitor created it before logging in
+            if item.get("user_id", "").startswith("guest_") and not user_id.startswith("guest_"):
+                item["user_id"] = user_id
+                memory_db._save_to_disk()
+                return item
         return None
 
     async def delete_collection(self, collection_id: str, user_id: str) -> bool:
@@ -117,9 +174,12 @@ class Repository:
                 ref.delete()
                 return True
             return False
-        if collection_id in memory_db.collections and memory_db.collections[collection_id]["user_id"] == user_id:
-            del memory_db.collections[collection_id]
-            return True
+        if collection_id in memory_db.collections:
+            coll = memory_db.collections[collection_id]
+            if coll.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
+                del memory_db.collections[collection_id]
+                memory_db._save_to_disk()
+                return True
         return False
 
     # -------------------------------------------------------------------------
@@ -153,6 +213,7 @@ class Repository:
             self.firestore.collection("documents").document(doc["id"]).set(doc)
             return doc
         memory_db.documents[doc["id"]] = doc
+        memory_db._save_to_disk()
         return doc
 
     async def list_documents(self, collection_id: str, user_id: str) -> List[Dict[str, Any]]:
@@ -196,6 +257,8 @@ class Repository:
                 self.firestore.collection("document_sections").document(item["id"]).set(item)
             else:
                 memory_db.document_sections[item["id"]] = item
+        if not self.firestore:
+            memory_db._save_to_disk()
         return created
 
     async def get_document_sections(self, document_id: str) -> List[Dict[str, Any]]:
