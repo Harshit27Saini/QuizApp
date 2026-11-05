@@ -10,7 +10,7 @@ DEV_USER: Dict[str, Any] = {
     "id": "00000000-0000-0000-0000-000000000001",
     "email": "dev@recall.local",
     "display_name": "Recall Founder",
-    "xp": 250,
+    "xp": 0,
     "is_admin": True
 }
 
@@ -52,7 +52,7 @@ def create_access_token(
     user_id: str,
     email: str,
     display_name: str,
-    xp: int = 250,
+    xp: int = 0,
     is_admin: bool = False
 ) -> str:
     """Generates signed HS256 JWT access token valid for 30 days."""

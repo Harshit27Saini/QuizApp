@@ -134,6 +134,26 @@
   3. Non-Blocking Playtester Telemetry: Built client-side `telemetry` service capturing page views, quiz finishes, scale changes, and runtime exceptions (`window.onerror`, `unhandledrejection`). Data is persisted in `InMemoryDB` and Firestore, viewable with live filtering in the Founder Dev Portal.
 - **Consequences:** Complete privacy for developer tools, customizable readability for every learner, and instant visibility into runtime bugs experienced by testers.
 
+---
+
+## ADR 014: Barebone Starter State, Milo Cat Identity, Onboarding Tutorial, Live Social Leaderboard, and PDF Reader Temporary Deprecation
+- **Date:** 2026-11-06
+- **Status:** Accepted
+- **Context:** Playtesting feedback requested:
+  1. Milo was misconfigured as an indie dog instead of a white & black indie cat.
+  2. The streak counter and XP meters were seeded with mock values (5-day streak, 250 XP starter bonus), giving new testers a non-empty state instead of an authentic barebone progression experience from 0 XP and 0-day streak.
+  3. A new learner onboarding tutorial / interactive guide was needed to explain Recall's companion system, stepping stones, and streak mechanics.
+  4. The leaderboard contained hardcoded mock names (`Rohan Mehta`, `Alex Chen`, `Tanvi Deshmukh`).
+  5. The raw PDF iframe reader was clunky and buggy across various screen sizes and needed to be hidden until fully redesigned.
+- **Decision:**
+  1. Updated Milo's avatar, subtitle, and dialogue across `companions.ts` and `PetAssistantChat.tsx` as a White & Black Indie Cat (`🐱`).
+  2. Reset default starter state in `quests.ts`, `xp.ts`, and `todos.ts` to genuine barebone zero-baselines (0 XP, 0-day streak, 0 completed tasks), igniting dynamically upon first study activity.
+  3. Created `TutorialModal` (a 5-step gamified onboarding walkthrough) accessible automatically on first visit and on-demand via the `🎓 Tutorial` pill in desktop top bar and mobile drawer.
+  4. Removed hardcoded mock friends and rival entries; connected the leaderboard directly to real registered platform users (`GET /api/v1/friends/leaderboard`).
+  5. Temporarily deprecated the raw PDF reader/split-screen embed in favor of a clean, structured text and section preview with direct links to Learning Paths, Quizzes, and Flashcards.
+- **Consequences:** Authentic progression loop from 0 XP, clear onboarding for new playtesters, accurate social rankings, and elimination of clunky PDF embed glitches.
+
+
 
 
 

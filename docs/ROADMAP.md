@@ -110,6 +110,15 @@
 - [x] Playtester Activity & Diagnostics Telemetry Stream:
   - Non-blocking telemetry service capturing page routes, quiz completions, and client errors
   - Real-time dev monitor in Dev Hub with user/event filters, error code blocks, and JSON export
+- [x] Interactive Onboarding Tutorial & Walkthrough Modal:
+  - 5-step gamified tutorial (`TutorialModal`) introducing Companions, Stepping Stones, Streaks, and Just Start
+  - Accessible on first visit and via `🎓 Tutorial` header/drawer buttons
+- [x] Barebone Starter State & Authentic Zero-XP Onboarding:
+  - Fresh learners start at 0 XP, 0-day streak, and clean task queues
+  - Milo companion corrected as White & Black Indie Cat (`🐱`)
+- [x] Real-User League Leaderboard (`/leaderboard`):
+  - Replaced hardcoded placeholder rivals with live registered database accounts
+- [x] Deprecation of Raw PDF Embeds in favor of structured text & section preview
 - [ ] OCR integration (Tesseract / EasyOCR) for scanned PDFs and handwritten notes
 - [ ] Additional question formats:
   - Fill in the blanks

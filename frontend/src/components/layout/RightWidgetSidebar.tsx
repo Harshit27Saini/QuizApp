@@ -153,11 +153,11 @@ export const RightWidgetSidebar: React.FC<RightWidgetSidebarProps> = ({ onClose 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '1.5rem' }}>🔥</span>
             <div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--color-orange-dark)' }}>
-                {questState.streakDays} Day Streak!
+              <div style={{ fontSize: '1.1rem', fontWeight: 900, color: questState.streakDays > 0 ? 'var(--color-orange-dark)' : 'var(--color-text-muted)' }}>
+                {questState.streakDays} Day Streak{questState.streakDays > 0 ? '!' : ''}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                Study today to extend it!
+                {questState.streakDays === 0 ? 'Complete 1 lesson to start your streak flame 🔥!' : 'Study today to extend it!'}
               </div>
             </div>
           </div>

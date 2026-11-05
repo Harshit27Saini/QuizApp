@@ -212,11 +212,11 @@ export const CollectionDetailPage: React.FC = () => {
                     🗺️ Learning Path
                   </Link>
                   <Link
-                    to={`/documents/${doc.id}/reader`}
+                    to={`/documents/${doc.id}/preview`}
                     className="btn-3d btn-3d-white"
                     style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
                   >
-                    📖 PDF Reader
+                    🔍 Text Preview
                   </Link>
                   <button
                     className="btn-3d btn-3d-blue"

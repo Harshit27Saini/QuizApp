@@ -114,7 +114,7 @@ async def login(payload: LoginRequest):
         user_id=user["id"],
         email=user["email"],
         display_name=user["display_name"],
-        xp=user.get("xp", 250),
+        xp=user.get("xp", 0),
         is_admin=is_admin
     )
 
@@ -124,8 +124,8 @@ async def login(payload: LoginRequest):
             "id": user["id"],
             "email": user["email"],
             "display_name": user["display_name"],
-            "xp": user.get("xp", 250),
-            "streak": user.get("streak", 1),
+            "xp": user.get("xp", 0),
+            "streak": user.get("streak", 0),
             "cheerleader": user.get("cheerleader", "founder"),
             "is_admin": is_admin
         }

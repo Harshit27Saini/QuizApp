@@ -24,10 +24,25 @@ export const LeaderboardPage: React.FC = () => {
   const userHandle = currentUser?.email || 'guest_playtester@recall.local';
 
   useEffect(() => {
-    const handleUpdate = () => {
-      setLeaderboard(friendService.getLeaderboard(filter));
-      setRequests(friendService.getIncomingRequests());
+    let isMounted = true;
+    const handleUpdate = async () => {
+      try {
+        if (filter === 'all') {
+          const apiEntries = await api.getSocialLeaderboard();
+          if (isMounted && Array.isArray(apiEntries) && apiEntries.length > 0) {
+            setLeaderboard(apiEntries);
+            setRequests(friendService.getIncomingRequests());
+            return;
+          }
+        }
+      } catch {}
+      if (isMounted) {
+        setLeaderboard(friendService.getLeaderboard(filter));
+        setRequests(friendService.getIncomingRequests());
+      }
     };
+
+    handleUpdate();
 
     window.addEventListener('recall:friends-changed', handleUpdate);
     window.addEventListener('recall:friend-requests-changed', handleUpdate);
@@ -35,6 +50,7 @@ export const LeaderboardPage: React.FC = () => {
     window.addEventListener('recall:auth-changed', handleUpdate);
 
     return () => {
+      isMounted = false;
       window.removeEventListener('recall:friends-changed', handleUpdate);
       window.removeEventListener('recall:friend-requests-changed', handleUpdate);
       window.removeEventListener('recall:xp-changed', handleUpdate);

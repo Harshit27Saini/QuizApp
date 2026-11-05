@@ -229,6 +229,8 @@ export const api = {
     request<{ success: boolean; xp_awarded: number }>(`/friends/${friendId}/cheer`, {
       method: 'POST',
     }),
+  getSocialLeaderboard: () =>
+    request<any[]>('/friends/leaderboard'),
 
   // Founder & Developer Access
   claimFounder: (passcode: string) =>

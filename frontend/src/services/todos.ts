@@ -17,11 +17,10 @@ const STORAGE_KEY = 'recall_study_todos';
 const INITIAL_TODOS: TodoItem[] = [
   {
     id: 'todo_1',
-    title: 'Study Slides 1–8: Foundations & Core Models',
+    title: 'Create or open your first Study Collection',
     category: 'slides',
     completed: false,
     xpReward: 10,
-    slideRange: 'Slides 1–8',
     createdAt: new Date().toISOString()
   },
   {
@@ -59,7 +58,13 @@ class TodoService {
         this.saveTodos(INITIAL_TODOS);
         return INITIAL_TODOS;
       }
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Clean up legacy example doc slide range reference
+      if (Array.isArray(parsed) && parsed.some(t => t.title?.includes('Slides 1–8'))) {
+        this.saveTodos(INITIAL_TODOS);
+        return INITIAL_TODOS;
+      }
+      return parsed;
     } catch {
       return INITIAL_TODOS;
     }

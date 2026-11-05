@@ -64,3 +64,4 @@ class UiScaleService {
 }
 
 export const uiScaleService = new UiScaleService();
+

@@ -95,38 +95,37 @@ async def cheer_friend(
 async def get_social_leaderboard(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Returns the weekly competitive league leaderboard including current user, friends, and peers."""
-    friends = await db.list_friends(current_user["id"], current_user["email"])
+    """Returns the weekly competitive league leaderboard with actual registered users and real scores."""
     all_users = await db.list_users()
+    current_uid = current_user.get("id")
+    current_email = current_user.get("email", "").strip().lower()
+
+    # Create a unified list of real accounts
+    user_dict = {u.get("id"): u for u in all_users}
+    if current_uid not in user_dict:
+        user_dict[current_uid] = current_user
 
     entries = []
-    # Current user
-    entries.append({
-        "user_id": current_user["id"],
-        "name": current_user.get("display_name", "You (Champion)"),
-        "email": current_user["email"],
-        "weekly_xp": current_user.get("xp", 250),
-        "streak": 5,
-        "cheerleader": "You (Champion)",
-        "is_current_user": True
-    })
+    for uid, u in user_dict.items():
+        is_curr = (uid == current_uid) or (u.get("email", "").strip().lower() == current_email)
+        entries.append({
+            "userId": uid,
+            "name": u.get("display_name") or u.get("email", "").split("@")[0] or "Playtester",
+            "email": u.get("email", ""),
+            "weeklyXp": u.get("xp", 0),
+            "weekly_xp": u.get("xp", 0),
+            "streak": u.get("streak", 0),
+            "cheerleader": u.get("cheerleader", "founder"),
+            "avatarIcon": "⚡" if is_curr else "👤",
+            "isCurrentUser": is_curr,
+            "is_current_user": is_curr
+        })
 
-    # Friends & registered peers
-    for u in all_users:
-        if u["id"] != current_user["id"]:
-            entries.append({
-                "user_id": u["id"],
-                "name": u.get("display_name", u["email"].split("@")[0]),
-                "email": u["email"],
-                "weekly_xp": u.get("xp", 300),
-                "streak": u.get("streak", 3),
-                "cheerleader": u.get("cheerleader", "Sydney"),
-                "is_current_user": False
-            })
-
-    # Sort descending by weekly XP
-    entries.sort(key=lambda x: x["weekly_xp"], reverse=True)
+    # Sort descending by XP
+    entries.sort(key=lambda x: x["weeklyXp"], reverse=True)
     for idx, e in enumerate(entries):
-        e["rank"] = idx + 1
+        rank = idx + 1
+        e["rank"] = rank
+        e["tier"] = "gold" if rank <= 3 else "silver" if rank <= 10 else "bronze"
 
     return entries

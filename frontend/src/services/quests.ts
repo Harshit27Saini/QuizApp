@@ -48,19 +48,30 @@ class QuestService {
 
   private getStreakInfo(): StreakStorage {
     if (typeof window === 'undefined') {
-      return { streakDays: 5, lastActiveDate: this.getTodayKey(), historyDates: [this.getTodayKey()], freezeUsedDates: [] };
+      return { streakDays: 0, lastActiveDate: '', historyDates: [], freezeUsedDates: [] };
     }
     const saved = localStorage.getItem(STREAK_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Clean legacy hardcoded 5-day mock for fresh playtest accuracy
+        if (parsed.streakDays === 5 && (!parsed.historyDates || parsed.historyDates.length <= 1)) {
+          const clean: StreakStorage = {
+            streakDays: 0,
+            lastActiveDate: '',
+            historyDates: [],
+            freezeUsedDates: []
+          };
+          localStorage.setItem(STREAK_KEY, JSON.stringify(clean));
+          return clean;
+        }
+        return parsed;
       } catch {}
     }
-    const today = this.getTodayKey();
     const initial: StreakStorage = {
-      streakDays: 5,
-      lastActiveDate: today,
-      historyDates: [today],
+      streakDays: 0,
+      lastActiveDate: '',
+      historyDates: [],
       freezeUsedDates: []
     };
     localStorage.setItem(STREAK_KEY, JSON.stringify(initial));
@@ -141,16 +152,16 @@ class QuestService {
       weekDays,
       quests: [
         {
-          id: 'read_pages',
-          title: 'Document Scholar',
-          description: 'Read and highlight at least 3 pages in the interactive PDF Study Reader.',
-          icon: '📖',
-          current: 1,
-          target: 3,
+          id: 'flashcard_review',
+          title: 'Memory Flashcards',
+          description: 'Review at least 5 concept flashcards in your active study collection.',
+          icon: '🃏',
+          current: 0,
+          target: 5,
           xpReward: 15,
           completed: false,
           jumpRoute: '/',
-          jumpLabel: '📖 Open Document Reader'
+          jumpLabel: '🃏 Review Flashcards'
         },
         {
           id: 'learning_unit',
@@ -192,6 +203,9 @@ class QuestService {
     let savedByFreeze = false;
 
     if (streakInfo.lastActiveDate === today) {
+      if (streakInfo.streakDays === 0) {
+        streakInfo.streakDays = 1;
+      }
       if (!streakInfo.historyDates.includes(today)) {
         streakInfo.historyDates.push(today);
         this.saveStreakInfo(streakInfo);
@@ -202,12 +216,14 @@ class QuestService {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     if (streakInfo.lastActiveDate === yesterday) {
       // Continued streak!
-      streakInfo.streakDays += 1;
+      streakInfo.streakDays = Math.max(1, streakInfo.streakDays + 1);
       streakInfo.lastActiveDate = today;
-      streakInfo.historyDates.push(today);
+      if (!streakInfo.historyDates.includes(today)) {
+        streakInfo.historyDates.push(today);
+      }
     } else {
-      // Missed yesterday! Check for Streak Freeze
-      if (xpService.hasStreakFreeze()) {
+      // Missed yesterday or fresh student! Check for Streak Freeze if active streak existed
+      if (streakInfo.streakDays > 0 && xpService.hasStreakFreeze()) {
         xpService.useStreakFreeze();
         streakInfo.freezeUsedDates.push(yesterday);
         streakInfo.streakDays += 1;
@@ -217,7 +233,9 @@ class QuestService {
       } else {
         streakInfo.streakDays = 1;
         streakInfo.lastActiveDate = today;
-        streakInfo.historyDates.push(today);
+        if (!streakInfo.historyDates.includes(today)) {
+          streakInfo.historyDates.push(today);
+        }
       }
     }
 

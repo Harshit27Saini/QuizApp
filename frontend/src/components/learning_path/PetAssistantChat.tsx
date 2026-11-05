@@ -27,10 +27,10 @@ const DEFAULT_PETS: PetProfile[] = [
   {
     id: 'milo',
     name: 'Milo',
-    breed: 'White & Black Indie Dog',
-    avatar: '🐕‍🦺',
-    tagline: 'Street-smart, practical & no-nonsense.',
-    style: 'Clever, direct, and focused on practical memory hacks.'
+    breed: 'White & Black Indie Cat',
+    avatar: '🐱',
+    tagline: 'Clever, observant & street-smart indie cat.',
+    style: 'Sharp, direct, and focused on practical memory hacks.'
   },
   {
     id: 'scooby',

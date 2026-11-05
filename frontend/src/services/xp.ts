@@ -18,23 +18,15 @@ export interface XpWallet {
 const STORAGE_KEY = 'recall_xp_wallet';
 
 const DEFAULT_WALLET: XpWallet = {
-  balance: 250, // Starting bonus so learners can try the cheerleader shop right away!
-  totalEarned: 250,
+  balance: 0,
+  totalEarned: 0,
   unlockedCompanions: ['founder'],
   inventory: {
-    streak_freeze: 1,
+    streak_freeze: 0,
     double_xp_potion: 0,
     concept_coffee: 0
   },
-  transactions: [
-    {
-      id: 'tx_init',
-      amount: 250,
-      type: 'earn',
-      reason: 'Welcome Starter Bonus 🎁',
-      timestamp: new Date().toISOString()
-    }
-  ]
+  transactions: []
 };
 
 class XpService {
@@ -47,6 +39,11 @@ class XpService {
         return DEFAULT_WALLET;
       }
       const parsed = JSON.parse(saved);
+      // Clean legacy starter mock data so tester starts on a fresh barebone state
+      if (parsed.balance === 250 && parsed.totalEarned === 250 && parsed.transactions?.length === 1 && parsed.transactions[0]?.id === 'tx_init') {
+        this.saveWallet(DEFAULT_WALLET);
+        return DEFAULT_WALLET;
+      }
       return {
         ...DEFAULT_WALLET,
         ...parsed,

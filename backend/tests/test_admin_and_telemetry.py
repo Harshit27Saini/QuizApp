@@ -95,3 +95,4 @@ def test_telemetry_flow(client):
     logs = allowed_res.json()
     assert isinstance(logs, list)
     assert any(l["event_type"] == "PAGE_VIEW" for l in logs)
+

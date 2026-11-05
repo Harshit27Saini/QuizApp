@@ -147,19 +147,19 @@ export const INITIAL_COMPANIONS: Companion[] = [
     id: 'milo',
     name: 'Milo',
     category: 'pet',
-    subtitle: 'White & Black Indie',
-    avatarIcon: '🐕‍🦺',
-    badgeText: 'STREET-SMART',
-    badgeColor: '#58cc02',
+    subtitle: 'White & Black Indie Cat',
+    avatarIcon: '🐱',
+    badgeText: 'CLEVER CAT',
+    badgeColor: '#10b981',
     unlockRequirement: {
       type: 'xp',
       cost: 300,
       label: 'Unlock for 300 XP'
     },
     cheerQuotes: [
-      "Street-smart trick: remember the practical feedback loop!",
-      "Don't overthink it! Keep moving and keep the streak alive!",
-      "Simple and clever wins the race every time!"
+      "Purrfect focus! Street-smart trick: remember the practical feedback loop!",
+      "A clever cat never rushes. Keep moving and keep the streak alive! 🐱",
+      "Stay curious and observant. Simple and clever wins every time!"
     ]
   },
   {

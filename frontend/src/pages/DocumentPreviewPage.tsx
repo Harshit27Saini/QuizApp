@@ -36,8 +36,6 @@ export const DocumentPreviewPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // View state: 'study' | 'split' | 'raw_pdf'
-  const [viewMode, setViewMode] = useState<'study' | 'split' | 'raw_pdf'>('study');
   const [activeTab, setActiveTab] = useState<'pages' | 'highlights' | 'companion'>('pages');
   const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
   const [searchQuery, setSearchQuery] = useState('');
@@ -292,8 +290,6 @@ export const DocumentPreviewPage: React.FC = () => {
     lg: { font: '1.15rem', line: '1.8' }
   };
 
-  const rawFileUrl = documentId ? api.getDocumentFileUrl(documentId) : '';
-
   // Readiness status per page
   const getPageReadiness = (p: number) => {
     const isRead = readPages.includes(p);
@@ -344,33 +340,8 @@ export const DocumentPreviewPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 3-Way Mode Switch: Interactive Study Reader | Split View | Original PDF */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'var(--color-bg)', padding: '0.25rem', borderRadius: 'var(--radius-lg)' }}>
-          <button
-            className={`btn-3d ${viewMode === 'study' ? 'btn-3d-blue' : 'btn-3d-white'}`}
-            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-            onClick={() => setViewMode('study')}
-          >
-            📖 Study Reader
-          </button>
-          <button
-            className={`btn-3d ${viewMode === 'split' ? 'btn-3d-blue' : 'btn-3d-white'}`}
-            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-            onClick={() => setViewMode('split')}
-          >
-            🔀 Split View
-          </button>
-          <button
-            className={`btn-3d ${viewMode === 'raw_pdf' ? 'btn-3d-blue' : 'btn-3d-white'}`}
-            style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-            onClick={() => setViewMode('raw_pdf')}
-          >
-            📄 Raw File
-          </button>
-        </div>
-
         {/* Action Journey Buttons */}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {document && (
             <>
               <Link
@@ -401,68 +372,15 @@ export const DocumentPreviewPage: React.FC = () => {
         <div className="card" style={{ borderLeft: '4px solid var(--color-error)' }}>
           <p style={{ color: 'var(--color-error-dark)', fontWeight: 600 }}>{error}</p>
         </div>
-      ) : viewMode === 'raw_pdf' ? (
-        /* Raw PDF / File Viewer Mode */
-        <div className="card" style={{ height: '78vh', padding: '0.5rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
-              Direct File Viewer • {document?.filename}
-            </span>
-            <a
-              href={rawFileUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-3d btn-3d-white"
-              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
-            >
-              ↗ Open in New Window
-            </a>
-          </div>
-          <iframe
-            src={rawFileUrl}
-            title={document?.filename || 'Document'}
-            style={{
-              width: '100%',
-              flex: 1,
-              border: 'none',
-              borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
-              background: '#2b2b2b'
-            }}
-          />
-        </div>
       ) : (
-        /* Interactive Study Reader (Full width or Split View) */
-        <div className={`reader-grid ${viewMode === 'split' ? 'split-mode' : ''}`} style={{
+        /* Document Content & Section Preview */
+        <div className="reader-grid" style={{
           gap: '1.25rem',
           alignItems: 'start'
         }}>
-          {/* Split Mode Left: Original File Embed */}
-          {viewMode === 'split' && (
-            <div className="card" style={{ height: '82vh', padding: '0.5rem', display: 'flex', flexDirection: 'column', position: 'sticky', top: '1rem' }}>
-              <div style={{ padding: '0.4rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>
-                  📄 Original Slide View
-                </span>
-                <a
-                  href={rawFileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ fontSize: '0.75rem', color: 'var(--color-blue)', fontWeight: 700 }}
-                >
-                  ↗ Fullscreen
-                </a>
-              </div>
-              <iframe
-                src={rawFileUrl}
-                title={document?.filename || 'Document'}
-                style={{ width: '100%', flex: 1, border: 'none', borderRadius: 'var(--radius-md)', background: '#222' }}
-              />
-            </div>
-          )}
 
-          {/* Left Rail (when in standard study mode) */}
-          {viewMode === 'study' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '1rem' }}>
+          {/* Left Rail */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '1rem' }}>
               {/* Sidebar Tabs */}
               <div style={{
                 display: 'flex',
@@ -695,7 +613,6 @@ export const DocumentPreviewPage: React.FC = () => {
                 </div>
               )}
             </div>
-          )}
 
           {/* Main Reading Center */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>

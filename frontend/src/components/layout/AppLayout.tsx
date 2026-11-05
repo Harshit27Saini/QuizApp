@@ -4,6 +4,7 @@ import { RightWidgetSidebar } from './RightWidgetSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { FeedbackModal } from '../common/FeedbackModal';
 import { AuthModal } from '../auth/AuthModal';
+import { TutorialModal } from '../common/TutorialModal';
 import { LoginPage } from '../../pages/LoginPage';
 import { themeService, type ThemeMode } from '../../services/theme';
 import { uiScaleService, type UiScale, SCALE_CONFIGS } from '../../services/uiScale';
@@ -24,6 +25,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [showMobileDrawer, setShowMobileDrawer] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showTutorial, setShowTutorial] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('recall_tutorial_seen') !== 'true';
+  });
   const [hasToken, setHasToken] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     return Boolean(localStorage.getItem('recall_auth_token'));
@@ -163,6 +168,16 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               </span>
             </button>
 
+            {/* Tutorial Walkthrough Guide */}
+            <button
+              onClick={() => setShowTutorial(true)}
+              className="btn-3d btn-3d-white"
+              style={{ fontSize: '0.8rem', padding: '0.4rem 0.65rem', fontWeight: 800 }}
+              title="How Recall Works — Quickstart Tutorial"
+            >
+              🎓 Tutorial
+            </button>
+
             {/* UI Scale / Display Size Toggle Button */}
             <button
               onClick={() => {
@@ -263,8 +278,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <MobileBottomNav
         onOpenFeedback={() => setShowFeedback(true)}
         onOpenAuth={() => setShowAuthModal(true)}
+        onOpenTutorial={() => setShowTutorial(true)}
         authUser={authUser}
         onLogout={handleLogout}
+      />
+
+      {/* Onboarding & Feature Walkthrough Tutorial Modal */}
+      <TutorialModal
+        isOpen={showTutorial}
+        onClose={() => setShowTutorial(false)}
       />
 
       {/* Playtester Feedback Modal */}

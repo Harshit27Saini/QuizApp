@@ -681,8 +681,8 @@ class Repository:
             "password_hash": password_hash,
             "salt": salt,
             "display_name": display_name.strip() or email.split("@")[0],
-            "xp": 250,
-            "streak": 1,
+            "xp": 0,
+            "streak": 0,
             "cheerleader": "founder",
             "created_at": memory_db.now_iso()
         }

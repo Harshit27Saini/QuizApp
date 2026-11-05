@@ -76,3 +76,4 @@ async def clear_telemetry_logs(
     """
     await db.clear_telemetry_logs()
     return {"success": True}
+

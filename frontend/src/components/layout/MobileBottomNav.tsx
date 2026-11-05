@@ -7,6 +7,7 @@ import { telemetry } from '../../services/telemetry';
 interface MobileBottomNavProps {
   onOpenFeedback: () => void;
   onOpenAuth: () => void;
+  onOpenTutorial: () => void;
   authUser: any;
   onLogout: () => void;
 }
@@ -14,6 +15,7 @@ interface MobileBottomNavProps {
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenFeedback,
   onOpenAuth,
+  onOpenTutorial,
   authUser,
   onLogout
 }) => {
@@ -262,25 +264,38 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               ))}
             </div>
 
-            {/* Quick Utility Actions (Bug report & Theme toggle) */}
-            <div style={{ display: 'flex', gap: '0.75rem', paddingTop: '0.5rem' }}>
+            {/* Quick Utility Actions (Tutorial, Bug report & Theme toggle) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingTop: '0.5rem' }}>
               <button
                 onClick={() => {
                   setShowMoreMenu(false);
-                  onOpenFeedback();
+                  onOpenTutorial();
                 }}
-                className="btn-3d btn-3d-white"
-                style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
+                className="btn-3d btn-3d-blue"
+                style={{ width: '100%', fontSize: '0.85rem', padding: '0.55rem' }}
               >
-                🐞 Report a Bug
+                🎓 Open Quickstart Tutorial
               </button>
-              <button
-                onClick={handleToggleTheme}
-                className="btn-3d btn-3d-white"
-                style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
-              >
-                {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
-              </button>
+
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={() => {
+                    setShowMoreMenu(false);
+                    onOpenFeedback();
+                  }}
+                  className="btn-3d btn-3d-white"
+                  style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
+                >
+                  🐞 Report a Bug
+                </button>
+                <button
+                  onClick={handleToggleTheme}
+                  className="btn-3d btn-3d-white"
+                  style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
+                >
+                  {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
