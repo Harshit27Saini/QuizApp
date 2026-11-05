@@ -58,6 +58,15 @@ Rather than acting as a conversational chatbot, Recall functions as a structured
 8. **Quiz History & Retry Loop:**
    - Review past quiz attempts and historical scores.
    - "Retry Incorrect Questions": 1-click generation of a remediation session containing only questions missed on a previous attempt.
+9. **Social Leaderboard, Gold Leagues & Multi-Device Playtesting:**
+   - Weekly Gold League with promotion/demotion countdowns, friends-only filters, and +5 XP high-five cheers.
+   - Multi-device friend requests via shareable email handles and pending requests drawer.
+10. **Playtester Bug Reporter & Founder Inbox (`/admin/feedback`):**
+   - In-app 🐞 reporter that automatically captures browser and page context.
+   - Dedicated founder triage inbox to resolve bugs, UX notes, and feature requests.
+11. **Granular 4–8 Slides/Stepping Stone Curriculum:**
+   - Chunks slide decks into 4–8 slides per stone with interactive milestone chests.
+   - Backward-compatible re-chunking action for existing paths.
 
 ---
 

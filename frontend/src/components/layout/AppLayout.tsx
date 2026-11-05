@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SidebarNav } from './SidebarNav';
 import { RightWidgetSidebar } from './RightWidgetSidebar';
 import { FeedbackModal } from '../common/FeedbackModal';
+import { AuthModal } from '../auth/AuthModal';
 import { themeService, type ThemeMode } from '../../services/theme';
 import { xpService } from '../../services/xp';
 import { questService } from '../../services/quests';
@@ -18,6 +19,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     return localStorage.getItem('recall_sidebar_collapsed') === 'true';
   });
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authUser, setAuthUser] = useState<any>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('recall_user_profile') || 'null');
+    } catch {
+      return null;
+    }
+  });
   const [xpBalance, setXpBalance] = useState<number>(xpService.getBalance());
   const [streakDays, setStreakDays] = useState<number>(questService.getState().streakDays);
   const activeCompanion = companionService.getActiveCompanion();
@@ -30,17 +39,31 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       setXpBalance(xpService.getBalance());
       setStreakDays(questService.getState().streakDays);
     };
+    const handleAuthChanged = (e: any) => {
+      setAuthUser(e.detail || null);
+    };
 
     window.addEventListener('recall:theme-changed', handleThemeChanged);
     window.addEventListener('recall:xp-changed', handleXpChanged);
     window.addEventListener('recall:streak-changed', handleXpChanged);
+    window.addEventListener('recall:auth-changed', handleAuthChanged);
 
     return () => {
       window.removeEventListener('recall:theme-changed', handleThemeChanged);
       window.removeEventListener('recall:xp-changed', handleXpChanged);
       window.removeEventListener('recall:streak-changed', handleXpChanged);
+      window.removeEventListener('recall:auth-changed', handleAuthChanged);
     };
   }, []);
+
+  const handleLogout = () => {
+    if (window.confirm('Log out of this playtest account?')) {
+      localStorage.removeItem('recall_auth_token');
+      localStorage.removeItem('recall_user_profile');
+      setAuthUser(null);
+      window.dispatchEvent(new CustomEvent('recall:auth-changed', { detail: null }));
+    }
+  };
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(prev => {
@@ -115,6 +138,32 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
 
+            {/* User Account / Sign In Pill */}
+            {authUser ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span className="badge badge-success" style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }} title={`Logged in as ${authUser.email}`}>
+                  👤 {authUser.display_name || authUser.email.split('@')[0]}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="btn-3d btn-3d-white"
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem' }}
+                  title="Log Out of Playtest Account"
+                >
+                  🚪
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="btn-3d btn-3d-blue"
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
+                title="Sign in or register to challenge friends"
+              >
+                👤 Sign In / Join
+              </button>
+            )}
+
             {/* Playtest Bug / Feedback Button */}
             <button
               onClick={() => setShowFeedback(true)}
@@ -150,6 +199,12 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <FeedbackModal
         isOpen={showFeedback}
         onClose={() => setShowFeedback(false)}
+      />
+
+      {/* Playtester Auth Sign-In / Join Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
       />
     </div>
   );

@@ -86,8 +86,16 @@
 - [x] System-Wide Midnight Dark Mode:
   - High-contrast Duolingo Midnight theme (`#0b0f19` bg, `#151d30` surface, `#26334d` border)
   - Persistent one-click 🌙 / ☀️ toggle in top bar
-- [x] Playtester Bug & Feedback Reporter:
-  - Floating/header 🐞 bug button with automatic page context capture for friend playtesting
+- [x] Playtester Bug Reporter & Founder Bug Inbox (`/admin/feedback`):
+  - Floating/header 🐞 bug button with automatic page context and client capture for playtesters
+  - Dedicated founder portal to review, filter by category (bug, idea, ux), and resolve feedback
+- [x] Multi-User Authentication & Friend Network:
+  - Multi-user signup and login dialog (`AuthModal`) with salted password hashing and JWT
+  - Shareable playtest handle/email copy button on `/leaderboard`
+  - Mutual friend request sending, acceptance, and high-five cheering (+5 XP)
+- [x] 4–8 Slides/Stepping Stone Re-chunker:
+  - Automated detection and banner for older 5-node paths
+  - 1-click re-chunk action yielding ~22 granular stones for 129 slides with milestone chests
 - [ ] OCR integration (Tesseract / EasyOCR) for scanned PDFs and handwritten notes
 - [ ] Additional question formats:
   - Fill in the blanks

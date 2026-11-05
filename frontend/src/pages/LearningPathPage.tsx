@@ -263,6 +263,38 @@ export const LearningPathPage: React.FC = () => {
       ) : path && path.nodes ? (
         /* Serpentine 3D Path of Diverse Nodes & Chests */
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0', gap: '3rem' }}>
+          {/* Re-chunk callout for legacy short paths */}
+          {path.nodes.length <= 6 && (
+            <div className="card" style={{
+              width: '100%',
+              maxWidth: '640px',
+              padding: '1rem 1.25rem',
+              background: 'rgba(88, 204, 2, 0.12)',
+              border: '2px dashed var(--color-green)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: '0.9rem', color: 'var(--color-green-dark)' }}>
+                  ⚡ Granular 4–8 Slide Standard
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  This path has {path.nodes.length} stones. Re-chunking breaks long documents (e.g. 129 slides) into ~22 bite-sized stepping stones.
+                </div>
+              </div>
+              <button
+                onClick={() => fetchPath({ force_regenerate: true, lesson_depth: 'standard' })}
+                className="btn-3d btn-3d-green"
+                style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
+              >
+                🔄 Re-chunk Now
+              </button>
+            </div>
+          )}
+
           {path.nodes.map((node, index) => {
             const offsets = [0, 60, 0, -60];
             const xOffset = offsets[index % offsets.length];

@@ -24,6 +24,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers.set('Content-Type', 'application/json');
   }
 
+  // Attach persistent auth token if available
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('recall_auth_token');
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
   const response = await fetch(url, {
     ...options,
     headers,
@@ -163,5 +171,51 @@ export const api = {
     request<PetChatResponse>('/learning-paths/chat-assistant', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  // Auth & Profile
+  signup: (payload: { email: string; password: string; display_name?: string }) =>
+    request<{ token: string; user: any }>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  login: (payload: { email: string; password: string }) =>
+    request<{ token: string; user: any }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Playtest Bug Reports & Feedback
+  submitFeedback: (payload: { type: string; message: string; url: string; browser_info?: string }) =>
+    request<{ success: boolean; feedback: any }>('/feedback/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  listFeedback: () =>
+    request<any[]>('/feedback/'),
+  deleteFeedback: (id: string) =>
+    request<{ success: boolean }>(`/feedback/${id}`, { method: 'DELETE' }),
+
+  // Friends & Social
+  sendFriendRequest: (targetEmail: string) =>
+    request<{ success: boolean; message: string }>('/friends/request', {
+      method: 'POST',
+      body: JSON.stringify({ target_email: targetEmail }),
+    }),
+  listFriends: () =>
+    request<any[]>('/friends/'),
+  listFriendRequests: () =>
+    request<any[]>('/friends/requests'),
+  acceptFriendRequest: (requestId: string) =>
+    request<{ success: boolean; message: string }>(`/friends/requests/${requestId}/accept`, {
+      method: 'POST',
+    }),
+  declineFriendRequest: (requestId: string) =>
+    request<{ success: boolean }>(`/friends/requests/${requestId}/decline`, {
+      method: 'POST',
+    }),
+  cheerFriend: (friendId: string) =>
+    request<{ success: boolean; xp_awarded: number }>(`/friends/${friendId}/cheer`, {
+      method: 'POST',
     }),
 };

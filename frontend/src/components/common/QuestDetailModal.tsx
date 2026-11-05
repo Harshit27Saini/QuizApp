@@ -138,3 +138,4 @@ export const QuestDetailModal: React.FC<QuestDetailModalProps> = ({ quest, onClo
     </div>
   );
 };
+

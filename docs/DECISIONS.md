@@ -93,4 +93,18 @@
   3. Introduce a collapsible right sidebar and persistent top utility bar with a high-contrast Duolingo Midnight theme (`[data-theme="dark"]`).
 - **Consequences:** Clean responsive workspace with maximized study area and an engaging social playtesting experience.
 
+---
+
+## ADR 011: Multi-User Authentication, Cloud Feedback Inbox & Go-Live Architecture
+- **Date:** 2026-11-05
+- **Status:** Accepted
+- **Context:** Playtesting with real friends requires independent user accounts, cloud bug reporting for the founder, and mutual friend challenges across different devices.
+- **Decision:**
+  1. Multi-User Auth: Implement lightweight JWT authentication (`/auth/signup`, `/auth/login`, `/auth/me`) with salted SHA-256 password hashing. Automatically inject `Authorization: Bearer <token>` in the frontend client.
+  2. Cloud Bug Inbox: Provide an in-app `🐞 Bug` reporter modal and founder inbox (`/admin/feedback`) to review, filter, and resolve playtester feedback.
+  3. Friend Request Network: Support multi-device friend requests (`/friends/request`), mutual acceptance, and shareable playtest handles/emails.
+  4. 4–8 Slides Re-chunking: Provide an explicit `🔄 Re-chunk` action on learning paths to upgrade existing cached paths to the 22+ granular stepping stones standard.
+- **Consequences:** Safe, seamless playtesting with real friends; immediate founder feedback loop; zero vendor lock-in.
+
+
 

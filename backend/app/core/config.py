@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Upload constraints
     MAX_UPLOAD_SIZE_MB: int = 25
 
+    # JWT Authentication
+    JWT_SECRET: str = "recall_jwt_playtest_secret_key_2026"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

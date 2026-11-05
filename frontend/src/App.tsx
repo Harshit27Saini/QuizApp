@@ -16,6 +16,7 @@ import { TodoListPage } from './pages/TodoListPage';
 import { ShopPage } from './pages/ShopPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
+import { AdminFeedbackPage } from './pages/AdminFeedbackPage';
 import './styles/global.css';
 
 export const App: React.FC = () => {
@@ -26,6 +27,7 @@ export const App: React.FC = () => {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/admin/feedback" element={<AdminFeedbackPage />} />
           <Route path="/todos" element={<TodoListPage />} />
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/just-start" element={<JustStartPage />} />

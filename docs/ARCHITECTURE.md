@@ -64,6 +64,10 @@ Recall is designed as a **Modular Monolith** with a decoupled single-page applic
   - `MockAIProvider`: Zero-dependency local mock that parses source sections and outputs valid, schema-compliant questions with real quotes for offline testing.
 - **Grading & Scoring:**
   - Deterministic validation in `services/grading/scorer.py`. Correct answers are never sent to the client during active quiz sessions; evaluation is performed on the server.
+- **Multi-User Playtester Network & Feedback Services:**
+  - Salted SHA-256 password hashing + HS256 JWT access tokens (`api/v1/auth.py`).
+  - Playtester bug report routing & Founder triage dashboard (`api/v1/feedback.py`, `/admin/feedback`).
+  - Real-time friend request invitation and high-five cheer bus (`api/v1/friends.py`).
 
 ---
 

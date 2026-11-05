@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../../services/api';
 import { soundManager } from '../../utils/sound';
 import { triggerConfetti } from '../../utils/confetti';
 
@@ -10,26 +11,35 @@ interface FeedbackModalProps {
 export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose }) => {
   const [type, setType] = useState<'bug' | 'idea' | 'ux'>('bug');
   const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
 
+    setSubmitting(true);
     const feedbackItem = {
-      id: 'fb_' + Date.now(),
       type,
       message: message.trim(),
       url: window.location.pathname,
-      timestamp: new Date().toISOString()
+      browser_info: navigator.userAgent
     };
 
     try {
-      const existing = JSON.parse(localStorage.getItem('recall_playtester_feedback') || '[]');
-      localStorage.setItem('recall_playtester_feedback', JSON.stringify([feedbackItem, ...existing]));
-    } catch {}
+      // 1. Submit directly to backend database
+      await api.submitFeedback(feedbackItem);
+    } catch {
+      // 2. Fall back to local storage if offline
+      try {
+        const existing = JSON.parse(localStorage.getItem('recall_playtester_feedback') || '[]');
+        localStorage.setItem('recall_playtester_feedback', JSON.stringify([{ ...feedbackItem, id: 'fb_' + Date.now(), timestamp: new Date().toISOString() }, ...existing]));
+      } catch {}
+    } finally {
+      setSubmitting(false);
+    }
 
     soundManager.playVictory();
     triggerConfetti();
@@ -141,14 +151,16 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
                 type="button"
                 className="btn-3d btn-3d-white"
                 onClick={onClose}
+                disabled={submitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
+                disabled={submitting}
                 className="btn-3d btn-3d-green"
               >
-                🚀 Submit Report
+                {submitting ? 'Submitting...' : '🚀 Submit Report'}
               </button>
             </div>
           </form>
@@ -157,3 +169,4 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
     </div>
   );
 };
+

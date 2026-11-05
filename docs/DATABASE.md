@@ -130,3 +130,27 @@ Granular per-question responses. This schema provides the foundation for future 
 - `time_spent_seconds`: INTEGER NOT NULL DEFAULT 0
 - `created_at`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
+### `users` (Playtest Multi-User Auth)
+- `id`: TEXT (PK)
+- `email`: TEXT UNIQUE NOT NULL
+- `password_hash`: TEXT NOT NULL
+- `salt`: TEXT NOT NULL
+- `display_name`: TEXT
+- `created_at`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+### `feedback` (Playtester Bug Reports)
+- `id`: TEXT (PK)
+- `user_id`: TEXT NOT NULL
+- `email`: TEXT NOT NULL
+- `display_name`: TEXT
+- `type`: TEXT NOT NULL ('bug', 'idea', 'ux')
+- `message`: TEXT NOT NULL
+- `url`: TEXT NOT NULL
+- `browser_info`: TEXT
+- `created_at`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+### `friend_requests` & `friendships`
+- `friend_requests`: `id`, `from_user_id`, `to_user_id`, `status` ('pending', 'accepted', 'declined'), `created_at`
+- `friendships`: `id`, `user_id_1`, `user_id_2`, `created_at`
+
+

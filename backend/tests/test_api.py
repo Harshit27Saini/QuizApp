@@ -104,3 +104,64 @@ def test_full_learning_flow_e2e():
     assert file_resp.status_code == 200
     assert "Neurons and Synapses" in file_resp.text
 
+
+def test_auth_signup_and_login():
+    email = "playtester_alex@gmail.com"
+    password = "secretpassword123"
+
+    # 1. Sign up
+    signup_resp = client.post("/api/v1/auth/signup", json={
+        "email": email,
+        "password": password,
+        "display_name": "Alex Playtester"
+    })
+    assert signup_resp.status_code == 201
+    auth_data = signup_resp.json()
+    assert "token" in auth_data
+    assert auth_data["user"]["email"] == email
+    token = auth_data["token"]
+
+    # 2. Login
+    login_resp = client.post("/api/v1/auth/login", json={
+        "email": email,
+        "password": password
+    })
+    assert login_resp.status_code == 200
+    assert "token" in login_resp.json()
+
+    # 3. Check /auth/me with bearer token
+    me_resp = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_resp.status_code == 200
+    assert me_resp.json()["email"] == email
+
+
+def test_feedback_submission():
+    payload = {
+        "type": "bug",
+        "message": "The PDF reader highlight button was awesome but wanted yellow tint.",
+        "url": "/documents/123/reader",
+        "browser_info": "Chrome Windows 11"
+    }
+    resp = client.post("/api/v1/feedback/", json=payload)
+    assert resp.status_code == 201
+    assert resp.json()["success"] is True
+
+    # List all feedback
+    list_resp = client.get("/api/v1/feedback/")
+    assert list_resp.status_code == 200
+    items = list_resp.json()
+    assert len(items) >= 1
+    assert any("PDF reader" in item["message"] for item in items)
+
+
+def test_friends_request_flow():
+    # User 1 sends request to User 2
+    req_resp = client.post("/api/v1/friends/request", json={"target_email": "friend_sarah@gmail.com"})
+    assert req_resp.status_code == 201
+    assert req_resp.json()["success"] is True
+
+    # User 2 checks incoming requests
+    # Set headers simulating User 2
+    inc_resp = client.get("/api/v1/friends/requests", headers={"Authorization": "Bearer mock_token"})
+    assert inc_resp.status_code == 200
+

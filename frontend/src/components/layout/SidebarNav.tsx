@@ -14,6 +14,7 @@ export const SidebarNav: React.FC = () => {
     { to: '/just-start', label: 'Just Start', icon: '🛋️', badge: '5 MIN' },
     { to: '/history', label: 'History', icon: '⚡' },
     { to: '/companions', label: 'Companions', icon: '🐾', badge: 'VIP' },
+    { to: '/admin/feedback', label: 'Bug Inbox', icon: '🐞', badge: 'FOUNDER' },
   ];
 
   return (

@@ -77,5 +77,28 @@ All test files reside in `backend/tests/` and cover:
 - Sectionizer logic
 - Quiz generation & schema validation
 - Deterministic grading and attempt scoring
-- REST API endpoint verification
+- REST API endpoint verification (Auth, Feedback, Friends)
+
+---
+
+## 5. Playtesting & Go-Live Deployment
+
+### Quick Playtest Run (Local or LAN)
+1. Start backend: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+2. Start frontend: `npm run dev -- --host`
+3. Friends on the same Wi-Fi can open your computer's local IP address (e.g., `http://192.168.1.5:5173`) to sign up, study, and send friend requests.
+
+### Cloud Deployment (Vercel + Render/Railway)
+1. **Frontend (Vercel / Netlify):**
+   - Root Directory: `frontend`
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Environment Variable: `VITE_API_BASE_URL=https://your-backend.up.railway.app/api/v1`
+2. **Backend (Render / Railway):**
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - Environment Variables: `JWT_SECRET=...`, `AI_PROVIDER=gemini`, `GEMINI_API_KEY=...`
+3. **Founder Inbox:**
+   - Log in and navigate to `/admin/feedback` to review all tester bug reports.
+
 

@@ -20,6 +20,10 @@ class InMemoryDB:
         self.flashcards: Dict[str, Dict[str, Any]] = {}
         self.learning_paths: Dict[str, Dict[str, Any]] = {}
         self.path_nodes: Dict[str, Dict[str, Any]] = {}
+        self.users: Dict[str, Dict[str, Any]] = {}
+        self.feedback: Dict[str, Dict[str, Any]] = {}
+        self.friend_requests: Dict[str, Dict[str, Any]] = {}
+        self.friendships: List[Dict[str, Any]] = []
 
     def now_iso(self) -> str:
         return datetime.now(timezone.utc).isoformat()
@@ -658,6 +662,202 @@ class Repository:
             memory_db.profiles[user_id]["xp"] = memory_db.profiles[user_id].get("xp", 0) + 25
 
         return await self.get_learning_path(path_id, user_id)
+
+    # -------------------------------------------------------------------------
+    # Authentication & User Profiles
+    # -------------------------------------------------------------------------
+    async def create_user(
+        self,
+        email: str,
+        password_hash: str,
+        salt: str,
+        display_name: str
+    ) -> Dict[str, Any]:
+        user_id = str(uuid.uuid4())
+        user_data = {
+            "id": user_id,
+            "email": email.strip().lower(),
+            "password_hash": password_hash,
+            "salt": salt,
+            "display_name": display_name.strip() or email.split("@")[0],
+            "xp": 250,
+            "streak": 1,
+            "cheerleader": "founder",
+            "created_at": memory_db.now_iso()
+        }
+        if self.firestore:
+            self.firestore.collection("users").document(user_id).set(user_data)
+        memory_db.users[user_id] = user_data
+        return user_data
+
+    async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        clean_email = email.strip().lower()
+        if self.firestore:
+            docs = self.firestore.collection("users").where("email", "==", clean_email).limit(1).stream()
+            results = [d.to_dict() for d in docs]
+            if results:
+                return results[0]
+        for u in memory_db.users.values():
+            if u["email"] == clean_email:
+                return u
+        return None
+
+    async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        if self.firestore:
+            doc = self.firestore.collection("users").document(user_id).get()
+            if doc.exists:
+                return doc.to_dict()
+        return memory_db.users.get(user_id)
+
+    async def list_users(self) -> List[Dict[str, Any]]:
+        if self.firestore:
+            docs = self.firestore.collection("users").stream()
+            return [d.to_dict() for d in docs]
+        return list(memory_db.users.values())
+
+    # -------------------------------------------------------------------------
+    # Bug Reports & Playtest Feedback
+    # -------------------------------------------------------------------------
+    async def create_feedback(
+        self,
+        user_id: str,
+        email: str,
+        display_name: str,
+        feedback_type: str,
+        message: str,
+        url: str,
+        browser_info: Optional[str] = None
+    ) -> Dict[str, Any]:
+        fb_id = str(uuid.uuid4())
+        item = {
+            "id": fb_id,
+            "user_id": user_id,
+            "email": email,
+            "display_name": display_name,
+            "type": feedback_type,
+            "message": message,
+            "url": url,
+            "browser_info": browser_info or "",
+            "status": "open",
+            "created_at": memory_db.now_iso()
+        }
+        if self.firestore:
+            self.firestore.collection("feedback").document(fb_id).set(item)
+        memory_db.feedback[fb_id] = item
+        return item
+
+    async def list_feedback(self) -> List[Dict[str, Any]]:
+        if self.firestore:
+            docs = self.firestore.collection("feedback").stream()
+            items = [d.to_dict() for d in docs]
+            return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
+        items = list(memory_db.feedback.values())
+        return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
+
+    async def delete_feedback(self, feedback_id: str) -> bool:
+        if self.firestore:
+            self.firestore.collection("feedback").document(feedback_id).delete()
+        if feedback_id in memory_db.feedback:
+            del memory_db.feedback[feedback_id]
+        return True
+
+    # -------------------------------------------------------------------------
+    # Friend Requests & Social
+    # -------------------------------------------------------------------------
+    async def create_friend_request(
+        self,
+        from_user_id: str,
+        from_email: str,
+        from_name: str,
+        to_email: str
+    ) -> Dict[str, Any]:
+        req_id = str(uuid.uuid4())
+        req = {
+            "id": req_id,
+            "from_user_id": from_user_id,
+            "from_email": from_email.strip().lower(),
+            "from_name": from_name,
+            "to_email": to_email.strip().lower(),
+            "status": "pending",
+            "created_at": memory_db.now_iso()
+        }
+        if self.firestore:
+            self.firestore.collection("friend_requests").document(req_id).set(req)
+        memory_db.friend_requests[req_id] = req
+        return req
+
+    async def list_incoming_friend_requests(self, to_email: str) -> List[Dict[str, Any]]:
+        clean = to_email.strip().lower()
+        if self.firestore:
+            docs = self.firestore.collection("friend_requests").where("to_email", "==", clean).where("status", "==", "pending").stream()
+            return [d.to_dict() for d in docs]
+        return [r for r in memory_db.friend_requests.values() if r["to_email"] == clean and r["status"] == "pending"]
+
+    async def accept_friend_request(self, request_id: str, user_id: str, user_email: str) -> bool:
+        req = memory_db.friend_requests.get(request_id)
+        if self.firestore:
+            doc = self.firestore.collection("friend_requests").document(request_id).get()
+            if doc.exists:
+                req = doc.to_dict()
+        if not req or req.get("status") != "pending":
+            return False
+
+        req["status"] = "accepted"
+        if self.firestore:
+            self.firestore.collection("friend_requests").document(request_id).update({"status": "accepted"})
+        else:
+            memory_db.friend_requests[request_id]["status"] = "accepted"
+
+        # Record friendship both directions
+        friendship_entry = {
+            "id": str(uuid.uuid4()),
+            "user1_id": req["from_user_id"],
+            "user1_email": req["from_email"],
+            "user1_name": req["from_name"],
+            "user2_id": user_id,
+            "user2_email": user_email,
+            "created_at": memory_db.now_iso()
+        }
+        if self.firestore:
+            self.firestore.collection("friendships").document(friendship_entry["id"]).set(friendship_entry)
+        memory_db.friendships.append(friendship_entry)
+        return True
+
+    async def decline_friend_request(self, request_id: str, user_email: str) -> bool:
+        if self.firestore:
+            self.firestore.collection("friend_requests").document(request_id).update({"status": "declined"})
+        if request_id in memory_db.friend_requests:
+            memory_db.friend_requests[request_id]["status"] = "declined"
+        return True
+
+    async def list_friends(self, user_id: str, user_email: str) -> List[Dict[str, Any]]:
+        clean_email = user_email.strip().lower()
+        friends = []
+        source = memory_db.friendships
+        if self.firestore:
+            docs = self.firestore.collection("friendships").stream()
+            source = [d.to_dict() for d in docs]
+
+        for f in source:
+            if f.get("user1_id") == user_id or f.get("user1_email") == clean_email:
+                friends.append({
+                    "id": f.get("user2_id"),
+                    "email": f.get("user2_email"),
+                    "name": f.get("user2_email", "").split("@")[0],
+                    "streak": 5,
+                    "weekly_xp": 500,
+                    "cheerleader": "Sydney"
+                })
+            elif f.get("user2_id") == user_id or f.get("user2_email") == clean_email:
+                friends.append({
+                    "id": f.get("user1_id"),
+                    "email": f.get("user1_email"),
+                    "name": f.get("user1_name") or f.get("user1_email", "").split("@")[0],
+                    "streak": 6,
+                    "weekly_xp": 650,
+                    "cheerleader": "Connie"
+                })
+        return friends
 
 
 db = Repository()

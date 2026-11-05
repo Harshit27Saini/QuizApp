@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 import { friendService, type LeaderboardEntry, type FriendRequest } from '../services/friends';
 import { xpService } from '../services/xp';
 import { soundManager } from '../utils/sound';
@@ -10,6 +11,17 @@ export const LeaderboardPage: React.FC = () => {
   const [requests, setRequests] = useState<FriendRequest[]>(friendService.getIncomingRequests());
   const [friendSearch, setFriendSearch] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const currentUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('recall_user_profile') || 'null');
+    } catch {
+      return null;
+    }
+  })();
+
+  const userHandle = currentUser?.email || 'guest_playtester@recall.local';
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -20,18 +32,44 @@ export const LeaderboardPage: React.FC = () => {
     window.addEventListener('recall:friends-changed', handleUpdate);
     window.addEventListener('recall:friend-requests-changed', handleUpdate);
     window.addEventListener('recall:xp-changed', handleUpdate);
+    window.addEventListener('recall:auth-changed', handleUpdate);
 
     return () => {
       window.removeEventListener('recall:friends-changed', handleUpdate);
       window.removeEventListener('recall:friend-requests-changed', handleUpdate);
       window.removeEventListener('recall:xp-changed', handleUpdate);
+      window.removeEventListener('recall:auth-changed', handleUpdate);
     };
   }, [filter]);
 
-  const handleSendRequest = (e: React.FormEvent) => {
+  const handleSendRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!friendSearch.trim()) return;
-    const res = friendService.sendFriendRequest(friendSearch.trim());
+    const query = friendSearch.trim();
+    if (!query) return;
+
+    // Try cloud API first if logged in
+    try {
+      if (localStorage.getItem('recall_auth_token')) {
+        await api.sendFriendRequest(query);
+        setToastMessage(`🎉 Friend request sent to ${query}!`);
+        soundManager.playCorrect();
+        triggerConfetti();
+        setFriendSearch('');
+        setTimeout(() => setToastMessage(null), 4000);
+        return;
+      }
+    } catch (err: any) {
+      // If cloud returns an error (e.g. self-add or already friend), show error
+      if (err.message && !err.message.includes('401')) {
+        setToastMessage(`⚠️ ${err.message}`);
+        soundManager.playError();
+        setTimeout(() => setToastMessage(null), 4000);
+        return;
+      }
+    }
+
+    // Fall back to immediate simulated playtest friend
+    const res = friendService.sendFriendRequest(query);
     setToastMessage(res.message);
     setFriendSearch('');
     setLeaderboard(friendService.getLeaderboard(filter));
@@ -44,7 +82,24 @@ export const LeaderboardPage: React.FC = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleAcceptRequest = (id: string) => {
+  const handleCopyHandle = () => {
+    navigator.clipboard.writeText(userHandle);
+    setCopied(true);
+    setToastMessage(`📋 Copied handle "${userHandle}" to clipboard! Share it with a friend.`);
+    soundManager.playCorrect();
+    setTimeout(() => {
+      setCopied(false);
+      setToastMessage(null);
+    }, 3000);
+  };
+
+  const handleAcceptRequest = async (id: string) => {
+    try {
+      if (localStorage.getItem('recall_auth_token')) {
+        await api.acceptFriendRequest(id);
+      }
+    } catch {}
+
     friendService.acceptRequest(id);
     setRequests(friendService.getIncomingRequests());
     setLeaderboard(friendService.getLeaderboard(filter));
@@ -54,12 +109,24 @@ export const LeaderboardPage: React.FC = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleDeclineRequest = (id: string) => {
+  const handleDeclineRequest = async (id: string) => {
+    try {
+      if (localStorage.getItem('recall_auth_token')) {
+        await api.declineFriendRequest(id);
+      }
+    } catch {}
+
     friendService.declineRequest(id);
     setRequests(friendService.getIncomingRequests());
   };
 
-  const handleHighFive = (friendId: string, name: string) => {
+  const handleHighFive = async (friendId: string, name: string) => {
+    try {
+      if (localStorage.getItem('recall_auth_token')) {
+        await api.cheerFriend(friendId);
+      }
+    } catch {}
+
     const ok = friendService.sendHighFive(friendId);
     if (ok) {
       soundManager.playCorrect();
@@ -274,28 +341,57 @@ export const LeaderboardPage: React.FC = () => {
         })}
       </div>
 
-      {/* Search & Add Friend Form */}
-      <form onSubmit={handleSendRequest} className="card" style={{ padding: '1.25rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          placeholder="Add playtest friend by name or email (e.g. rahul@gmail.com)..."
-          value={friendSearch}
-          onChange={e => setFriendSearch(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: '220px',
-            padding: '0.75rem 1rem',
-            borderRadius: 'var(--radius-md)',
-            border: '2px solid var(--color-border)',
-            background: 'var(--color-bg)',
-            color: 'var(--color-text-main)',
-            fontSize: '0.9rem'
-          }}
-        />
-        <button type="submit" className="btn-3d btn-3d-blue" style={{ fontSize: '0.85rem' }}>
-          ➕ Add Friend
-        </button>
-      </form>
+      {/* Search & Add Friend Form + Share Handle */}
+      <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          padding: '0.625rem 0.875rem',
+          background: 'var(--color-bg)',
+          borderRadius: 'var(--radius-md)',
+          border: '1.5px dashed var(--color-border)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+            <span style={{ fontWeight: 800, color: 'var(--color-text-subtle)' }}>Your Shareable Handle:</span>
+            <code style={{ fontWeight: 900, color: 'var(--color-blue-dark)', background: 'var(--color-surface-hover)', padding: '0.2rem 0.4rem', borderRadius: '4px' }}>
+              {userHandle}
+            </code>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyHandle}
+            className="btn-3d btn-3d-white"
+            style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem' }}
+          >
+            {copied ? '✓ Copied!' : '📋 Copy Handle'}
+          </button>
+        </div>
+
+        <form onSubmit={handleSendRequest} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            placeholder="Add playtest friend by email (e.g. rohan@gmail.com)..."
+            value={friendSearch}
+            onChange={e => setFriendSearch(e.target.value)}
+            style={{
+              flex: 1,
+              minWidth: '220px',
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              border: '2px solid var(--color-border)',
+              background: 'var(--color-bg)',
+              color: 'var(--color-text-main)',
+              fontSize: '0.9rem'
+            }}
+          />
+          <button type="submit" className="btn-3d btn-3d-blue" style={{ fontSize: '0.85rem' }}>
+            ➕ Add Friend
+          </button>
+        </form>
+      </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -420,3 +516,4 @@ export const LeaderboardPage: React.FC = () => {
     </div>
   );
 };
+
