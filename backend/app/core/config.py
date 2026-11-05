@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PORT: int = 8000
     ENVIRONMENT: str = "development"
-    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,https://quiz-app-dusky-nine-68.vercel.app"
 
     # Firebase configuration (optional for offline mock mode)
     FIREBASE_PROJECT_ID: str = ""
