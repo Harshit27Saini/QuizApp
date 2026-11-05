@@ -24,11 +24,18 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers.set('Content-Type', 'application/json');
   }
 
-  // Attach persistent auth token if available
+  // Attach persistent auth token if available, or unique device guest ID
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('recall_auth_token');
     if (token && !headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${token}`);
+    } else if (!token && !headers.has('X-User-Id')) {
+      let guestId = localStorage.getItem('recall_guest_id');
+      if (!guestId) {
+        guestId = 'guest_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+        localStorage.setItem('recall_guest_id', guestId);
+      }
+      headers.set('X-User-Id', guestId);
     }
   }
 
