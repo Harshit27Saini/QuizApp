@@ -33,7 +33,7 @@ button {
 .app-layout-3col {
   display: flex;
   min-height: 100vh;
-  background-color: #ffffff;
+  background-color: var(--color-bg);
 }
 
 /* Left Sidebar Navigation */
@@ -48,18 +48,23 @@ button {
   display: flex;
   flex-direction: column;
   justifyContent: space-between;
-  background: #ffffff;
+  background: var(--color-surface);
   z-index: 50;
 }
 
 /* Center Feed */
 .main-feed {
   flex: 1;
-  max-width: 680px;
+  max-width: 720px;
   min-width: 320px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
   min-height: 100vh;
+  transition: max-width var(--transition-normal);
+}
+
+.main-feed.expanded-view {
+  max-width: 1080px;
 }
 
 /* Right Sidebar (Widgets & Companions) */
@@ -74,7 +79,13 @@ button {
   flex-direction: column;
   gap: 1.5rem;
   overflow-y: auto;
-  background: #ffffff;
+  background: var(--color-surface);
+  border-left: 2px solid var(--color-border);
+  transition: all var(--transition-normal);
+}
+
+.sidebar-right.collapsed {
+  display: none;
 }
 
 @media (max-width: 1180px) {
@@ -179,7 +190,7 @@ button {
 }
 
 .btn-3d-white {
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   border-color: var(--color-border);
   border-bottom-color: var(--color-border-strong);
   color: var(--color-text-main);

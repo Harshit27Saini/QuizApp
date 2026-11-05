@@ -14,6 +14,8 @@ import { CompanionsPage } from './pages/CompanionsPage';
 import { JustStartPage } from './pages/JustStartPage';
 import { TodoListPage } from './pages/TodoListPage';
 import { ShopPage } from './pages/ShopPage';
+import { InventoryPage } from './pages/InventoryPage';
+import { LeaderboardPage } from './pages/LeaderboardPage';
 import './styles/global.css';
 
 export const App: React.FC = () => {
@@ -22,6 +24,8 @@ export const App: React.FC = () => {
       <AppLayout>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/todos" element={<TodoListPage />} />
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/just-start" element={<JustStartPage />} />

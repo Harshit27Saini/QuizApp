@@ -82,7 +82,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Just Start Mode Banner (ADHD / Low-Activation Energy) */}
       <div className="card" style={{
-        background: 'linear-gradient(135deg, rgba(206, 130, 255, 0.12) 0%, rgba(28, 176, 246, 0.1) 100%)',
+        background: 'linear-gradient(135deg, rgba(230, 83, 243, 0.12) 0%, rgba(28, 176, 246, 0.1) 100%)',
         border: '2px solid rgba(206, 130, 255, 0.35)',
         padding: '1.25rem 1.5rem',
         display: 'flex',

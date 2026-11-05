@@ -81,3 +81,27 @@
   --transition-fast: 100ms ease;
   --transition-normal: 200ms ease;
 }
+
+/* -------------------------------------------------------------------------
+   DUOLINGO MIDNIGHT DARK MODE PALETTE
+   ------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --color-bg: #0b0f19;
+  --color-surface: #151d30;
+  --color-surface-hover: #1e293b;
+  --color-border: #26334d;
+  --color-border-strong: #334155;
+
+  --color-text-main: #f8fafc;
+  --color-text-muted: #94a3b8;
+  --color-text-subtle: #64748b;
+
+  --color-green-light: rgba(88, 204, 2, 0.15);
+  --color-blue-light: rgba(28, 176, 246, 0.15);
+  --color-gold-light: rgba(255, 200, 0, 0.15);
+  --color-purple-light: rgba(206, 130, 255, 0.15);
+
+  --shadow-sm: 0 2px 0 var(--color-border);
+  --shadow-md: 0 4px 0 var(--color-border);
+  --shadow-lg: 0 6px 0 var(--color-border-strong);
+}

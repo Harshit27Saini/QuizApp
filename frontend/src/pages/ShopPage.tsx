@@ -107,23 +107,33 @@ export const ShopPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Live XP Wallet Display */}
-        <div style={{
-          background: '#ffffff',
-          borderRadius: 'var(--radius-lg)',
-          padding: '0.75rem 1.25rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-        }}>
-          <span style={{ fontSize: '2rem' }}>⚡</span>
-          <div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-gold-dark)', lineHeight: 1.1 }}>
-              {wallet.balance} XP
-            </div>
-            <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
-              Spendable Balance
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Link
+            to="/inventory"
+            className="btn-3d btn-3d-white"
+            style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+          >
+            🎒 My Backpack
+          </Link>
+
+          {/* Live XP Wallet Display */}
+          <div style={{
+            background: 'var(--color-surface)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '0.75rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }}>
+            <span style={{ fontSize: '2rem' }}>⚡</span>
+            <div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-gold-dark)', lineHeight: 1.1 }}>
+                {wallet.balance} XP
+              </div>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                Spendable Balance
+              </div>
             </div>
           </div>
         </div>

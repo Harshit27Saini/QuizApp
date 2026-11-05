@@ -72,3 +72,25 @@
 - **Decision:** Build a unified XP wallet service (`xpService`) managing spendable XP coins, lifetime totals, inventory power-ups (Streak Freeze, Double XP), and unlocked companions. Connect to a dedicated Shop (`/shop`) and Interactive To-Do List (`/todos`).
 - **Consequences:** High motivation, satisfying reward loop with Web Audio fanfares and confetti, and clear gamification economy without external paywalls.
 
+---
+
+## ADR 009: Real-Date Streak Engine with Auto-Armed Freeze Protection
+- **Date:** 2026-11-05
+- **Status:** Accepted
+- **Context:** The previous streak counter used static mock numbers and hardcoded weekday dots. Missed days were not detected or protected by purchased Streak Freezes.
+- **Decision:** Implement dynamic calendar date tracking (`historyDates`, `freezeUsedDates`) across an active rolling 7-day Monday–Sunday calendar. When a day is missed, automatically consume an armed Streak Freeze from the user's inventory to keep the streak flame alive without manual intervention.
+- **Consequences:** Accurate daily progression, zero false streak resets when shields are held, and clear visual indicators on the calendar.
+
+---
+
+## ADR 010: Social Leaderboard, Backpack Inventory & Midnight Dark Theme
+- **Date:** 2026-11-05
+- **Status:** Accepted
+- **Context:** Playtesters need a way to inspect held items (e.g. Streak Freezes), view weekly rankings against friends, toggle dark mode, and submit bug reports without cluttering the screen.
+- **Decision:** 
+  1. Create `/inventory` (Backpack) displaying power-ups, armed status, and cheerleaders.
+  2. Implement `/leaderboard` (Weekly Gold League) with friend requests, high-fives (+5 XP), and promotion zones.
+  3. Introduce a collapsible right sidebar and persistent top utility bar with a high-contrast Duolingo Midnight theme (`[data-theme="dark"]`).
+- **Consequences:** Clean responsive workspace with maximized study area and an engaging social playtesting experience.
+
+

@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { companionService } from '../../services/companions';
-import { questService, type DailyQuestState } from '../../services/quests';
+import { questService, type DailyQuestState, type QuestItem } from '../../services/quests';
 import { xpService } from '../../services/xp';
 import { soundManager } from '../../utils/sound';
 import { triggerConfetti } from '../../utils/confetti';
+import { QuestDetailModal } from '../common/QuestDetailModal';
 
-export const RightWidgetSidebar: React.FC = () => {
+interface RightWidgetSidebarProps {
+  onClose?: () => void;
+}
+
+export const RightWidgetSidebar: React.FC<RightWidgetSidebarProps> = ({ onClose }) => {
   const companion = companionService.getActiveCompanion();
   const [cheer, setCheer] = useState<string>('');
   const [questState, setQuestState] = useState<DailyQuestState>(questService.getState());
   const [xpBalance, setXpBalance] = useState<number>(xpService.getBalance());
+  const [selectedQuest, setSelectedQuest] = useState<QuestItem | null>(null);
+  const [doubleXpSeconds, setDoubleXpSeconds] = useState<number>(xpService.isDoubleXpActive().secondsRemaining);
 
   useEffect(() => {
     setCheer(companionService.getRandomCheer());
@@ -19,9 +26,30 @@ export const RightWidgetSidebar: React.FC = () => {
 
     const handleXpChanged = () => {
       setXpBalance(xpService.getBalance());
+      setQuestState(questService.getState());
+      setDoubleXpSeconds(xpService.isDoubleXpActive().secondsRemaining);
     };
+
+    const handleQuestsChanged = (e: any) => {
+      setQuestState(e.detail || questService.getState());
+    };
+
     window.addEventListener('recall:xp-changed', handleXpChanged);
-    return () => window.removeEventListener('recall:xp-changed', handleXpChanged);
+    window.addEventListener('recall:quests-changed', handleQuestsChanged);
+    window.addEventListener('recall:streak-changed', handleQuestsChanged);
+
+    // Double XP live countdown ticker
+    const timer = setInterval(() => {
+      const info = xpService.isDoubleXpActive();
+      setDoubleXpSeconds(info.secondsRemaining);
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('recall:xp-changed', handleXpChanged);
+      window.removeEventListener('recall:quests-changed', handleQuestsChanged);
+      window.removeEventListener('recall:streak-changed', handleQuestsChanged);
+      clearInterval(timer);
+    };
   }, [companion.id]);
 
   const handleClaimQuest = () => {
@@ -29,26 +57,67 @@ export const RightWidgetSidebar: React.FC = () => {
     if (res) {
       soundManager.playVictory();
       triggerConfetti();
-      xpService.awardXp(res.xp, 'Daily Quest Chest Claimed');
       setQuestState(questService.getState());
     }
   };
 
   const allQuestsCompleted = questState.quests.every(q => q.completed);
+  const freezeCount = xpService.getInventory().streak_freeze || 0;
 
-  const days = [
-    { label: 'M', active: true },
-    { label: 'T', active: true },
-    { label: 'W', active: true },
-    { label: 'T', active: true },
-    { label: 'F', active: true },
-    { label: 'S', active: false },
-    { label: 'S', active: false },
-  ];
+  const formatSeconds = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   return (
     <aside className="sidebar-right">
-      {/* 0. XP Wallet Balance & Shop Link */}
+      {/* 0. Top Controls (Close drawer button if in mobile or collapsed mode) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-subtle)', letterSpacing: '0.5px' }}>
+          Study Center
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="btn-3d btn-3d-white"
+            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
+            title="Collapse sidebar"
+          >
+            ✕ Collapse
+          </button>
+        )}
+      </div>
+
+      {/* 0.1 Active Double XP Banner (if activated) */}
+      {doubleXpSeconds > 0 && (
+        <div className="card" style={{
+          padding: '0.75rem 1rem',
+          background: 'linear-gradient(135deg, rgba(206, 130, 255, 0.2), rgba(28, 176, 246, 0.15))',
+          border: '2px solid var(--color-purple)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          animation: 'gentlePulse 2s infinite'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '1.25rem' }}>🧪</span>
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--color-purple-dark)' }}>
+                2X XP Active!
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                Double XP on all quizzes & units
+              </div>
+            </div>
+          </div>
+          <span className="badge" style={{ background: 'var(--color-purple)', color: '#ffffff', fontWeight: 900, fontSize: '0.75rem' }}>
+            ⏱️ {formatSeconds(doubleXpSeconds)}
+          </span>
+        </div>
+      )}
+
+      {/* 1. XP Wallet Balance & Shop Link */}
       <div className="card" style={{
         padding: '0.875rem 1.125rem',
         display: 'flex',
@@ -68,12 +137,17 @@ export const RightWidgetSidebar: React.FC = () => {
             </div>
           </div>
         </div>
-        <Link to="/shop" className="btn-3d btn-3d-gold" style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}>
-          🛒 Shop
-        </Link>
+        <div style={{ display: 'flex', gap: '0.4rem' }}>
+          <Link to="/inventory" className="btn-3d btn-3d-white" style={{ fontSize: '0.75rem', padding: '0.35rem 0.6rem' }} title="Open Backpack">
+            🎒
+          </Link>
+          <Link to="/shop" className="btn-3d btn-3d-gold" style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}>
+            🛒 Shop
+          </Link>
+        </div>
       </div>
 
-      {/* 1. Daily Streak & Freeze Protection Card */}
+      {/* 2. Real-Date Daily Streak & Freeze Protection Card */}
       <div className="card" style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -83,45 +157,67 @@ export const RightWidgetSidebar: React.FC = () => {
                 {questState.streakDays} Day Streak!
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                Practice today to keep it lit!
+                Study today to extend it!
               </div>
             </div>
           </div>
 
-          {questState.hasStreakFreeze && (
-            <span className="badge" style={{ background: 'rgba(28, 176, 246, 0.15)', color: 'var(--color-blue)', border: '1px solid var(--color-blue)', fontSize: '0.7rem' }}>
-              🛡️ Freeze Active
-            </span>
-          )}
+          <Link
+            to="/inventory"
+            title="View streak freeze in Backpack"
+            style={{ textDecoration: 'none' }}
+          >
+            {freezeCount > 0 ? (
+              <span className="badge" style={{ background: 'rgba(28, 176, 246, 0.15)', color: 'var(--color-blue)', border: '1.5px solid var(--color-blue)', fontSize: '0.7rem', fontWeight: 800 }}>
+                🛡️ {freezeCount} Freeze Armed
+              </span>
+            ) : (
+              <span className="badge" style={{ background: 'var(--color-surface-hover)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontSize: '0.7rem' }}>
+                🛡️ + Shield in Shop
+              </span>
+            )}
+          </Link>
         </div>
 
-        {/* Weekday Dots */}
+        {/* Dynamic 7-Day Rolling Calendar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem' }}>
-          {days.map((d, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: d.active ? 'var(--color-orange)' : 'var(--color-border)',
-                color: d.active ? '#ffffff' : 'var(--color-text-subtle)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.75rem',
-                fontWeight: 800
-              }}>
-                {d.active ? '✓' : ''}
+          {questState.weekDays.map((d, i) => {
+            const isOrange = d.completed;
+            const isBlue = d.isFrozen;
+            const isRing = d.isToday;
+
+            return (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  background: isBlue
+                    ? 'var(--color-blue)'
+                    : isOrange
+                    ? 'var(--color-orange)'
+                    : 'var(--color-surface-hover)',
+                  color: (isOrange || isBlue) ? '#ffffff' : 'var(--color-text-subtle)',
+                  border: isRing ? '2.5px solid var(--color-blue)' : '2px solid var(--color-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.75rem',
+                  fontWeight: 900,
+                  boxShadow: isRing ? '0 0 8px rgba(28, 176, 246, 0.4)' : 'none'
+                }}>
+                  {isBlue ? '🛡️' : isOrange ? '✓' : ''}
+                </div>
+                <span style={{ fontSize: '0.7rem', fontWeight: isRing ? 900 : 700, color: isRing ? 'var(--color-blue)' : 'var(--color-text-muted)' }}>
+                  {d.label}
+                </span>
               </div>
-              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>
-                {d.label}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* 2. Daily Quests Duolingo Card */}
+      {/* 3. Daily Quests Interactive Duolingo Card */}
       <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: '0.85rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--color-gold-dark)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -133,15 +229,30 @@ export const RightWidgetSidebar: React.FC = () => {
           </span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
           {questState.quests.map(q => {
             const pct = Math.min(100, Math.round((q.current / q.target) * 100));
             return (
-              <div key={q.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div
+                key={q.id}
+                onClick={() => setSelectedQuest(q)}
+                title="Click to view quest instructions & shortcut"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.35rem',
+                  cursor: 'pointer',
+                  padding: '0.5rem',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-bg)',
+                  border: '1.5px solid var(--color-border)',
+                  transition: 'border-color var(--transition-fast)'
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <span>{q.icon}</span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-text-main)' }}>{q.title}</span>
+                    <span style={{ fontWeight: 800, color: 'var(--color-text-main)' }}>{q.title}</span>
                   </div>
                   <span style={{ fontSize: '0.7rem', color: q.completed ? 'var(--color-green)' : 'var(--color-text-muted)', fontWeight: 800 }}>
                     {q.completed ? '✓ +XP' : `${q.current}/${q.target}`}
@@ -177,7 +288,7 @@ export const RightWidgetSidebar: React.FC = () => {
         )}
       </div>
 
-      {/* 3. Active Companion Cheerleader Widget */}
+      {/* 4. Active Companion Cheerleader Widget */}
       <div className="card" style={{ padding: '1.25rem', background: 'var(--color-surface)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <span className="badge" style={{ background: companion.badgeColor + '20', color: companion.badgeColor, border: `1.5px solid ${companion.badgeColor}` }}>
@@ -236,6 +347,12 @@ export const RightWidgetSidebar: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Quest Detail Modal */}
+      <QuestDetailModal
+        quest={selectedQuest}
+        onClose={() => setSelectedQuest(null)}
+      />
     </aside>
   );
 };

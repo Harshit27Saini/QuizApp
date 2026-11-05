@@ -65,6 +65,29 @@
   - Storefront to redeem XP coins for companions (Sydney, Connie, Milo, Scooby, Bunny, Duo Owl, Archimedes)
   - Power-up shields: Streak Freeze Shield, 2X XP Booster Potion, Exam Espresso
   - Real-time event broadcasting updating header and sidebar XP meters across the entire app
+- [x] Backpack & Power-Up Inventory System (`/inventory`):
+  - Dedicated backpack view for held items (Streak Freeze Shields, 2X XP Potions, Exam Espressos)
+  - Auto-armed shield protection status and 30-minute live double XP countdown timer
+  - 1-click Cheerleader equip/switch manager
+- [x] Real-Date Streak Engine & Dynamic Rolling Calendar:
+  - Genuine ISO calendar tracking replacing static mock streaks
+  - Dynamic 7-day Monday–Sunday calendar with real studied and freeze-protected days
+  - Automatic Streak Freeze consumption preserving streaks upon missed study days
+- [x] Interactive Daily Quests & 1-Click Task Jump:
+  - Clickable quest cards with full objective explanation and XP rewards
+  - Direct 1-click shortcuts into Document Reader, Learning Path, and Exam Simulator
+- [x] Weekly Leaderboards, Leagues & Friend Requests (`/leaderboard`):
+  - Weekly Gold League with promotion/demotion zones and season reset countdown
+  - Global vs. Friends-only ranking filters
+  - Friend search, request accept/decline, and high-five (+5 XP) cheer interactions
+- [x] Collapsible / Dropdown Right Sidebar & Maximized Study Feed:
+  - Top floating utility bar with stat pill (`⚡ XP • 🔥 Streak • 🐾 Companion ▾`)
+  - Smooth collapse/expand chevrons expanding center study feed up to 1080px for reading
+- [x] System-Wide Midnight Dark Mode:
+  - High-contrast Duolingo Midnight theme (`#0b0f19` bg, `#151d30` surface, `#26334d` border)
+  - Persistent one-click 🌙 / ☀️ toggle in top bar
+- [x] Playtester Bug & Feedback Reporter:
+  - Floating/header 🐞 bug button with automatic page context capture for friend playtesting
 - [ ] OCR integration (Tesseract / EasyOCR) for scanned PDFs and handwritten notes
 - [ ] Additional question formats:
   - Fill in the blanks
