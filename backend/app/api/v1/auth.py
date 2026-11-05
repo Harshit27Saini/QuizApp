@@ -126,7 +126,7 @@ async def login(payload: LoginRequest):
             "display_name": user["display_name"],
             "xp": user.get("xp", 0),
             "streak": user.get("streak", 0),
-            "cheerleader": user.get("cheerleader", "founder"),
+            "cheerleader": user.get("cheerleader", "sydney"),
             "is_admin": is_admin
         }
     }

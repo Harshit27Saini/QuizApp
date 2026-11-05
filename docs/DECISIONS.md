@@ -153,6 +153,22 @@
   5. Temporarily deprecated the raw PDF reader/split-screen embed in favor of a clean, structured text and section preview with direct links to Learning Paths, Quizzes, and Flashcards.
 - **Consequences:** Authentic progression loop from 0 XP, clear onboarding for new playtesters, accurate social rankings, and elimination of clunky PDF embed glitches.
 
+---
+
+## ADR 015: Slide-Set Flashcard Generation, Companion Identity Refinement, and Cloud Cold-Start Resilience
+- **Date:** 2026-11-06
+- **Status:** Accepted
+- **Context:**
+  1. Flashcard generation previously offered arbitrary hardcoded card counts (`[5, 8, 12, 16, 20]`), ignoring presentation structure. Learners needed flashcards grouped by slide sets (e.g., Slides 1–8, Slides 9–16, or custom ranges) with clear slide attribution badges.
+  2. The starter companion "You (Champion)" was confusing as a cheerleading buddy. The companion roster needed a warm starter mascot (Sydney the Golden Retriever) and Coach Harshit as the founder guide.
+  3. Render free-tier cold starts (taking ~30–45s after inactivity) produced transient `Failed to fetch` errors on frontend clients, and Render health-checks logged `HEAD / 404 Not Found`.
+- **Decision:**
+  1. Added `start_slide` and `end_slide` parameters to `FlashcardGenerateRequest` and filtered section chunks accordingly. Updated the frontend UI with one-click slide set chunks, card density modes, slide set filtering, and `📍 Slide X` badges.
+  2. Removed `You (Champion)`. Sydney (`sydney`) is now the default unlocked starter mascot, and Coach Harshit (`coach_harshit`) serves as the founder guide.
+  3. Implemented `@app.api_route("/", methods=["GET", "HEAD"])` and `@app.api_route("/health", methods=["GET", "HEAD"])` in `backend/app/main.py`. Added single-retry resilience and descriptive cold-start hints in `frontend/src/services/api.ts`.
+- **Consequences:** Slide-aligned spaced repetition, intuitive companion personas, zero 404s in Render health logs, and graceful cold-start handling for playtesters.
+
+
 
 
 

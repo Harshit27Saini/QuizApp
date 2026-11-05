@@ -264,3 +264,4 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({ isOpen, onClose })
     </div>
   );
 };
+

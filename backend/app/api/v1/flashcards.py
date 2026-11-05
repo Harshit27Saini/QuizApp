@@ -36,11 +36,37 @@ async def generate_cards(
     if not all_sections:
         raise bad_request_error("Selected document(s) have no parsed text sections available.")
 
-    # 2. Synthesize flashcards
-    raw_cards = await generate_flashcards(sections=all_sections, count=payload.card_count)
+    # 2. Filter sections by requested slide range if specified
+    target_sections = all_sections
+    slide_label = ""
+    if payload.start_slide is not None and payload.end_slide is not None:
+        filtered = [
+            s for s in all_sections
+            if payload.start_slide <= (s.get("page_number") or 1) <= payload.end_slide
+        ]
+        if filtered:
+            target_sections = filtered
+        slide_label = f" (Slides {payload.start_slide}–{payload.end_slide})"
+    elif payload.start_slide is not None:
+        filtered = [
+            s for s in all_sections
+            if (s.get("page_number") or 1) >= payload.start_slide
+        ]
+        if filtered:
+            target_sections = filtered
+        slide_label = f" (From Slide {payload.start_slide})"
 
-    # 3. Create Flashcard Deck
-    deck_title = payload.title or f"Flashcards: {', '.join(doc_titles[:2])}"
+    # 3. Determine card count based on slide set
+    count = payload.card_count or 8
+    if payload.start_slide is not None and payload.end_slide is not None and not payload.card_count:
+        slide_span = max(1, payload.end_slide - payload.start_slide + 1)
+        count = min(30, max(4, slide_span * 2))
+
+    # 4. Synthesize flashcards for the selected slide set
+    raw_cards = await generate_flashcards(sections=target_sections, count=count)
+
+    # 5. Create Flashcard Deck
+    deck_title = payload.title or f"Flashcards: {', '.join(doc_titles[:2])}{slide_label}"
     deck = await db.create_flashcard_deck(
         user_id=current_user["id"],
         collection_id=payload.collection_id,

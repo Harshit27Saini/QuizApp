@@ -60,7 +60,17 @@ async def generic_recall_error_handler(request: Request, exc: RecallException):
 app.include_router(api_v1_router)
 
 
-@app.get("/health", tags=["Health"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Health"])
+async def root_health():
+    return {
+        "status": "healthy",
+        "service": "recall-backend",
+        "version": "1.0.0",
+        "ai_provider": settings.AI_PROVIDER
+    }
+
+
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"])
 async def health_check():
     return {
         "status": "healthy",
@@ -68,4 +78,5 @@ async def health_check():
         "version": "1.0.0",
         "ai_provider": settings.AI_PROVIDER
     }
+
 

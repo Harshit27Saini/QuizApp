@@ -45,17 +45,17 @@ export const INITIAL_COMPANIONS: Companion[] = [
     ]
   },
   {
-    id: 'founder',
-    name: 'You (Champion)',
+    id: 'coach_harshit',
+    name: 'Coach Harshit',
     category: 'vip',
-    subtitle: 'Focused & Determined',
+    subtitle: 'Founder & Study Coach',
     avatarIcon: '⚡',
     avatarImageUrl: '/avatars/founder_3d.png',
     cartoonImageUrl: '/avatars/founder_3d.png',
-    badgeText: 'LEARNER',
+    badgeText: 'HEAD COACH',
     badgeColor: '#1cb0f6',
     cheerQuotes: [
-      "Locked in. Let's master this concept.",
+      "Welcome to Recall! Let's master this syllabus together.",
       "Consistency beats cramming every single time.",
       "One stepping stone closer to exam mastery.",
       "Building real knowledge, step by step."
@@ -107,15 +107,10 @@ export const INITIAL_COMPANIONS: Companion[] = [
     id: 'sydney',
     name: 'Sydney',
     category: 'pet',
-    subtitle: 'American Golden Retriever',
+    subtitle: 'Golden Retriever Study Mascot',
     avatarIcon: '🐕',
-    badgeText: 'GOLDEN BUDDY',
+    badgeText: 'STUDY MASCOT',
     badgeColor: '#ffc800',
-    unlockRequirement: {
-      type: 'xp',
-      cost: 100,
-      label: 'Unlock for 100 XP'
-    },
     cheerQuotes: [
       "Woof! *Happy tail wag!* You're doing amazing!",
       "Break down the concept like a yummy treat! You got this!",
@@ -205,18 +200,21 @@ export const INITIAL_COMPANIONS: Companion[] = [
 ];
 
 class CompanionService {
-  private activeId: string = 'founder';
+  private activeId: string = 'sydney';
 
   constructor() {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('recall_active_companion');
-      if (saved) {
+      if (saved && saved !== 'founder') {
         this.activeId = saved;
+      } else {
+        this.activeId = 'sydney';
+        localStorage.setItem('recall_active_companion', 'sydney');
       }
-      // If active companion is currently locked, fallback to founder
+      // If active companion is currently locked, fallback to sydney
       const active = this.getActiveCompanion();
       if (!this.isCompanionUnlocked(active)) {
-        this.activeId = 'founder';
+        this.activeId = 'sydney';
       }
     }
   }
@@ -274,7 +272,7 @@ class CompanionService {
     const list = this.listCompanions();
     let current = list.find(c => c.id === this.activeId);
     if (!current || !this.isCompanionUnlocked(current)) {
-      current = list.find(c => c.id === 'founder') || list[0];
+      current = list.find(c => c.id === 'sydney') || list[0];
     }
     return current;
   }

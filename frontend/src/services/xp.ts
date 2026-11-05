@@ -20,7 +20,7 @@ const STORAGE_KEY = 'recall_xp_wallet';
 const DEFAULT_WALLET: XpWallet = {
   balance: 0,
   totalEarned: 0,
-  unlockedCompanions: ['founder'],
+  unlockedCompanions: ['sydney', 'coach_harshit'],
   inventory: {
     streak_freeze: 0,
     double_xp_potion: 0,
@@ -48,7 +48,7 @@ class XpService {
         ...DEFAULT_WALLET,
         ...parsed,
         inventory: { ...DEFAULT_WALLET.inventory, ...(parsed.inventory || {}) },
-        unlockedCompanions: parsed.unlockedCompanions || ['founder']
+        unlockedCompanions: (parsed.unlockedCompanions || ['sydney']).map((id: string) => id === 'founder' ? 'sydney' : id)
       };
     } catch {
       return DEFAULT_WALLET;

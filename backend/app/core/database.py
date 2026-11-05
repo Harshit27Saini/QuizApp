@@ -204,7 +204,7 @@ class Repository:
             items = [d.to_dict() for d in docs]
             return sorted(items, key=lambda x: x.get("section_index", 0))
         sections = [s for s in memory_db.document_sections.values() if s["document_id"] == document_id]
-        return sorted(sections, key=lambda x: x["section_index"])
+        return sorted(sections, key=lambda x: x.get("section_index", 0))
 
     # -------------------------------------------------------------------------
     # Quizzes & Questions
@@ -683,7 +683,7 @@ class Repository:
             "display_name": display_name.strip() or email.split("@")[0],
             "xp": 0,
             "streak": 0,
-            "cheerleader": "founder",
+            "cheerleader": "sydney",
             "created_at": memory_db.now_iso()
         }
         if self.firestore:
