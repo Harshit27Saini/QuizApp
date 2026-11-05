@@ -22,6 +22,7 @@ class InMemoryDB:
         self.path_nodes: Dict[str, Dict[str, Any]] = {}
         self.users: Dict[str, Dict[str, Any]] = {}
         self.feedback: Dict[str, Dict[str, Any]] = {}
+        self.telemetry_logs: Dict[str, Dict[str, Any]] = {}
         self.friend_requests: Dict[str, Dict[str, Any]] = {}
         self.friendships: List[Dict[str, Any]] = []
 
@@ -759,6 +760,78 @@ class Repository:
             self.firestore.collection("feedback").document(feedback_id).delete()
         if feedback_id in memory_db.feedback:
             del memory_db.feedback[feedback_id]
+        return True
+
+    # -------------------------------------------------------------------------
+    # Playtester Telemetry & Dev Activity Logs
+    # -------------------------------------------------------------------------
+    async def create_telemetry_log(
+        self,
+        user_id: str,
+        user_email: str,
+        user_name: str,
+        event_type: str,
+        path: str,
+        payload: Optional[Dict[str, Any]] = None,
+        device_info: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        log_id = str(uuid.uuid4())
+        item = {
+            "id": log_id,
+            "user_id": user_id,
+            "user_email": user_email,
+            "user_name": user_name,
+            "event_type": event_type,
+            "path": path,
+            "payload": payload or {},
+            "device_info": device_info or {},
+            "created_at": memory_db.now_iso()
+        }
+        if self.firestore:
+            self.firestore.collection("telemetry_logs").document(log_id).set(item)
+        memory_db.telemetry_logs[log_id] = item
+        return item
+
+    async def list_telemetry_logs(
+        self,
+        limit: int = 250,
+        user_id: Optional[str] = None,
+        event_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        if self.firestore:
+            try:
+                from firebase_admin import firestore
+                query = self.firestore.collection("telemetry_logs")
+                if user_id:
+                    query = query.where("user_id", "==", user_id)
+                if event_type and event_type != "ALL":
+                    query = query.where("event_type", "==", event_type)
+                docs = query.order_by("created_at", direction=firestore.Query.DESCENDING).limit(limit).stream()
+                return [d.to_dict() for d in docs]
+            except Exception:
+                pass
+
+        source = list(memory_db.telemetry_logs.values())
+        filtered = []
+        for l in source:
+            if user_id and l.get("user_id") != user_id and user_id.lower() not in l.get("user_email", "").lower():
+                continue
+            if event_type and event_type != "ALL" and l.get("event_type") != event_type:
+                continue
+            filtered.append(l)
+
+        sorted_logs = sorted(filtered, key=lambda x: x.get("created_at", ""), reverse=True)
+        return sorted_logs[:limit]
+
+    async def clear_telemetry_logs(self) -> bool:
+        if self.firestore:
+            try:
+                docs = self.firestore.collection("telemetry_logs").stream()
+                for d in docs:
+                    d.reference.delete()
+            except Exception:
+                pass
+        memory_db.telemetry_logs.clear()
         return True
 
     # -------------------------------------------------------------------------

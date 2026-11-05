@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { CollectionDetailPage } from './pages/CollectionDetailPage';
@@ -17,11 +17,30 @@ import { ShopPage } from './pages/ShopPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { AdminFeedbackPage } from './pages/AdminFeedbackPage';
+import { telemetry } from './services/telemetry';
 import './styles/global.css';
 
+const RouteTracker: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    telemetry.trackEvent('PAGE_VIEW', {
+      path: location.pathname,
+      search: location.search
+    });
+  }, [location.pathname, location.search]);
+
+  return null;
+};
+
 export const App: React.FC = () => {
+  useEffect(() => {
+    telemetry.init();
+  }, []);
+
   return (
     <BrowserRouter>
+      <RouteTracker />
       <AppLayout>
         <Routes>
           <Route path="/" element={<DashboardPage />} />

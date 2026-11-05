@@ -119,6 +119,22 @@
   4. Responsive Reader & Cards Grid: Collapse split-screen reader to 1-column on `< 900px` and set card auto-fit minimums to 250px-260px.
 - **Consequences:** Flawless experience on every device size from 320px phones to large desktop monitors.
 
+---
+
+## ADR 013: Developer-Only Access Gate, UI/UX Display Scaling Engine, and Playtester Telemetry
+- **Date:** 2026-11-06
+- **Status:** Accepted
+- **Context:** Playtesting revealed three key operational requirements:
+  1. The bug triage inbox and diagnostic tools should only be visible and accessible to the founder/dev (`Harshit27Saini`), not general playtesters.
+  2. Diverse student devices (compact phones, tablets, large monitors) require a user-adjustable UI/UX display scale (Compact 88%, Normal 100%, Cozy 115%) to match screen density and eyesight preferences.
+  3. Playtesters agreed to share activity logs for diagnostic debugging, requiring a non-blocking telemetry stream to monitor route transitions, quiz completions, and client runtime errors.
+- **Decision:**
+  1. Founder Developer Access Gate: Restricted `/admin/feedback` and navigation links to verified admin accounts or founder passcode (`recall-founder-2026`). Backend endpoints (`GET /feedback/`, `GET /telemetry/logs`) enforce `get_admin_user` dependency (HTTP 403 for unauthorized users). Added `POST /auth/claim-founder` for frictionless verification across devices.
+  2. Dynamic UI/UX Display Scaling: Built `uiScaleService` controlling root font sizing (14px, 16px, 18px) via `data-ui-scale` attribute and accessible toggle in top app bar and mobile menu.
+  3. Non-Blocking Playtester Telemetry: Built client-side `telemetry` service capturing page views, quiz finishes, scale changes, and runtime exceptions (`window.onerror`, `unhandledrejection`). Data is persisted in `InMemoryDB` and Firestore, viewable with live filtering in the Founder Dev Portal.
+- **Consequences:** Complete privacy for developer tools, customizable readability for every learner, and instant visibility into runtime bugs experienced by testers.
+
+
 
 
 

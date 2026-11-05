@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { themeService, type ThemeMode } from '../../services/theme';
+import { uiScaleService, type UiScale, SCALE_CONFIGS } from '../../services/uiScale';
+import { telemetry } from '../../services/telemetry';
 
 interface MobileBottomNavProps {
   onOpenFeedback: () => void;
@@ -17,11 +19,33 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>(themeService.getTheme());
+  const [currentScale, setCurrentScale] = useState<UiScale>(uiScaleService.getScale());
   const navigate = useNavigate();
+
+  const isAdmin = Boolean(
+    authUser?.is_admin ||
+    authUser?.email?.toLowerCase().includes('harshit') ||
+    authUser?.email?.toLowerCase().includes('dev@recall.local') ||
+    (typeof window !== 'undefined' && localStorage.getItem('recall_founder_passcode') === 'recall-founder-2026')
+  );
+
+  useEffect(() => {
+    const handleScaleChanged = (e: any) => {
+      setCurrentScale(e.detail || uiScaleService.getScale());
+    };
+    window.addEventListener('recall:scale-changed', handleScaleChanged);
+    return () => window.removeEventListener('recall:scale-changed', handleScaleChanged);
+  }, []);
 
   const handleToggleTheme = () => {
     const next = themeService.toggleTheme();
     setTheme(next);
+  };
+
+  const handleSelectScale = (scale: UiScale) => {
+    uiScaleService.setScale(scale);
+    setCurrentScale(scale);
+    telemetry.trackEvent('SCALE_CHANGE', { new_scale: scale });
   };
 
   const primaryTabs = [
@@ -31,13 +55,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     { to: '/todos', label: 'To-Do', icon: '📝' },
   ];
 
-  const moreItems = [
+  const baseMoreItems = [
     { to: '/shop', label: 'Shop', icon: '🛒', desc: 'Cheerleaders & power-up shields' },
     { to: '/just-start', label: 'Just Start', icon: '🛋️', desc: '5-min low-friction focus mode' },
     { to: '/companions', label: 'Companions', icon: '🐾', desc: 'Switch your active study cheerleader' },
     { to: '/history', label: 'Quiz History', icon: '⚡', desc: 'Past attempts and scorecards' },
-    { to: '/admin/feedback', label: 'Bug Inbox', icon: '👑', desc: 'Founder triage dashboard' },
   ];
+
+  const moreItems = isAdmin
+    ? [...baseMoreItems, { to: '/admin/feedback', label: 'Dev Hub', icon: '👑', desc: 'Founder telemetry & bugs' }]
+    : baseMoreItems;
 
   return (
     <>
@@ -158,6 +185,51 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               )}
             </div>
 
+            {/* Display Size / Scaling Selector */}
+            <div style={{
+              padding: '0.75rem 1rem',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--color-surface-hover)',
+              border: '1.5px solid var(--color-border)',
+              marginBottom: '1rem'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.5rem'
+              }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)' }}>
+                  🔍 Display Size
+                </span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-blue)' }}>
+                  {SCALE_CONFIGS[currentScale].percent}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                {(['compact', 'default', 'cozy'] as UiScale[]).map(scaleKey => {
+                  const meta = SCALE_CONFIGS[scaleKey];
+                  const isActive = currentScale === scaleKey;
+                  return (
+                    <button
+                      key={scaleKey}
+                      type="button"
+                      onClick={() => handleSelectScale(scaleKey)}
+                      className={`btn-3d ${isActive ? 'btn-3d-blue' : 'btn-3d-white'}`}
+                      style={{
+                        flex: 1,
+                        fontSize: '0.75rem',
+                        padding: '0.45rem 0.25rem',
+                        fontWeight: 800
+                      }}
+                    >
+                      {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Menu Links */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
               {moreItems.map(item => (
@@ -207,7 +279,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 className="btn-3d btn-3d-white"
                 style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}
               >
-                {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+                {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
               </button>
             </div>
           </div>
@@ -216,4 +288,3 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     </>
   );
 };
-

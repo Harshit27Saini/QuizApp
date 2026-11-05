@@ -66,8 +66,11 @@ Recall is designed as a **Modular Monolith** with a decoupled single-page applic
   - Deterministic validation in `services/grading/scorer.py`. Correct answers are never sent to the client during active quiz sessions; evaluation is performed on the server.
 - **Multi-User Playtester Network & Feedback Services:**
   - Salted SHA-256 password hashing + HS256 JWT access tokens (`api/v1/auth.py`).
+  - Developer-only access gate (`core/security.py:get_admin_user`, `POST /auth/claim-founder` with founder passcode).
   - Playtester bug report routing & Founder triage dashboard (`api/v1/feedback.py`, `/admin/feedback`).
+  - Non-blocking telemetry ingestion and diagnostics (`api/v1/telemetry.py`, `POST /telemetry/log`, `GET /telemetry/logs`).
   - Real-time friend request invitation and high-five cheer bus (`api/v1/friends.py`).
+  - Client-side responsive UI scaling engine (`services/uiScale.ts`, `data-ui-scale: compact | default | cozy`).
 
 ---
 

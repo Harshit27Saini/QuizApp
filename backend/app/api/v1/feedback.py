@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_admin_user
 from app.core.database import db
 
 router = APIRouter(prefix="/feedback", tags=["Playtester Bug Reports & Feedback"])
@@ -34,18 +34,23 @@ async def submit_feedback(
 
 @router.get("/", response_model=List[Dict[str, Any]])
 async def list_all_feedback(
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    admin_user: Dict[str, Any] = Depends(get_admin_user)
 ):
-    """Returns all playtest feedback and bug reports chronologically for the founder."""
+    """
+    Returns all playtest feedback and bug reports chronologically.
+    RESTRICTED: Developer & Founder only.
+    """
     return await db.list_feedback()
 
 
 @router.delete("/{feedback_id}")
 async def resolve_feedback(
     feedback_id: str,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    admin_user: Dict[str, Any] = Depends(get_admin_user)
 ):
-    """Marks a bug report as resolved / deleted."""
+    """
+    Marks a bug report as resolved / deleted.
+    RESTRICTED: Developer & Founder only.
+    """
     await db.delete_feedback(feedback_id)
     return {"success": True}
-

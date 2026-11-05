@@ -27,6 +27,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   // Attach persistent auth token if available, or unique device guest ID
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('recall_auth_token');
+    const founderPasscode = localStorage.getItem('recall_founder_passcode');
+    if (founderPasscode && !headers.has('X-Founder-Passcode')) {
+      headers.set('X-Founder-Passcode', founderPasscode);
+    }
     if (token && !headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${token}`);
     } else if (!token && !headers.has('X-User-Id')) {
@@ -225,4 +229,23 @@ export const api = {
     request<{ success: boolean; xp_awarded: number }>(`/friends/${friendId}/cheer`, {
       method: 'POST',
     }),
+
+  // Founder & Developer Access
+  claimFounder: (passcode: string) =>
+    request<{ success: boolean; is_admin: boolean; token: string; user: any }>('/auth/claim-founder', {
+      method: 'POST',
+      body: JSON.stringify({ passcode }),
+    }),
+
+  // Playtester Telemetry & Dev Logs
+  listTelemetryLogs: (params?: { limit?: number; user_id?: string; event_type?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set('limit', String(params.limit));
+    if (params?.user_id) q.set('user_id', params.user_id);
+    if (params?.event_type) q.set('event_type', params.event_type);
+    const qs = q.toString() ? `?${q.toString()}` : '';
+    return request<any[]>(`/telemetry/logs${qs}`);
+  },
+  clearTelemetryLogs: () =>
+    request<{ success: boolean }>('/telemetry/logs', { method: 'DELETE' }),
 };

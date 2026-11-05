@@ -593,3 +593,51 @@ button {
   background-color: var(--color-red-light);
   color: var(--color-red-dark);
 }
+
+/* -------------------------------------------------------------------------
+   MOBILE UI/UX ADAPTATIONS & SCALING HELPERS
+   ------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .main-feed {
+    padding: 0.75rem 0.625rem !important;
+  }
+  
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  .btn-3d {
+    min-height: 40px;
+  }
+
+  .collection-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.scale-selector-group {
+  display: inline-flex;
+  background: var(--color-surface-hover);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0.2rem;
+  gap: 0.2rem;
+}
+
+.scale-option-btn {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.scale-option-btn.active {
+  background: var(--color-surface);
+  color: var(--color-blue);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}

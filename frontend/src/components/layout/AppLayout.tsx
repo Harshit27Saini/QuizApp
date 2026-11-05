@@ -6,6 +6,7 @@ import { FeedbackModal } from '../common/FeedbackModal';
 import { AuthModal } from '../auth/AuthModal';
 import { LoginPage } from '../../pages/LoginPage';
 import { themeService, type ThemeMode } from '../../services/theme';
+import { uiScaleService, type UiScale, SCALE_CONFIGS } from '../../services/uiScale';
 import { xpService } from '../../services/xp';
 import { questService } from '../../services/quests';
 import { companionService } from '../../services/companions';
@@ -37,11 +38,15 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   });
   const [xpBalance, setXpBalance] = useState<number>(xpService.getBalance());
   const [streakDays, setStreakDays] = useState<number>(questService.getState().streakDays);
+  const [currentScale, setCurrentScale] = useState<UiScale>(uiScaleService.getScale());
   const activeCompanion = companionService.getActiveCompanion();
 
   useEffect(() => {
     const handleThemeChanged = (e: any) => {
       setTheme(e.detail || themeService.getTheme());
+    };
+    const handleScaleChanged = (e: any) => {
+      setCurrentScale(e.detail || uiScaleService.getScale());
     };
     const handleXpChanged = () => {
       setXpBalance(xpService.getBalance());
@@ -53,12 +58,14 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     };
 
     window.addEventListener('recall:theme-changed', handleThemeChanged);
+    window.addEventListener('recall:scale-changed', handleScaleChanged);
     window.addEventListener('recall:xp-changed', handleXpChanged);
     window.addEventListener('recall:streak-changed', handleXpChanged);
     window.addEventListener('recall:auth-changed', handleAuthChanged);
 
     return () => {
       window.removeEventListener('recall:theme-changed', handleThemeChanged);
+      window.removeEventListener('recall:scale-changed', handleScaleChanged);
       window.removeEventListener('recall:xp-changed', handleXpChanged);
       window.removeEventListener('recall:streak-changed', handleXpChanged);
       window.removeEventListener('recall:auth-changed', handleAuthChanged);
@@ -154,6 +161,20 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
                 {isSidebarCollapsed ? '▾' : '▴'}
               </span>
+            </button>
+
+            {/* UI Scale / Display Size Toggle Button */}
+            <button
+              onClick={() => {
+                const next = uiScaleService.cycleScale();
+                setCurrentScale(next);
+              }}
+              className="btn-3d btn-3d-white"
+              style={{ fontSize: '0.8rem', padding: '0.4rem 0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+              title={`Display Size: ${SCALE_CONFIGS[currentScale].label} (${SCALE_CONFIGS[currentScale].percent}) - Click to toggle size`}
+            >
+              <span style={{ fontSize: '0.9rem' }}>Aa</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-blue)', fontWeight: 900 }}>{SCALE_CONFIGS[currentScale].percent}</span>
             </button>
 
             {/* Dark Mode Toggle */}

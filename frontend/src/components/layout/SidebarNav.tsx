@@ -1,11 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { companionService } from '../../services/companions';
 
 export const SidebarNav: React.FC = () => {
   const activeCompanion = companionService.getActiveCompanion();
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('recall_user_profile') || 'null');
+      const passcode = localStorage.getItem('recall_founder_passcode');
+      return Boolean(
+        user?.is_admin ||
+        user?.email?.toLowerCase().includes('harshit') ||
+        user?.email?.toLowerCase().includes('dev@recall.local') ||
+        passcode === 'recall-founder-2026'
+      );
+    } catch {
+      return false;
+    }
+  });
 
-  const navItems = [
+  useEffect(() => {
+    const handleAuthChange = (e: any) => {
+      const user = e.detail;
+      const passcode = localStorage.getItem('recall_founder_passcode');
+      setIsAdmin(Boolean(
+        user?.is_admin ||
+        user?.email?.toLowerCase().includes('harshit') ||
+        user?.email?.toLowerCase().includes('dev@recall.local') ||
+        passcode === 'recall-founder-2026'
+      ));
+    };
+
+    window.addEventListener('recall:auth-changed', handleAuthChange);
+    return () => window.removeEventListener('recall:auth-changed', handleAuthChange);
+  }, []);
+
+  const baseNavItems = [
     { to: '/', label: 'Learn', icon: '🗺️' },
     { to: '/inventory', label: 'Backpack', icon: '🎒', badge: 'SHIELD' },
     { to: '/leaderboard', label: 'Leagues', icon: '🏆', badge: 'GOLD' },
@@ -14,8 +44,12 @@ export const SidebarNav: React.FC = () => {
     { to: '/just-start', label: 'Just Start', icon: '🛋️', badge: '5 MIN' },
     { to: '/history', label: 'History', icon: '⚡' },
     { to: '/companions', label: 'Companions', icon: '🐾', badge: 'VIP' },
-    { to: '/admin/feedback', label: 'Bug Inbox', icon: '🐞', badge: 'FOUNDER' },
   ];
+
+  // ONLY visible to the developer / founder
+  const navItems = isAdmin
+    ? [...baseNavItems, { to: '/admin/feedback', label: 'Dev Hub', icon: '👑', badge: 'DEV' }]
+    : baseNavItems;
 
   return (
     <aside className="sidebar-left">
@@ -99,19 +133,19 @@ export const SidebarNav: React.FC = () => {
         <div style={{
           width: '38px',
           height: '38px',
-          borderRadius: 'var(--radius-md)',
-          overflow: 'hidden',
+          borderRadius: '50%',
+          border: '2px solid var(--color-border)',
+          background: 'var(--color-surface)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#ffffff',
-          border: '1.5px solid var(--color-border)',
-          fontSize: '1.5rem',
+          fontSize: '1.25rem',
+          overflow: 'hidden',
           flexShrink: 0
         }}>
-          {companionService.getAvatarUrl(activeCompanion) ? (
+          {activeCompanion.avatarImageUrl ? (
             <img
-              src={companionService.getAvatarUrl(activeCompanion)}
+              src={activeCompanion.avatarImageUrl}
               alt={activeCompanion.name}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
@@ -119,17 +153,16 @@ export const SidebarNav: React.FC = () => {
             activeCompanion.avatarIcon
           )}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-subtle)', textTransform: 'uppercase' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-subtle)' }}>
             Active Buddy
           </div>
-          <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {activeCompanion.name}
           </div>
         </div>
-        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>⇄</span>
+        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-subtle)' }}>⇄</span>
       </Link>
     </aside>
   );
 };
-

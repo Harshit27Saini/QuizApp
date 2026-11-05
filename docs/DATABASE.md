@@ -153,4 +153,16 @@ Granular per-question responses. This schema provides the foundation for future 
 - `friend_requests`: `id`, `from_user_id`, `to_user_id`, `status` ('pending', 'accepted', 'declined'), `created_at`
 - `friendships`: `id`, `user_id_1`, `user_id_2`, `created_at`
 
+### `telemetry_logs` (Playtester Diagnostics & Dev Activity)
+- `id`: TEXT (PK)
+- `user_id`: TEXT NOT NULL
+- `user_email`: TEXT NOT NULL
+- `user_name`: TEXT
+- `event_type`: TEXT NOT NULL ('PAGE_VIEW', 'CLIENT_ERROR', 'QUIZ_START', 'QUIZ_FINISH', 'SCALE_CHANGE', etc.)
+- `path`: TEXT NOT NULL
+- `payload`: JSONB (error stacks, quiz performance, scale options)
+- `device_info`: JSONB (screen dimensions, user agent, zoom/ui_scale)
+- `created_at`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
+
+
 

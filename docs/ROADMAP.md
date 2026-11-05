@@ -101,6 +101,15 @@
   - Slide-over mobile drawer for Study Center (streaks, quests, cheerleader) on screens `< 1180px`
   - Dynamic serpentine stepping stone scaling and centered companion callouts for 360px phones
   - Single-column adaptive document reader and fluid card grids
+- [x] Developer Access Gate & Restricted Triage Portal:
+  - Founder-only authorization for `/admin/feedback` and Dev Hub nav links via `get_admin_user`
+  - Passcode unlock gate (`recall-founder-2026`) and `POST /auth/claim-founder`
+- [x] Dynamic UI/UX Display Scaling Engine:
+  - Multi-density zoom control (Compact 88%, Normal 100%, Cozy 115%) in top bar and mobile drawer
+  - Fluid root font size scaling adapting touch targets and typography across all device screens
+- [x] Playtester Activity & Diagnostics Telemetry Stream:
+  - Non-blocking telemetry service capturing page routes, quiz completions, and client errors
+  - Real-time dev monitor in Dev Hub with user/event filters, error code blocks, and JSON export
 - [ ] OCR integration (Tesseract / EasyOCR) for scanned PDFs and handwritten notes
 - [ ] Additional question formats:
   - Fill in the blanks

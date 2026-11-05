@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # JWT Authentication
     JWT_SECRET: str = "recall_jwt_playtest_secret_key_2026"
 
+    # Founder / Dev Admin configuration
+    ADMIN_EMAILS: str = "dev@recall.local,harshit,admin@recall.local"
+    FOUNDER_PASSCODE: str = "recall-founder-2026"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -32,6 +36,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> List[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @property
+    def admin_email_list(self) -> List[str]:
+        return [email.strip().lower() for email in self.ADMIN_EMAILS.split(",") if email.strip()]
 
     @property
     def max_upload_bytes(self) -> int:

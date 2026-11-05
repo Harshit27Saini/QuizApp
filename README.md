@@ -13,6 +13,9 @@ Inspired by Duolingo's bite-sized progression, XP indicators, and immediate feed
 - **Study To-Do Queue & Action Plan:** Micro-task study checklist that auto-chunks long slide decks into manageable daily tasks with +10 to +25 XP rewards.
 - **Centralized XP Economy & Cheerleader Shop:** Earn spendable XP coins through study milestones, to-do completion, and quizzes to unlock companions (Sydney, Connie, Milo, Scooby, Bunny, Duo Owl, Archimedes) and streak freeze power-ups.
 - **Mobile & Tablet Optimized:** Native Duolingo-style bottom navigation bar, safe-area inset support, slide-up study center drawers, and responsive serpentine paths designed for iPhones, Android, and iPads.
+- **User-Adjustable UI/UX Display Scale:** One-tap display scaling (Compact 88%, Normal 100%, Cozy 115%) in top bar and mobile menu adapting typography and touch targets to personal eyesight and screen sizes.
+- **Developer Access Gate & Founder Triage Hub:** Restricted `/admin/feedback` and Dev Hub nav links protected by founder verification and passcode gate (`recall-founder-2026`).
+- **Live Playtester Diagnostics & Telemetry:** Non-blocking telemetry ingestion logging page routes, quiz completions, and client runtime errors with real-time founder activity timeline and JSON export.
 - **Backpack Inventory & Auto-Armed Streak Freeze:** Dedicated `/inventory` page managing held shields, 30-minute 2X XP boosters, and cheerleaders. Missed study days are auto-protected by held Streak Freezes.
 - **Weekly Leagues & Social Leaderboards:** Compete in the weekly Gold League (`/leaderboard`), filter by friends, send friend requests, copy your shareable playtest handle, and exchange +5 XP High-Five cheers.
 - **Collapsible Study Center & Midnight Dark Mode:** One-click dark mode toggle (🌙 / ☀️), interactive daily quests with 1-click jump shortcuts, and a collapsible right sidebar that expands the center reading feed up to 1080px.
