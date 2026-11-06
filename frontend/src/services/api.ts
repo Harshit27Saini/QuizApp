@@ -50,20 +50,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       headers,
     });
   } catch (_netErr: any) {
-    // If it's a GET request and failed to fetch, retry once after 2.5s (in case Render is waking up from free-tier sleep)
-    const isGet = !options.method || options.method.toUpperCase() === 'GET';
-    if (isGet) {
-      try {
-        await new Promise((r) => setTimeout(r, 2500));
-        response = await fetch(url, { ...options, headers });
-      } catch {
-        throw new Error(
-          'Connecting to cloud backend... If the server is waking up from sleep, please wait ~20s and refresh.'
-        );
-      }
-    } else {
+    // Retry once after 3s (in case Render is waking up from free-tier sleep or redeploying)
+    try {
+      await new Promise((r) => setTimeout(r, 3000));
+      response = await fetch(url, { ...options, headers });
+    } catch {
       throw new Error(
-        'Unable to reach cloud backend. If the server was sleeping, please wait a moment and try again.'
+        'Unable to reach cloud backend. If the server is waking up or deploying, please wait a moment and refresh.'
       );
     }
   }

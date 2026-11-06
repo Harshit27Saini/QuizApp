@@ -488,8 +488,37 @@ export const LearningPathPage: React.FC = () => {
           <h3 style={{ fontWeight: 800 }}>Generating your dungeon map...</h3>
         </div>
       ) : error ? (
-        <div className="card" style={{ borderLeft: '4px solid var(--color-red)' }}>
-          <p style={{ color: 'var(--color-red-dark)', fontWeight: 700 }}>{error}</p>
+        <div className="card" style={{
+          borderLeft: '4px solid var(--color-red)',
+          padding: '2.5rem 1.5rem',
+          maxWidth: '640px',
+          margin: '0 auto',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <div style={{ fontSize: '3rem' }}>🧭</div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0 }}>Learning Quest Location Unavailable</h2>
+          <p style={{ color: 'var(--color-red-dark)', fontWeight: 700, margin: 0 }}>{error}</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', margin: 0, maxWidth: '480px', lineHeight: 1.5 }}>
+            If this document was opened from a previous browser session before database synchronization, head to your collection and upload your lecture notes or slides to generate an active dungeon quest.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
+            <button
+              className="btn-3d btn-3d-green"
+              onClick={() => fetchPath()}
+            >
+              🔄 Retry Connecting
+            </button>
+            <button
+              className="btn-3d btn-3d-white"
+              onClick={() => navigate('/')}
+            >
+              ← Back to Collections Dashboard
+            </button>
+          </div>
         </div>
       ) : path && path.nodes ? (
 
