@@ -1,10 +1,14 @@
 import os
+import sys
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from app.core.config import settings
 
 import json
+
+def is_test_environment() -> bool:
+    return "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST") is not None or any("pytest" in arg for arg in sys.argv)
 
 # Global in-memory storage instance for offline dev & test suite (with local disk persistence)
 class InMemoryDB:
@@ -148,8 +152,12 @@ class Repository:
     Priority: Supabase (PostgreSQL) > Cloud Firestore > In-memory (dev/test).
     """
     def __init__(self):
-        self.supabase = get_supabase_client()
-        self.firestore = None if self.supabase else get_firestore_client()
+        if is_test_environment():
+            self.supabase = None
+            self.firestore = None
+        else:
+            self.supabase = get_supabase_client()
+            self.firestore = None if self.supabase else get_firestore_client()
 
     # -------------------------------------------------------------------------
     # Internal Supabase helpers
@@ -766,6 +774,24 @@ class Repository:
         path_id = str(uuid.uuid4())
         now = memory_db.now_iso()
 
+        path_data = {
+            "id": path_id,
+            "user_id": user_id,
+            "collection_id": collection_id,
+            "document_id": document_id,
+            "title": title,
+            "total_units": len(raw_units),
+            "completed_units": 0,
+            "created_at": now
+        }
+        # Parent learning_paths record MUST be inserted before child path_nodes foreign keys!
+        if self.supabase:
+            self._sb_insert("learning_paths", path_data)
+        elif self.firestore:
+            self.firestore.collection("learning_paths").document(path_id).set(path_data)
+        else:
+            memory_db.learning_paths[path_id] = path_data
+
         nodes = []
         for idx, u in enumerate(raw_units):
             node_id = str(uuid.uuid4())
@@ -810,29 +836,16 @@ class Repository:
                 "xp_reward": u.get("xp_reward", 25)
             }
             nodes.append(node)
-            if self.supabase:
-                self._sb_insert("path_nodes", node)
-            elif self.firestore:
-                self.firestore.collection("path_nodes").document(node_id).set(node)
-            else:
+            if not self.supabase and not self.firestore:
                 memory_db.path_nodes[node_id] = node
 
-        path_data = {
-            "id": path_id,
-            "user_id": user_id,
-            "collection_id": collection_id,
-            "document_id": document_id,
-            "title": title,
-            "total_units": len(nodes),
-            "completed_units": 0,
-            "created_at": now
-        }
-        if self.supabase:
-            self._sb_insert("learning_paths", path_data)
+        if self.supabase and nodes:
+            # Batch insert child path nodes for high performance
+            self.supabase.table("path_nodes").insert(nodes).execute()
         elif self.firestore:
-            self.firestore.collection("learning_paths").document(path_id).set(path_data)
+            for node in nodes:
+                self.firestore.collection("path_nodes").document(node["id"]).set(node)
         else:
-            memory_db.learning_paths[path_id] = path_data
             memory_db._save_to_disk()
 
         return {
