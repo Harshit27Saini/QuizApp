@@ -90,10 +90,12 @@ CRITICAL RULES:
    - Problem-solving & Application: "Given scenario X, which outcome is expected?"
    - Mode: {mode}.
 
-4. PLAUSIBLE, HIGH-QUALITY DISTRACTORS:
-   - Distractors MUST be plausible terms/mechanisms from the same academic domain that test common student misconceptions.
-   - NEVER use throwaway/joke options, meta-commentary, or obvious giveaways like "None of the above" or "The author does not say".
-   - All 4 options must be similar in length and tone.
+4. STRICT LENGTH PARITY & ANTI-BIAS (CRITICAL):
+   - NEVER MAKE THE CORRECT ANSWER THE LONGEST CHOICE! This is a fatal giveaway in automated exams.
+   - All 4 options (A, B, C, D) MUST have strictly balanced character length (within ±15% length of each other).
+   - If the correct answer is 12 words, all 3 distractors MUST also be ~10-14 words long with equal technical nuance.
+   - Distractors MUST represent real, plausible domain misconceptions, not short lazy phrases or joke options.
+
 
 5. SPECIFICATIONS:
    - Target difficulty: {difficulty}.

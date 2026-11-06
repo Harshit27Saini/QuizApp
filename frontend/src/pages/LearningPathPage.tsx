@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { soundManager } from '../utils/sound';
 import { triggerConfetti } from '../utils/confetti';
 import { companionService } from '../services/companions';
-import { questService } from '../services/quests';
 import { xpService } from '../services/xp';
 import { PetAssistantChat } from '../components/learning_path/PetAssistantChat';
 import { SandboxSetupModal } from '../components/learning_path/SandboxSetupModal';
-import type { LearningPath, PathNode, PathNodeQuestion, LearningPathGenerateOptions } from '../types';
+import { SteppingStoneRunner } from '../components/learning_path/SteppingStoneRunner';
+import type { LearningPath, PathNode, LearningPathGenerateOptions } from '../types';
 
 export const LearningPathPage: React.FC = () => {
   const { documentId } = useParams<{ documentId: string }>();
+  const navigate = useNavigate();
 
   const [path, setPath] = useState<LearningPath | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,19 +35,8 @@ export const LearningPathPage: React.FC = () => {
   const [openedChestIndex, setOpenedChestIndex] = useState<number | null>(null);
   const [claimedChests, setClaimedChests] = useState<Set<number>>(new Set());
 
-  // Active Lesson Modal State
+  // Active Stepping Stone Runner Modal
   const [activeNode, setActiveNode] = useState<PathNode | null>(null);
-  const [lessonPhase, setLessonPhase] = useState<'study' | 'quiz' | 'celebration'>('study');
-
-  // Duolingo Practice Queue & Mistake Recycling
-  const [questionQueue, setQuestionQueue] = useState<PathNodeQuestion[]>([]);
-  const [queueIndex, setQueueIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ isCorrect: boolean; explanation: string; wasRecycled?: boolean } | null>(null);
-  const [comboStreak, setComboStreak] = useState(0);
-  const [initialTotalQuestions, setInitialTotalQuestions] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-  const [unitResult, setUnitResult] = useState<{ score: number; passed: boolean; xp: number } | null>(null);
 
   const fetchPath = async (opts?: LearningPathGenerateOptions) => {
     if (!documentId) return;
@@ -104,95 +94,7 @@ export const LearningPathPage: React.FC = () => {
   const handleOpenNode = (node: PathNode) => {
     if (node.is_locked) return;
     setActiveNode(node);
-    setLessonPhase('study');
-    setQuestionQueue(node.questions || []);
-    setQueueIndex(0);
-    setInitialTotalQuestions(node.questions?.length || 1);
-    setSelectedOption(null);
-    setFeedback(null);
-    setComboStreak(0);
-    setUnitResult(null);
     setCheerQuote(companionService.getRandomCheer());
-  };
-
-  const handleStartPractice = () => {
-    if (!activeNode || !activeNode.questions || activeNode.questions.length === 0) return;
-    setQuestionQueue([...activeNode.questions]);
-    setQueueIndex(0);
-    setSelectedOption(null);
-    setFeedback(null);
-    setComboStreak(0);
-    setLessonPhase('quiz');
-  };
-
-  const handleSelectOption = (optId: string) => {
-    if (feedback !== null) return;
-    setSelectedOption(optId);
-  };
-
-  const handleCheckAnswer = () => {
-    if (!activeNode || !selectedOption) return;
-    const currentQ = questionQueue[queueIndex];
-    if (!currentQ) return;
-
-    const isCorrect = currentQ.correct_answers.includes(selectedOption);
-
-    if (isCorrect) {
-      soundManager.playCorrect();
-      setComboStreak(prev => prev + 1);
-      setFeedback({
-        isCorrect: true,
-        explanation: currentQ.explanation
-      });
-    } else {
-      soundManager.playWrong();
-      setComboStreak(0);
-      // Recycle question: Re-queue missed question at the end of the lesson!
-      setQuestionQueue(prev => [...prev, currentQ]);
-      setFeedback({
-        isCorrect: false,
-        explanation: currentQ.explanation,
-        wasRecycled: true
-      });
-    }
-  };
-
-  const handleNextQuestion = async () => {
-    if (!activeNode) return;
-
-    if (queueIndex < questionQueue.length - 1) {
-      setQueueIndex(prev => prev + 1);
-      setSelectedOption(null);
-      setFeedback(null);
-    } else {
-      // Completed all questions in queue (including recycled ones!)
-      try {
-        setSubmitting(true);
-        soundManager.playVictory();
-        triggerConfetti();
-
-        const payload = activeNode.questions.map(q => ({
-          question_id: q.id,
-          selected_options: q.correct_answers
-        }));
-
-        const res = await api.completePathNode(path!.id, activeNode.id, payload);
-        questService.recordProgress('learning_unit', 1);
-        const earned = res.xp_awarded + (comboStreak >= 3 ? 15 : 0);
-        xpService.awardXp(earned, `Mastered Unit: ${activeNode.title}`);
-        setUnitResult({
-          score: 100,
-          passed: true,
-          xp: earned
-        });
-        setPath(res.path);
-        setLessonPhase('celebration');
-      } catch (err: any) {
-        alert(err.message || 'Failed to complete unit');
-      } finally {
-        setSubmitting(false);
-      }
-    }
   };
 
   const progressPercent = path && path.total_units > 0
@@ -233,6 +135,16 @@ export const LearningPathPage: React.FC = () => {
           <div className="badge badge-xp" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}>
             ⚡ {progressPercent}% Completed
           </div>
+          {documentId && (
+            <Link
+              to={`/documents/${documentId}/preview`}
+              className="btn-3d btn-3d-white"
+              style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              title="Open full document in the PDF Reader with highlighters"
+            >
+              📖 Open in PDF Reader
+            </Link>
+          )}
           <button
             className="btn-3d btn-3d-white"
             onClick={() => fetchPath({ force_regenerate: true, lesson_depth: 'standard' })}
@@ -408,27 +320,38 @@ export const LearningPathPage: React.FC = () => {
                   <div
                     onClick={() => handleOpenNode(node)}
                     className={`stepping-stone-3d ${isCompleted ? 'completed' : isCurrent ? 'active' : 'locked'}`}
+                    style={node.is_challenge_trail ? {
+                      border: '3px solid var(--color-gold)',
+                      boxShadow: '0 8px 24px rgba(255, 184, 0, 0.45)',
+                      transform: 'scale(1.08)'
+                    } : undefined}
                     title={isLocked ? 'Complete previous unit to unlock' : node.title}
                   >
-                    {isCompleted ? '👑' : isCurrent ? nodeTypeIcon : '🔒'}
+                    {node.is_challenge_trail ? '👑' : isCompleted ? '⭐' : isCurrent ? nodeTypeIcon : '🔒'}
                   </div>
 
                   {/* Node Title Label */}
                   <div style={{
                     marginTop: '0.75rem',
-                    fontWeight: 800,
+                    fontWeight: 900,
                     fontSize: '0.9rem',
                     textAlign: 'center',
                     maxWidth: '190px',
-                    color: isLocked ? 'var(--color-text-subtle)' : 'var(--color-text-main)'
+                    color: isLocked ? 'var(--color-text-subtle)' : node.is_challenge_trail ? 'var(--color-gold)' : 'var(--color-text-main)'
                   }}>
                     {node.title}
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem' }}>
-                    <span className="badge" style={{ fontSize: '0.7rem', background: '#ffffff', border: '1.5px solid var(--color-border)' }}>
-                      {node.node_type === 'checkpoint' ? 'Checkpoint' : node.node_type === 'scenario' ? 'Scenario' : 'Lesson'}
-                    </span>
+                  <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    {node.is_challenge_trail ? (
+                      <span className="badge badge-xp" style={{ fontSize: '0.7rem' }}>
+                        👑 +75 XP GAUNTLET
+                      </span>
+                    ) : (
+                      <span className="badge" style={{ fontSize: '0.7rem', background: '#ffffff', border: '1.5px solid var(--color-border)' }}>
+                        {node.node_type === 'checkpoint' ? 'Checkpoint' : node.node_type === 'scenario' ? 'Scenario' : 'Lesson'}
+                      </span>
+                    )}
                     {isCurrent && (
                       <span className="badge badge-mode" style={{ fontSize: '0.7rem' }}>
                         START
@@ -482,243 +405,49 @@ export const LearningPathPage: React.FC = () => {
         </div>
       )}
 
-      {/* Interactive Substantive Lesson Modal */}
+      {/* 4-Step Progressive Stepping Stone Runner */}
       {activeNode && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(3px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 200,
-          padding: '1rem'
-        }}>
-          <div className="card" style={{ width: '100%', maxWidth: '640px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
-            
-            {/* Stage 1: Substantive Deep Study (Learn Phase) */}
-            {lessonPhase === 'study' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="badge badge-mode">
-                    📖 Step 1: Deep Theory & Study
-                  </span>
-                  <button onClick={() => setActiveNode(null)} style={{ fontSize: '1.25rem', cursor: 'pointer', color: 'var(--color-text-muted)', background: 'none', border: 'none' }}>✕</button>
-                </div>
+        <SteppingStoneRunner
+          node={activeNode}
+          documentId={documentId || ''}
+          collectionId={path?.collection_id}
+          docTitle={path?.title}
+          onClose={() => setActiveNode(null)}
+          onNavigateToReader={(slidePage) => {
+            setActiveNode(null);
+            navigate(`/documents/${documentId}/preview${slidePage ? `?slide=${slidePage}` : ''}`);
+          }}
+          onComplete={(score, passed) => {
+            if (passed && path) {
+              const updatedNodes = path.nodes.map(n => {
+                if (n.id === activeNode.id) {
+                  return { ...n, is_completed: true, score };
+                }
+                return n;
+              });
+              // Unlock next sequential node
+              const currentIndex = path.nodes.findIndex(n => n.id === activeNode.id);
+              if (currentIndex >= 0 && currentIndex < path.nodes.length - 1) {
+                updatedNodes[currentIndex + 1].is_locked = false;
+              }
+              const completedCount = updatedNodes.filter(n => n.is_completed).length;
+              setPath({
+                ...path,
+                nodes: updatedNodes,
+                completed_units: completedCount
+              });
 
-                <div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 900 }}>{activeNode.title}</h2>
-                  {activeNode.source_page && (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>
-                      Grounded in Syllabus Slide/Page {activeNode.source_page}
-                    </span>
-                  )}
-                </div>
-
-                {/* Substantive Theory Overview */}
-                <div style={{
-                  fontSize: '1rem',
-                  lineHeight: 1.65,
-                  color: 'var(--color-text-main)',
-                  background: 'var(--color-surface-hover)',
-                  padding: '1.125rem',
-                  borderRadius: 'var(--radius-lg)',
-                  border: '2px solid var(--color-border)'
-                }}>
-                  {activeNode.substantive_content?.overview || activeNode.concept_summary}
-                </div>
-
-                {/* Core Mechanisms, Equations, or Operational Steps */}
-                {activeNode.substantive_content?.mechanisms && activeNode.substantive_content.mechanisms.length > 0 && (
-                  <div>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                      ⚙️ Core Principles & Mechanisms:
-                    </h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {activeNode.substantive_content.mechanisms.map((m, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            background: '#ffffff',
-                            padding: '0.875rem 1rem',
-                            borderRadius: 'var(--radius-md)',
-                            borderLeft: '4px solid var(--color-blue)',
-                            border: '1.5px solid var(--color-border)',
-                            borderLeftWidth: '5px',
-                            borderLeftColor: 'var(--color-blue)',
-                            fontSize: '0.925rem',
-                            fontWeight: 600,
-                            lineHeight: 1.5
-                          }}
-                        >
-                          {m}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Concrete Examples */}
-                {activeNode.substantive_content?.examples && activeNode.substantive_content.examples.length > 0 && (
-                  <div>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                      💡 Concrete Application & Example:
-                    </h4>
-                    <div style={{ fontSize: '0.9rem', color: 'var(--color-text-main)', background: '#ffffff', padding: '0.875rem 1rem', borderRadius: 'var(--radius-md)', border: '2px dashed var(--color-border)' }}>
-                      {activeNode.substantive_content.examples.join(' ')}
-                    </div>
-                  </div>
-                )}
-
-                {/* Exam Pitfalls / Nuances */}
-                {activeNode.substantive_content?.exam_pitfalls && (
-                  <div style={{
-                    background: 'var(--color-red-light)',
-                    border: '2px solid var(--color-red-dark)',
-                    padding: '0.875rem 1rem',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '0.875rem',
-                    color: 'var(--color-text-main)',
-                    fontWeight: 600
-                  }}>
-                    <strong>⚠️ Common Exam Pitfall: </strong>
-                    {activeNode.substantive_content.exam_pitfalls}
-                  </div>
-                )}
-
-                <button
-                  className="btn-3d btn-3d-green"
-                  onClick={handleStartPractice}
-                  style={{ padding: '0.875rem', fontSize: '1rem', marginTop: '0.5rem' }}
-                >
-                  ⚡ Start Practice Check ({activeNode.questions.length} Questions) →
-                </button>
-              </div>
-            )}
-
-            {/* Stage 2: Practice Phase with Duolingo Mistake Recycling */}
-            {lessonPhase === 'quiz' && questionQueue[queueIndex] && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Progress bar within lesson */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>
-                      Step {queueIndex + 1} of {Math.max(initialTotalQuestions, questionQueue.length)}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {comboStreak >= 2 && (
-                        <span className="badge badge-xp" style={{ fontSize: '0.8rem' }}>
-                          🔥 {comboStreak} in a row!
-                        </span>
-                      )}
-                      <button onClick={() => setActiveNode(null)} style={{ fontSize: '1.25rem', cursor: 'pointer', color: 'var(--color-text-muted)', background: 'none', border: 'none' }}>✕</button>
-                    </div>
-                  </div>
-                  <div className="progress-container" style={{ height: '10px' }}>
-                    <div
-                      className="progress-bar"
-                      style={{
-                        width: `${Math.min(100, Math.round(((queueIndex) / Math.max(initialTotalQuestions, questionQueue.length)) * 100))}%`
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, lineHeight: 1.4 }}>
-                  {questionQueue[queueIndex].prompt}
-                </h3>
-
-                {/* Options */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {questionQueue[queueIndex].options.map(opt => {
-                    const isSelected = selectedOption === opt.id;
-                    return (
-                      <div
-                        key={opt.id}
-                        className={`quiz-option ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleSelectOption(opt.id)}
-                      >
-                        <span style={{ fontWeight: 900, width: '28px', color: isSelected ? 'var(--color-blue-dark)' : 'var(--color-text-muted)' }}>
-                          {opt.id.toUpperCase()}.
-                        </span>
-                        <span style={{ flex: 1, fontSize: '0.95rem', fontWeight: 600 }}>{opt.text}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Duolingo Feedback Banner */}
-                {feedback ? (
-                  <div style={{
-                    padding: '1.25rem',
-                    borderRadius: 'var(--radius-lg)',
-                    background: feedback.isCorrect ? 'var(--color-green-light)' : 'var(--color-red-light)',
-                    border: `2px solid ${feedback.isCorrect ? 'var(--color-green)' : 'var(--color-red)'}`,
-                    borderBottomWidth: '4px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.5rem'
-                  }}>
-                    <div style={{ fontWeight: 900, fontSize: '1.1rem', color: feedback.isCorrect ? 'var(--color-green-dark)' : 'var(--color-red-dark)' }}>
-                      {feedback.isCorrect
-                        ? comboStreak >= 3 ? `🔥 Amazing! ${comboStreak} in a row!` : '✓ Nicely done!'
-                        : '✕ Let\'s review this:'}
-                    </div>
-                    <div style={{ fontSize: '0.9rem', lineHeight: 1.4, color: 'var(--color-text-main)', fontWeight: 600 }}>
-                      {feedback.explanation}
-                    </div>
-                    {feedback.wasRecycled && (
-                      <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-red-dark)' }}>
-                        ↻ Missed! Re-queued to the end so you achieve 100% mastery!
-                      </div>
-                    )}
-                    <button
-                      className={`btn-3d ${feedback.isCorrect ? 'btn-3d-green' : 'btn-3d-red'}`}
-                      onClick={handleNextQuestion}
-                      style={{ marginTop: '0.5rem', alignSelf: 'flex-end' }}
-                      disabled={submitting}
-                    >
-                      {queueIndex === questionQueue.length - 1 ? 'Complete Unit →' : 'Continue →'}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    className="btn-3d btn-3d-green"
-                    onClick={handleCheckAnswer}
-                    disabled={!selectedOption}
-                    style={{ padding: '0.875rem', marginTop: '0.5rem' }}
-                  >
-                    Check Answer
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Stage 3: Celebration Modal */}
-            {lessonPhase === 'celebration' && unitResult && (
-              <div style={{ textAlign: 'center', padding: '1rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ fontSize: '4rem' }}>🎉</div>
-                <h2 style={{ fontSize: '1.75rem', fontWeight: 900 }}>Unit Mastered!</h2>
-                <p style={{ color: 'var(--color-text-muted)', fontSize: '1rem', fontWeight: 600 }}>
-                  You have conquered all concepts and questions in this unit!
-                </p>
-
-                <div className="badge badge-xp" style={{ fontSize: '1.25rem', padding: '0.75rem 1.75rem' }}>
-                  ⚡ +{unitResult.xp} XP Earned!
-                </div>
-
-                <button
-                  className="btn-3d btn-3d-green"
-                  onClick={() => setActiveNode(null)}
-                  style={{ width: '100%', padding: '0.875rem', fontSize: '1.05rem', marginTop: '1rem' }}
-                >
-                  Continue Quest Path →
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+              // Check for Nandhini 90% unlock
+              const pct = (completedCount / updatedNodes.length) * 100;
+              const justUnlocked = companionService.setOverallProgress(pct);
+              if (justUnlocked) {
+                setShowNandhiniUnlockCelebration(true);
+                soundManager.playVictory();
+                triggerConfetti();
+              }
+            }
+          }}
+        />
       )}
 
       {/* Floating AI Pet Study Assistant */}

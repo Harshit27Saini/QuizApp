@@ -1,5 +1,6 @@
 import os
 import uuid
+import hashlib
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, UploadFile, File, Form, status
 from fastapi.responses import FileResponse
@@ -23,7 +24,7 @@ async def upload_document(
     Uploads a document (PDF, DOCX, PPTX, TXT), extracts text and structural sections,
     saves the raw file to disk for viewing, and returns parsed sections for immediate document preview.
     """
-    coll = await db.get_collection(collection_id, current_user["id"])
+    coll = await db.get_collection(collection_id, current_user["id"], is_admin=current_user.get("is_admin", False))
     if not coll:
         raise not_found_error("Collection", collection_id)
 
@@ -42,15 +43,18 @@ async def upload_document(
     # Parse document structure, pages, and sections
     parsed = parse_document(content_bytes, filename)
 
-    # Persist file on disk for full PDF reader support
+    # Persist file on disk with SHA-256 deduplication to conserve storage
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     upload_dir = os.path.join(base_dir, "uploads")
     os.makedirs(upload_dir, exist_ok=True)
-    safe_disk_filename = f"{uuid.uuid4().hex}_{filename}"
-    disk_path = os.path.join(upload_dir, safe_disk_filename)
+    content_hash = hashlib.sha256(content_bytes).hexdigest()
+    dedup_disk_filename = f"{content_hash[:16]}_{filename}"
+    disk_path = os.path.join(upload_dir, dedup_disk_filename)
+
     try:
-        with open(disk_path, "wb") as f:
-            f.write(content_bytes)
+        if not os.path.exists(disk_path):
+            with open(disk_path, "wb") as f:
+                f.write(content_bytes)
         storage_path = disk_path
     except Exception:
         storage_path = f"documents/{current_user['id']}/{filename}"
@@ -93,7 +97,11 @@ async def list_documents(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Lists all uploaded documents within a collection."""
-    return await db.list_documents(collection_id=collection_id, user_id=current_user["id"])
+    return await db.list_documents(
+        collection_id=collection_id,
+        user_id=current_user["id"],
+        is_admin=current_user.get("is_admin", False)
+    )
 
 
 @router.get("/documents/{document_id}", response_model=DocumentDetailResponse)
@@ -105,7 +113,11 @@ async def get_document_preview(
     Document Preview Endpoint: Returns the document metadata and extracted sections
     so users can verify text extraction fidelity before quiz generation or study.
     """
-    doc = await db.get_document(document_id, current_user["id"])
+    doc = await db.get_document(
+        document_id,
+        current_user["id"],
+        is_admin=current_user.get("is_admin", False)
+    )
     if not doc:
         raise not_found_error("Document", document_id)
 
@@ -124,7 +136,11 @@ async def get_document_raw_file(
     """
     Returns the raw document file bytes with proper MIME type for inline PDF viewing or download.
     """
-    doc = await db.get_document(document_id, current_user["id"])
+    doc = await db.get_document(
+        document_id,
+        current_user["id"],
+        is_admin=current_user.get("is_admin", False)
+    )
     if not doc:
         raise not_found_error("Document", document_id)
 

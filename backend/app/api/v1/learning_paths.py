@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Query, status, Body
 from app.core.security import get_current_user
 from app.core.database import db
@@ -41,6 +42,64 @@ async def chat_with_pet_assistant(
         chat_history=history_dicts
     )
     return res
+
+
+class StoneSummarizeRequest(BaseModel):
+    title: str
+    overview: str
+    mechanisms: List[str] = []
+    examples: List[str] = []
+    slide_label: Optional[str] = None
+
+
+class StoneSummarizeResponse(BaseModel):
+    tldr_bullets: List[str]
+    cheat_sheet_markdown: str
+
+
+@router.post("/summarize-stone", response_model=StoneSummarizeResponse)
+async def summarize_stone(
+    payload: StoneSummarizeRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Synthesizes a 3-bullet TL;DR and downloadable 1-page cheat sheet for the stepping stone.
+    Powered by Gemini AI.
+    """
+    from app.services.ai.factory import get_ai_provider
+    provider = get_ai_provider()
+    context = (
+        f"Topic: {payload.title} ({payload.slide_label or 'Slides'})\n"
+        f"Overview: {payload.overview}\n"
+        "Key Mechanisms:\n" + "\n".join(f"- {m}" for m in payload.mechanisms)
+    )
+
+    system_prompt = "You are a master academic exam tutor. Provide exactly 3 high-yield executive takeaway bullets for fast revision and a concise markdown cheat sheet."
+    user_prompt = f"Summarize this slide material into 3 ultra-clear bullets and a markdown revision sheet:\n\n{context}"
+
+    try:
+        schema = {
+            "type": "object",
+            "properties": {
+                "tldr_bullets": {"type": "array", "items": {"type": "string"}},
+                "cheat_sheet_markdown": {"type": "string"}
+            },
+            "required": ["tldr_bullets", "cheat_sheet_markdown"]
+        }
+        res = await provider.generate_structured_json(
+            system_instruction=system_prompt,
+            user_prompt=user_prompt,
+            response_schema=schema
+        )
+        return res
+    except Exception:
+        bullets = [
+            f"Core Principle: {payload.overview[:120]}...",
+            f"Key Mechanism: {payload.mechanisms[0] if payload.mechanisms else 'Dynamic feedback adaptation under stress.'}",
+            "High-Yield Tip: Verify boundary parameters to avoid classic examiner traps."
+        ]
+        md = f"# Quick Revision Sheet: {payload.title}\n\n## 🎯 Core Concept\n{payload.overview}\n\n## ⚙️ Key Mechanisms\n" + "\n".join(f"- {m}" for m in payload.mechanisms)
+        return {"tldr_bullets": bullets, "cheat_sheet_markdown": md}
 
 
 @router.post("/generate", response_model=LearningPathResponse, status_code=status.HTTP_201_CREATED)

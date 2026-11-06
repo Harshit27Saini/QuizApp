@@ -46,6 +46,30 @@ def shuffle_question_options(q: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def balance_option_lengths(options: List[Dict[str, str]], correct_ids: List[str]) -> List[Dict[str, str]]:
+    """
+    Prevents the notorious LLM flaw where the correct answer is significantly longer than distractors.
+    Tolerates no length giveaways, keeping options within balanced bounds.
+    """
+    if not options or len(options) < 2:
+        return options
+    
+    lens = [len(opt["text"]) for opt in options]
+    avg_len = sum(lens) / len(lens)
+    
+    for opt in options:
+        if opt["id"] in correct_ids and len(opt["text"]) > avg_len * 1.35 and len(opt["text"]) > 55:
+            text = opt["text"]
+            if " (" in text and ")" in text:
+                text = text.split(" (")[0].strip()
+            elif "; " in text:
+                text = text.split("; ")[0].strip()
+            elif ", which " in text:
+                text = text.split(", which ")[0].strip()
+            opt["text"] = text
+    return options
+
+
 def validate_question_dict(q: Dict[str, Any], mode: str = "STRICT") -> Dict[str, Any]:
     """
     Validates that a generated question dictionary satisfies strict schema and consistency rules:
@@ -94,10 +118,13 @@ def validate_question_dict(q: Dict[str, Any], mode: str = "STRICT") -> Dict[str,
     if mode == "STRICT" and not source_quote:
         source_quote = prompt
 
+    clean_options = [{"id": opt["id"].strip().lower(), "text": opt["text"].strip()} for opt in options]
+    balanced_options = balance_option_lengths(clean_options, correct)
+
     validated_dict = {
         "question_type": q_type,
         "prompt": prompt,
-        "options": [{"id": opt["id"].strip().lower(), "text": opt["text"].strip()} for opt in options],
+        "options": balanced_options,
         "correct_answers": correct,
         "explanation": (q.get("explanation") or "").strip() or "Verified from the source text.",
         "source_page": q.get("source_page"),

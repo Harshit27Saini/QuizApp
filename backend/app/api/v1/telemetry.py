@@ -77,3 +77,35 @@ async def clear_telemetry_logs(
     await db.clear_telemetry_logs()
     return {"success": True}
 
+
+@router.get("/storage")
+async def get_storage_stats(
+    admin_user: Dict[str, Any] = Depends(get_admin_user)
+):
+    """
+    Returns live storage and upload diagnostics for founder to monitor disk usage.
+    RESTRICTED: Developer & Founder only.
+    """
+    import os
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    upload_dir = os.path.join(base_dir, "uploads")
+    
+    total_bytes = 0
+    file_count = 0
+    if os.path.exists(upload_dir):
+        for f in os.listdir(upload_dir):
+            fp = os.path.join(upload_dir, f)
+            if os.path.isfile(fp):
+                file_count += 1
+                total_bytes += os.path.getsize(fp)
+
+    return {
+        "upload_dir_exists": os.path.exists(upload_dir),
+        "files_on_disk": file_count,
+        "total_storage_bytes": total_bytes,
+        "total_storage_mb": round(total_bytes / (1024 * 1024), 2),
+        "max_upload_size_mb": 25,
+        "dedup_algorithm": "SHA-256 Content Hashing"
+    }
+
+

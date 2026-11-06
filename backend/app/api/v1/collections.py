@@ -24,7 +24,10 @@ async def create_collection(
 @router.get("", response_model=List[CollectionResponse])
 async def list_collections(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Lists all study collections owned by the authenticated user."""
-    return await db.list_collections(user_id=current_user["id"])
+    return await db.list_collections(
+        user_id=current_user["id"],
+        is_admin=current_user.get("is_admin", False)
+    )
 
 
 @router.get("/{collection_id}", response_model=CollectionResponse)
@@ -33,7 +36,11 @@ async def get_collection(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Retrieves a specific collection by ID."""
-    coll = await db.get_collection(collection_id=collection_id, user_id=current_user["id"])
+    coll = await db.get_collection(
+        collection_id=collection_id,
+        user_id=current_user["id"],
+        is_admin=current_user.get("is_admin", False)
+    )
     if not coll:
         raise not_found_error("Collection", collection_id)
     return coll
@@ -45,7 +52,11 @@ async def delete_collection(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Deletes a study collection and its associated documents."""
-    deleted = await db.delete_collection(collection_id=collection_id, user_id=current_user["id"])
+    deleted = await db.delete_collection(
+        collection_id=collection_id,
+        user_id=current_user["id"],
+        is_admin=current_user.get("is_admin", False)
+    )
     if not deleted:
         raise not_found_error("Collection", collection_id)
     return None

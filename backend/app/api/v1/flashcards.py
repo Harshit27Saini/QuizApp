@@ -18,7 +18,7 @@ async def generate_cards(
     Extracts key concepts, definitions, and relationships from documents
     to synthesize an interactive active recall flashcard deck.
     """
-    coll = await db.get_collection(payload.collection_id, current_user["id"])
+    coll = await db.get_collection(payload.collection_id, current_user["id"], is_admin=current_user.get("is_admin", False))
     if not coll:
         raise not_found_error("Collection", payload.collection_id)
 
@@ -26,7 +26,7 @@ async def generate_cards(
     all_sections = []
     doc_titles = []
     for doc_id in payload.document_ids:
-        doc = await db.get_document(doc_id, current_user["id"])
+        doc = await db.get_document(doc_id, current_user["id"], is_admin=current_user.get("is_admin", False))
         if not doc:
             raise not_found_error("Document", doc_id)
         doc_titles.append(doc["filename"])

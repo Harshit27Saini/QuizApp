@@ -46,6 +46,24 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const [currentScale, setCurrentScale] = useState<UiScale>(uiScaleService.getScale());
   const activeCompanion = companionService.getActiveCompanion();
 
+  const isFounder = Boolean(
+    authUser?.is_admin ||
+    authUser?.email?.toLowerCase() === 'harshit27saini@gmail.com' ||
+    (typeof window !== 'undefined' && localStorage.getItem('recall_founder_passcode') === 'recall-founder-2026')
+  );
+
+  const [founderViewMode, setFounderViewMode] = useState<'dev' | 'student'>(() => {
+    if (typeof window === 'undefined') return 'dev';
+    return (localStorage.getItem('recall_founder_view_mode') as 'dev' | 'student') || 'dev';
+  });
+
+  const handleToggleFounderView = () => {
+    const next = founderViewMode === 'dev' ? 'student' : 'dev';
+    setFounderViewMode(next);
+    localStorage.setItem('recall_founder_view_mode', next);
+    window.dispatchEvent(new CustomEvent('recall:founder-mode-changed', { detail: next }));
+  };
+
   useEffect(() => {
     const handleThemeChanged = (e: any) => {
       setTheme(e.detail || themeService.getTheme());
@@ -145,6 +163,26 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
           {/* Right Top Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {/* Founder Mode Switcher: Dev Portal ⇄ Student View */}
+            {isFounder && (
+              <button
+                onClick={handleToggleFounderView}
+                className={`btn-3d ${founderViewMode === 'dev' ? 'btn-3d-purple' : 'btn-3d-green'}`}
+                style={{
+                  fontSize: '0.75rem',
+                  padding: '0.4rem 0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontWeight: 900
+                }}
+                title="1-Click Switch: Dev Intel Portal ⇄ Student App Experience"
+              >
+                <span>{founderViewMode === 'dev' ? '👑 Dev Portal' : '🎓 Student View'}</span>
+                <span style={{ opacity: 0.75, fontSize: '0.7rem' }}>⇄</span>
+              </button>
+            )}
+
             {/* Stat Pill (Dropdown / Sidebar Toggle) */}
             <button
               onClick={toggleSidebar}

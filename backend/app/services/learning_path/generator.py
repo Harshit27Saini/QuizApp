@@ -181,9 +181,83 @@ def _generate_fallback_units(
             "substantive_content": substantive,
             "source_page": u_start_page,
             "source_page_end": u_end_page,
+            "slide_start": u_start_page,
+            "slide_end": u_end_page,
+            "is_challenge_trail": False,
+            "branch_from_unit_index": None,
+            "difficulty": "medium",
+            "xp_reward": 25,
             "page_range": page_label,
             "questions": q_list
         })
+
+        # Every 2 main units, generate an optional Branching Challenge Gauntlet (Side Quest)
+        if (u_idx + 1) % 2 == 0 and (u_idx + 1) < actual_units:
+            prev_unit = units[-1]
+            earlier_unit = units[-2] if len(units) >= 2 else prev_unit
+            g_start = earlier_unit.get("source_page", u_start_page)
+            g_end = u_end_page
+            gauntlet_questions = [
+                {
+                    "prompt": f"👑 Challenge Trial: When analyzing the interaction between {earlier_unit.get('title', 'Part 1')} and {clean_heading}, which boundary condition governs system stability?",
+                    "options": [
+                        {"id": "a", "text": f"Coupled dynamic feedback between {earlier_unit.get('title', 'initial stages').split(': ')[-1]} and {clean_heading} prevents state divergence."},
+                        {"id": "b", "text": "The entire system passively reverts to an uncalibrated baseline without producing any measurable response."},
+                        {"id": "c", "text": "Boundary parameters are permanently fixed by initial conditions and cannot be altered by perturbations."},
+                        {"id": "d", "text": "Secondary variables operate in complete isolation with zero systemic cross-talk or coupling."}
+                    ],
+                    "correct_answers": ["a"],
+                    "explanation": f"Advanced synthesis challenge connecting concepts across multiple slide sets (Slides {g_start}–{g_end})."
+                },
+                {
+                    "prompt": f"👑 Challenge Trial: Under severe disturbance of {clean_heading}, which mitigation protocol provides maximal robustness?",
+                    "options": [
+                        {"id": "a", "text": "Implementing dynamic margin thresholds with automated parameter recalibration."},
+                        {"id": "b", "text": "Disabling all active feedback mechanisms whenever disturbance amplitudes exceed nominal limits."},
+                        {"id": "c", "text": "Relying strictly on nominal calibrations without verifying boundary disturbance."},
+                        {"id": "d", "text": "Suppressing error telemetry to avoid triggering diagnostic interrupts."}
+                    ],
+                    "correct_answers": ["a"],
+                    "explanation": "High-yield application question testing edge-case mastery."
+                }
+            ]
+            shuffled_gq = [shuffle_question_options(q) for q in gauntlet_questions]
+            units.append({
+                "node_type": "challenge_gauntlet",
+                "title": f"👑 Challenge Gauntlet: Synthesis Trial",
+                "concept_summary": f"High-difficulty challenge trial testing complex synthesis of concepts across Slides {g_start}–{g_end}.",
+                "key_takeaways": [
+                    f"Synthesizes cross-cutting principles across Slides {g_start}–{g_end}.",
+                    "Tests multi-step reasoning and examination edge cases.",
+                    "Earns 3x XP (+75 XP) and the rare Gold Crown Map Badge."
+                ],
+                "substantive_content": {
+                    "overview": f"This is an advanced challenge trial. You are testing your ability to connect multiple concepts across Slides {g_start}–{g_end}.",
+                    "mechanisms": [
+                        "Cross-system interaction models and boundary stress tests.",
+                        "Multi-variable error propagation across sequential stages."
+                    ],
+                    "examples": [
+                        "Competitive exam synthesis question combining theoretical models with boundary condition analysis."
+                    ],
+                    "distinctions": "Tests active problem-solving rather than single-concept recall.",
+                    "exam_pitfalls": "Watch out for distractors that are true in isolation but fail under multi-variable synthesis.",
+                    "source_quote": sentences[0],
+                    "source_page": g_start,
+                    "source_page_end": g_end,
+                    "page_range": f"Slides {g_start}–{g_end}"
+                },
+                "source_page": g_start,
+                "source_page_end": g_end,
+                "slide_start": g_start,
+                "slide_end": g_end,
+                "is_challenge_trail": True,
+                "branch_from_unit_index": u_idx,
+                "difficulty": "hard",
+                "xp_reward": 75,
+                "questions": shuffled_gq
+            })
+
     return units
 
 

@@ -155,12 +155,17 @@ export interface PathNode {
   id: string;
   path_id: string;
   unit_index: number;
-  node_type?: 'lesson' | 'scenario' | 'checkpoint';
+  node_type?: 'lesson' | 'scenario' | 'checkpoint' | 'challenge_gauntlet';
   title: string;
   concept_summary: string;
   key_takeaways: string[];
   substantive_content?: SubstantiveContent;
   source_page?: number;
+  slide_start?: number;
+  slide_end?: number;
+  is_challenge_trail?: boolean;
+  branch_from_unit_index?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
   questions: PathNodeQuestion[];
   is_completed: boolean;
   is_locked: boolean;

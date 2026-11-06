@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { companionService } from '../services/companions';
 import { questService } from '../services/quests';
@@ -31,10 +31,13 @@ const HIGHLIGHT_COLORS: Record<HighlightItem['color'], { bg: string; border: str
 export const DocumentPreviewPage: React.FC = () => {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const targetSlide = searchParams.get('slide');
 
   const [document, setDocument] = useState<StudyDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'formatted' | 'pdf'>('formatted');
 
   const [activeTab, setActiveTab] = useState<'pages' | 'highlights' | 'companion'>('pages');
   const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
@@ -96,6 +99,22 @@ export const DocumentPreviewPage: React.FC = () => {
       .catch(err => setError(err.message || 'Failed to load document'))
       .finally(() => setLoading(false));
   }, [documentId]);
+
+  // Auto-scroll to slide if linked directly from learning path runner
+  useEffect(() => {
+    if (!targetSlide || loading) return;
+    const timer = setTimeout(() => {
+      const el = window.document.getElementById(`page-${targetSlide}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.style.outline = '3px solid var(--color-gold)';
+        setTimeout(() => {
+          if (el) el.style.outline = 'none';
+        }, 3000);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [targetSlide, loading]);
 
   // Persist highlights
   const saveHighlights = (updated: HighlightItem[]) => {
@@ -344,6 +363,15 @@ export const DocumentPreviewPage: React.FC = () => {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {document && (
             <>
+              {document.file_type?.toLowerCase() === 'pdf' && (
+                <button
+                  className="btn-3d btn-3d-white"
+                  style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                  onClick={() => setViewMode(prev => prev === 'formatted' ? 'pdf' : 'formatted')}
+                >
+                  {viewMode === 'formatted' ? '📄 Visual PDF View' : '📝 Section Breakdown'}
+                </button>
+              )}
               <Link
                 to={`/documents/${document.id}/path`}
                 className="btn-3d btn-3d-gold"
@@ -371,6 +399,24 @@ export const DocumentPreviewPage: React.FC = () => {
       ) : error ? (
         <div className="card" style={{ borderLeft: '4px solid var(--color-error)' }}>
           <p style={{ color: 'var(--color-error-dark)', fontWeight: 600 }}>{error}</p>
+        </div>
+      ) : viewMode === 'pdf' && document ? (
+        <div className="card" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>📄 Visual PDF Reader — Original Layout</span>
+            <button
+              className="btn-3d btn-3d-white"
+              style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem' }}
+              onClick={() => setViewMode('formatted')}
+            >
+              ← Switch to Interactive Study Sections
+            </button>
+          </div>
+          <iframe
+            src={api.getDocumentFileUrl(document.id)}
+            style={{ width: '100%', height: '82vh', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}
+            title="Visual PDF Viewer"
+          />
         </div>
       ) : (
         /* Document Content & Section Preview */

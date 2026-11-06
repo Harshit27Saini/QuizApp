@@ -24,8 +24,9 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "recall_jwt_playtest_secret_key_2026"
 
     # Founder / Dev Admin configuration
-    ADMIN_EMAILS: str = "dev@recall.local,harshit,admin@recall.local"
+    ADMIN_EMAILS: str = "harshit27saini@gmail.com,dev@recall.local,harshit,admin@recall.local"
     FOUNDER_PASSCODE: str = "recall-founder-2026"
+    GOOGLE_CLIENT_ID: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

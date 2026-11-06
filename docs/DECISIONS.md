@@ -155,18 +155,22 @@
 
 ---
 
-## ADR 015: Slide-Set Flashcard Generation, Companion Identity Refinement, and Cloud Cold-Start Resilience
+## ADR 016: Smarter Quiz Engine, Branching Challenge Trails, 4-Step Runner, Founder Mode Switch, and Collection Lifecycle Resilience
 - **Date:** 2026-11-06
 - **Status:** Accepted
 - **Context:**
-  1. Flashcard generation previously offered arbitrary hardcoded card counts (`[5, 8, 12, 16, 20]`), ignoring presentation structure. Learners needed flashcards grouped by slide sets (e.g., Slides 1–8, Slides 9–16, or custom ranges) with clear slide attribution badges.
-  2. The starter companion "You (Champion)" was confusing as a cheerleading buddy. The companion roster needed a warm starter mascot (Sydney the Golden Retriever) and Coach Harshit as the founder guide.
-  3. Render free-tier cold starts (taking ~30–45s after inactivity) produced transient `Failed to fetch` errors on frontend clients, and Render health-checks logged `HEAD / 404 Not Found`.
+  1. Multiple-choice questions frequently suffered from length bias where the correct answer was visibly longer than distractors.
+  2. The learning path needed optional branching challenge trails (every 2 units) with synthesis questions and 3x XP rewards.
+  3. Stepping stones required a unified 4-step progressive runner: Flip Cards -> Slide Breakdown (confidence toggles, TTS, AI TL;DR) -> Companion Doubts -> Balanced Quiz + 1-Page Cheat Sheet downloader.
+  4. The founder needed a 1-click mode switch (`[ 👑 Dev Portal | 🎓 Student View ]`) to experience the authentic learner UI while retaining instant access to telemetry and feedback diagnostics.
+  5. In-memory collection state on Render free-tier wiped on idle container spin-down, causing 404s when uploading documents into stale collection URLs, and user ownership checks blocked admin access.
 - **Decision:**
-  1. Added `start_slide` and `end_slide` parameters to `FlashcardGenerateRequest` and filtered section chunks accordingly. Updated the frontend UI with one-click slide set chunks, card density modes, slide set filtering, and `📍 Slide X` badges.
-  2. Removed `You (Champion)`. Sydney (`sydney`) is now the default unlocked starter mascot, and Coach Harshit (`coach_harshit`) serves as the founder guide.
-  3. Implemented `@app.api_route("/", methods=["GET", "HEAD"])` and `@app.api_route("/health", methods=["GET", "HEAD"])` in `backend/app/main.py`. Added single-retry resilience and descriptive cold-start hints in `frontend/src/services/api.ts`.
-- **Consequences:** Slide-aligned spaced repetition, intuitive companion personas, zero 404s in Render health logs, and graceful cold-start handling for playtesters.
+  1. Enforced strict character length parity in prompts and implemented `validator.py:balance_option_lengths` to trim giveaway lengths.
+  2. Added branching "👑 Challenge Gauntlet" paths with 3x XP rewards (+75 XP) and gold crown badges.
+  3. Built `SteppingStoneRunner.tsx` unifying the 4-step study flow with speech synthesis, confidence markers, companion queries grounded in slide context, and markdown cheat sheet export.
+  4. Added Founder Mode toggle in top bar and Google OAuth / Founder auto-role granting.
+  5. Updated backend collection endpoints to grant full admin access, auto-adopt guest collections upon login, and added 1-click collection auto-recovery in the frontend UI.
+- **Consequences:** Fair and rigorous quiz questions, rich gamified learning path progression, seamless founder testing, and robust recovery from cloud container sleep.
 
 
 

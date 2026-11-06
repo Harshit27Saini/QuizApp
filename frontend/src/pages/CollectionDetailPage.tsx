@@ -10,9 +10,25 @@ export const CollectionDetailPage: React.FC = () => {
   const [collection, setCollection] = useState<Collection | null>(null);
   const [documents, setDocuments] = useState<StudyDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recreating, setRecreating] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleRecreateCollection = async () => {
+    const titleToUse = collection?.title || 'Study Collection';
+    const descToUse = collection?.description || '';
+    try {
+      setRecreating(true);
+      const newColl = await api.createCollection(titleToUse, descToUse);
+      setError(null);
+      navigate(`/collections/${newColl.id}`, { replace: true });
+    } catch (err: any) {
+      alert(err.message || 'Failed to re-register collection');
+    } finally {
+      setRecreating(false);
+    }
+  };
 
   const fetchData = async () => {
     if (!collectionId) return;
@@ -117,8 +133,45 @@ export const CollectionDetailPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="card" style={{ borderLeft: '4px solid var(--color-error)' }}>
-          <p style={{ color: 'var(--color-error-dark)', fontWeight: 600 }}>{error}</p>
+        <div
+          className="card"
+          style={{
+            borderLeft: '4px solid var(--color-error)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            background: 'var(--color-surface)'
+          }}
+        >
+          <div>
+            <p style={{ color: 'var(--color-error-dark)', fontWeight: 700, margin: 0 }}>{error}</p>
+            {error.includes('not found') && (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', margin: '0.35rem 0 0 0' }}>
+                Cloud container woke up from sleep or session rotated. Click Re-create to restore this collection instantly.
+              </p>
+            )}
+          </div>
+          {error.includes('not found') && (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                className="btn-3d btn-3d-green"
+                onClick={handleRecreateCollection}
+                disabled={recreating}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem' }}
+              >
+                {recreating ? 'Restoring...' : `🔄 Re-create "${collection?.title || 'Collection'}"`}
+              </button>
+              <button
+                className="btn-3d btn-3d-white"
+                onClick={() => navigate('/')}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.825rem' }}
+              >
+                ← Back
+              </button>
+            </div>
+          )}
         </div>
       )}
 

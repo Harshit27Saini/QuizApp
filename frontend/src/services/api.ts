@@ -217,6 +217,16 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  loginWithGoogle: (payload: { email: string; display_name?: string; credential?: string }) =>
+    request<{ token: string; user: any }>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  summarizeStone: (payload: { title: string; overview: string; mechanisms: string[]; examples: string[]; slide_label?: string }) =>
+    request<{ tldr_bullets: string[]; cheat_sheet_markdown: string }>('/learning-paths/summarize-stone', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // Playtest Bug Reports & Feedback
   submitFeedback: (payload: { type: string; message: string; url: string; browser_info?: string }) =>
@@ -272,4 +282,13 @@ export const api = {
   },
   clearTelemetryLogs: () =>
     request<{ success: boolean }>('/telemetry/logs', { method: 'DELETE' }),
+  getStorageStats: () =>
+    request<{
+      upload_dir_exists: boolean;
+      files_on_disk: number;
+      total_storage_bytes: number;
+      total_storage_mb: number;
+      max_upload_size_mb: number;
+      dedup_algorithm: string;
+    }>('/telemetry/storage'),
 };

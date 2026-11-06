@@ -165,3 +165,34 @@ def test_friends_request_flow():
     inc_resp = client.get("/api/v1/friends/requests", headers={"Authorization": "Bearer mock_token"})
     assert inc_resp.status_code == 200
 
+
+def test_google_login_and_founder_gate():
+    # 1. Google login with normal email
+    resp = client.post("/api/v1/auth/google", json={
+        "email": "learner_google@gmail.com",
+        "display_name": "Google Learner"
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["user"]["is_admin"] is False
+    assert "token" in data
+
+    # 2. Google login with founder email harshit27saini@gmail.com
+    resp_founder = client.post("/api/v1/auth/google", json={
+        "email": "harshit27saini@gmail.com",
+        "display_name": "Harshit Saini"
+    })
+    assert resp_founder.status_code == 200
+    founder_data = resp_founder.json()
+    assert founder_data["user"]["is_admin"] is True
+    assert founder_data["user"]["email"] == "harshit27saini@gmail.com"
+
+
+def test_storage_telemetry():
+    resp = client.get("/api/v1/telemetry/storage", headers={"X-Founder-Passcode": "recall-founder-2026"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "files_on_disk" in data
+    assert "total_storage_mb" in data
+
+

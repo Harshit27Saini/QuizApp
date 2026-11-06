@@ -27,7 +27,8 @@ class InMemoryDB:
         self.telemetry_logs: Dict[str, Dict[str, Any]] = {}
         self.friend_requests: Dict[str, Dict[str, Any]] = {}
         self.friendships: List[Dict[str, Any]] = []
-        self._load_from_disk()
+        if not os.getenv("PYTEST_CURRENT_TEST"):
+            self._load_from_disk()
 
     def _get_disk_path(self) -> str:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -36,6 +37,8 @@ class InMemoryDB:
         return os.path.join(data_dir, "recall_local_state.json")
 
     def _save_to_disk(self):
+        if os.getenv("PYTEST_CURRENT_TEST"):
+            return
         try:
             path = self._get_disk_path()
             data = {
@@ -64,6 +67,8 @@ class InMemoryDB:
             pass
 
     def _load_from_disk(self):
+        if os.getenv("PYTEST_CURRENT_TEST"):
+            return
         try:
             path = self._get_disk_path()
             if os.path.exists(path):
@@ -140,43 +145,48 @@ class Repository:
         memory_db._save_to_disk()
         return item
 
-    async def list_collections(self, user_id: str) -> List[Dict[str, Any]]:
+    async def list_collections(self, user_id: str, is_admin: bool = False) -> List[Dict[str, Any]]:
         if self.firestore:
-            docs = self.firestore.collection("collections").where("user_id", "==", user_id).stream()
+            if is_admin:
+                docs = self.firestore.collection("collections").stream()
+            else:
+                docs = self.firestore.collection("collections").where("user_id", "==", user_id).stream()
             items = [d.to_dict() for d in docs]
             return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
-        return [c for c in memory_db.collections.values() if c["user_id"] == user_id or user_id == "00000000-0000-0000-0000-000000000001"]
+        if is_admin or user_id == "00000000-0000-0000-0000-000000000001":
+            return sorted(list(memory_db.collections.values()), key=lambda x: x.get("created_at", ""), reverse=True)
+        return [c for c in memory_db.collections.values() if c.get("user_id") == user_id or c.get("user_id") == "00000000-0000-0000-0000-000000000001"]
 
-    async def get_collection(self, collection_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    async def get_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
         if self.firestore:
             doc = self.firestore.collection("collections").document(collection_id).get()
             if doc.exists:
                 data = doc.to_dict()
-                if data.get("user_id") == user_id:
+                if is_admin or data.get("user_id") == user_id:
                     return data
             return None
         item = memory_db.collections.get(collection_id)
         if item:
-            if item.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
+            if is_admin or item.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
                 return item
-            # Auto-adopt guest collection if a visitor created it before logging in
-            if item.get("user_id", "").startswith("guest_") and not user_id.startswith("guest_"):
+            # Auto-adopt guest collection or dev-seeded collection if a visitor created it before logging in
+            if (item.get("user_id", "").startswith("guest_") or item.get("user_id") == "00000000-0000-0000-0000-000000000001") and not user_id.startswith("guest_"):
                 item["user_id"] = user_id
                 memory_db._save_to_disk()
                 return item
         return None
 
-    async def delete_collection(self, collection_id: str, user_id: str) -> bool:
+    async def delete_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> bool:
         if self.firestore:
             ref = self.firestore.collection("collections").document(collection_id)
             doc = ref.get()
-            if doc.exists and doc.to_dict().get("user_id") == user_id:
+            if doc.exists and (is_admin or doc.to_dict().get("user_id") == user_id):
                 ref.delete()
                 return True
             return False
         if collection_id in memory_db.collections:
             coll = memory_db.collections[collection_id]
-            if coll.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
+            if is_admin or coll.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
                 del memory_db.collections[collection_id]
                 memory_db._save_to_disk()
                 return True
@@ -216,24 +226,39 @@ class Repository:
         memory_db._save_to_disk()
         return doc
 
-    async def list_documents(self, collection_id: str, user_id: str) -> List[Dict[str, Any]]:
+    async def list_documents(self, collection_id: str, user_id: str, is_admin: bool = False) -> List[Dict[str, Any]]:
         if self.firestore:
-            docs = self.firestore.collection("documents").where("collection_id", "==", collection_id).where("user_id", "==", user_id).stream()
+            docs = self.firestore.collection("documents").where("collection_id", "==", collection_id).stream()
             items = [d.to_dict() for d in docs]
+            if not is_admin:
+                items = [d for d in items if d.get("user_id") == user_id]
             return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
-        return [d for d in memory_db.documents.values() if d["collection_id"] == collection_id and d["user_id"] == user_id]
+        return [
+            d for d in memory_db.documents.values()
+            if d.get("collection_id") == collection_id and (
+                is_admin
+                or d.get("user_id") == user_id
+                or user_id == "00000000-0000-0000-0000-000000000001"
+                or d.get("user_id") == "00000000-0000-0000-0000-000000000001"
+            )
+        ]
 
-    async def get_document(self, document_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    async def get_document(self, document_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
         if self.firestore:
             doc = self.firestore.collection("documents").document(document_id).get()
             if doc.exists:
                 data = doc.to_dict()
-                if data.get("user_id") == user_id:
+                if is_admin or data.get("user_id") == user_id:
                     return data
             return None
         doc = memory_db.documents.get(document_id)
-        if doc and doc["user_id"] == user_id:
-            return doc
+        if doc:
+            if is_admin or doc.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
+                return doc
+            if (doc.get("user_id", "").startswith("guest_") or doc.get("user_id") == "00000000-0000-0000-0000-000000000001") and not user_id.startswith("guest_"):
+                doc["user_id"] = user_id
+                memory_db._save_to_disk()
+                return doc
         return None
 
     # -------------------------------------------------------------------------
@@ -580,11 +605,16 @@ class Repository:
                 "key_takeaways": u.get("key_takeaways", []),
                 "substantive_content": u.get("substantive_content"),
                 "source_page": u.get("source_page"),
+                "slide_start": u.get("slide_start") or u.get("source_page"),
+                "slide_end": u.get("slide_end") or u.get("source_page_end") or u.get("source_page"),
+                "is_challenge_trail": u.get("is_challenge_trail", False),
+                "branch_from_unit_index": u.get("branch_from_unit_index"),
+                "difficulty": u.get("difficulty", "medium"),
                 "questions": questions,
                 "is_completed": False,
                 "is_locked": idx > 0,  # First node is unlocked by default!
                 "score": None,
-                "xp_reward": 25
+                "xp_reward": u.get("xp_reward", 25)
             }
             nodes.append(node)
             if self.firestore:
@@ -606,6 +636,7 @@ class Repository:
             self.firestore.collection("learning_paths").document(path_id).set(path_data)
         else:
             memory_db.learning_paths[path_id] = path_data
+            memory_db._save_to_disk()
 
         return {
             **path_data,

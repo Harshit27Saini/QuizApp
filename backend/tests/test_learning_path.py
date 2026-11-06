@@ -72,7 +72,9 @@ async def test_granular_129_slides_learning_path():
     )
 
     # Standard depth: ~6 slides per stone => 129 / 6 ≈ 22 stepping stones
-    assert 16 <= len(units) <= 26, f"Expected 16-26 units for 129 slides, got {len(units)}"
+    main_units = [u for u in units if not u.get("is_challenge_trail")]
+    assert 16 <= len(main_units) <= 26, f"Expected 16-26 main units for 129 slides, got {len(main_units)}"
+    assert any(u.get("is_challenge_trail") for u in units), "Expected branching challenge gauntlets"
     
     # Check that each stepping stone covers between 4 and 8 slides
     for u in units:
@@ -81,6 +83,7 @@ async def test_granular_129_slides_learning_path():
         start_p = u["source_page"]
         end_p = u.get("source_page_end", start_p)
         span = end_p - start_p + 1
-        assert 1 <= span <= 10, f"Stepping stone covers {span} slides, expected ~4-8"
-        assert "Slides " in u["title"] or "Slide " in u["title"]
+        max_allowed = 16 if u.get("is_challenge_trail") else 10
+        assert 1 <= span <= max_allowed, f"Stepping stone covers {span} slides, expected ~4-8"
+        assert "Slides " in u["title"] or "Slide " in u["title"] or u.get("is_challenge_trail")
 

@@ -19,6 +19,11 @@ export const SidebarNav: React.FC = () => {
     }
   });
 
+  const [founderViewMode, setFounderViewMode] = useState<'dev' | 'student'>(() => {
+    if (typeof window === 'undefined') return 'dev';
+    return (localStorage.getItem('recall_founder_view_mode') as 'dev' | 'student') || 'dev';
+  });
+
   useEffect(() => {
     const handleAuthChange = (e: any) => {
       const user = e.detail;
@@ -31,8 +36,16 @@ export const SidebarNav: React.FC = () => {
       ));
     };
 
+    const handleFounderModeChange = (e: any) => {
+      setFounderViewMode(e.detail || 'dev');
+    };
+
     window.addEventListener('recall:auth-changed', handleAuthChange);
-    return () => window.removeEventListener('recall:auth-changed', handleAuthChange);
+    window.addEventListener('recall:founder-mode-changed', handleFounderModeChange);
+    return () => {
+      window.removeEventListener('recall:auth-changed', handleAuthChange);
+      window.removeEventListener('recall:founder-mode-changed', handleFounderModeChange);
+    };
   }, []);
 
   const baseNavItems = [
@@ -46,8 +59,8 @@ export const SidebarNav: React.FC = () => {
     { to: '/companions', label: 'Companions', icon: '🐾', badge: 'VIP' },
   ];
 
-  // ONLY visible to the developer / founder
-  const navItems = isAdmin
+  // ONLY visible to Harshit / founder when Dev Mode is active
+  const navItems = isAdmin && founderViewMode === 'dev'
     ? [...baseNavItems, { to: '/admin/feedback', label: 'Dev Hub', icon: '👑', badge: 'DEV' }]
     : baseNavItems;
 

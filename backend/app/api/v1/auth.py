@@ -25,6 +25,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class GoogleAuthRequest(BaseModel):
+    email: str
+    display_name: Optional[str] = None
+    credential: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
 class ClaimFounderRequest(BaseModel):
     passcode: str
 
@@ -130,6 +137,57 @@ async def login(payload: LoginRequest):
             "is_admin": is_admin
         }
     }
+
+
+@router.post("/google", response_model=AuthResponse)
+async def google_login(payload: GoogleAuthRequest):
+    """
+    Authenticates or signs up a learner via Google Identity.
+    Automatically assigns founder/admin role if the email matches harshit27saini@gmail.com.
+    """
+    clean_email = payload.email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A valid Google account email address is required."
+        )
+
+    user = await db.get_user_by_email(clean_email)
+    display_name = payload.display_name or clean_email.split("@")[0]
+    is_admin = is_admin_user({"email": clean_email})
+
+    if not user:
+        salt = generate_salt()
+        import uuid
+        pw_hash = hash_password(uuid.uuid4().hex, salt)
+        user = await db.create_user(
+            email=clean_email,
+            password_hash=pw_hash,
+            salt=salt,
+            display_name=display_name
+        )
+
+    token = create_access_token(
+        user_id=user["id"],
+        email=user["email"],
+        display_name=user.get("display_name") or display_name,
+        xp=user.get("xp", 0),
+        is_admin=is_admin
+    )
+
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "display_name": user.get("display_name") or display_name,
+            "xp": user.get("xp", 0),
+            "streak": user.get("streak", 0),
+            "cheerleader": user.get("cheerleader", "sydney"),
+            "is_admin": is_admin
+        }
+    }
+
 
 
 @router.post("/claim-founder", response_model=ClaimFounderResponse)

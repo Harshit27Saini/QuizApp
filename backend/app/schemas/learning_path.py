@@ -26,12 +26,17 @@ class PathNode(BaseModel):
     id: str
     path_id: str
     unit_index: int
-    node_type: str = Field(default="lesson", description="lesson | scenario | checkpoint")
+    node_type: str = Field(default="lesson", description="lesson | scenario | checkpoint | challenge_gauntlet")
     title: str
     concept_summary: str
     key_takeaways: List[str]
     substantive_content: Optional[SubstantiveContent] = None
     source_page: Optional[int] = None
+    slide_start: Optional[int] = None
+    slide_end: Optional[int] = None
+    is_challenge_trail: bool = False
+    branch_from_unit_index: Optional[int] = None
+    difficulty: str = "medium"
     questions: List[PathNodeQuestion]
     is_completed: bool = False
     is_locked: bool = True

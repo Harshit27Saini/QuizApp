@@ -37,6 +37,22 @@ export const AdminFeedbackPage: React.FC = () => {
   const [userFilter, setUserFilter] = useState<string>('all');
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
 
+  // Storage Stats State
+  const [storageStats, setStorageStats] = useState<{
+    files_on_disk: number;
+    total_storage_mb: number;
+    dedup_algorithm: string;
+  } | null>(null);
+
+  const loadStorage = async () => {
+    try {
+      const stats = await api.getStorageStats();
+      setStorageStats(stats);
+    } catch {
+      // ignore
+    }
+  };
+
   // Load Bug Feedback
   const loadFeedback = async () => {
     try {
@@ -73,6 +89,7 @@ export const AdminFeedbackPage: React.FC = () => {
     if (isAdmin) {
       loadFeedback();
       loadTelemetry();
+      loadStorage();
     }
   }, [isAdmin]);
 
@@ -268,6 +285,7 @@ export const AdminFeedbackPage: React.FC = () => {
             onClick={() => {
               loadFeedback();
               loadTelemetry();
+              loadStorage();
             }}
             className="btn-3d btn-3d-white"
             style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
@@ -276,6 +294,37 @@ export const AdminFeedbackPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Storage & Disk Monitor Gauge */}
+      {storageStats && (
+        <div className="card" style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          padding: '1rem 1.25rem',
+          background: 'linear-gradient(135deg, rgba(88, 204, 2, 0.08) 0%, rgba(28, 176, 246, 0.08) 100%)',
+          border: '1.5px solid var(--color-border)'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-subtle)' }}>
+              💾 Server Upload Storage Status
+            </div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 900, marginTop: '0.2rem' }}>
+              {storageStats.files_on_disk} Unique Files • {storageStats.total_storage_mb} MB Used
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>
+              🛡️ {storageStats.dedup_algorithm} (Active)
+            </span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+              Max: 25 MB/file
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Primary Section Navigation Tabs */}
       <div style={{
