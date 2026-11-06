@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from app.core.security import get_current_user
 from app.core.database import db
 from app.core.errors import not_found_error
@@ -22,11 +22,14 @@ async def create_collection(
 
 
 @router.get("", response_model=List[CollectionResponse])
-async def list_collections(current_user: Dict[str, Any] = Depends(get_current_user)):
-    """Lists all study collections owned by the authenticated user."""
+async def list_collections(
+    all_users: bool = Query(False, description="Admin-only: list all platform collections"),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """Lists study collections owned by the authenticated user (or all if admin explicitly requests)."""
     return await db.list_collections(
         user_id=current_user["id"],
-        is_admin=current_user.get("is_admin", False)
+        is_admin=current_user.get("is_admin", False) and all_users
     )
 
 
