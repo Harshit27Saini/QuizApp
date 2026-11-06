@@ -29,7 +29,7 @@ create policy "service_role_all" on public.users using (true) with check (true);
 -- ============================================================
 create table if not exists public.collections (
   id          text primary key,
-  user_id     text not null references public.users(id) on delete cascade,
+  user_id     text not null,
   title       text not null,
   description text default '',
   created_at  timestamptz default now(),

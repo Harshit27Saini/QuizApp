@@ -1,5 +1,10 @@
+import os
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_backend_env = os.path.join(_backend_dir, ".env")
+_root_env = os.path.join(os.path.dirname(_backend_dir), ".env")
 
 
 class Settings(BaseSettings):
@@ -33,7 +38,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(_backend_env, _root_env, ".env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )

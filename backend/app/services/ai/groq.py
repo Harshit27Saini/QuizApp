@@ -87,3 +87,4 @@ class GroqProvider(BaseAIProvider):
         from app.services.ai.mock_provider import MockAIProvider
         mock = MockAIProvider()
         return await mock.generate_structured_json(system_instruction, user_prompt, response_schema)
+
