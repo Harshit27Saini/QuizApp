@@ -151,11 +151,14 @@ export interface PathNodeQuestion {
   explanation: string;
 }
 
+export type TrailType = 'main' | 'deep_dive' | 'trap_vault' | 'secret_vault' | 'gauntlet' | 'boss';
+export type BranchDirection = 'left' | 'right';
+
 export interface PathNode {
   id: string;
   path_id: string;
   unit_index: number;
-  node_type?: 'lesson' | 'scenario' | 'checkpoint' | 'challenge_gauntlet';
+  node_type?: 'lesson' | 'scenario' | 'checkpoint' | 'challenge_gauntlet' | 'deep_dive' | 'trap_vault' | 'secret_vault' | 'boss';
   title: string;
   concept_summary: string;
   key_takeaways: string[];
@@ -164,7 +167,11 @@ export interface PathNode {
   slide_start?: number;
   slide_end?: number;
   is_challenge_trail?: boolean;
+  // Dungeon branching map fields
+  trail_type?: TrailType;
+  branch_direction?: BranchDirection;
   branch_from_unit_index?: number;
+  branch_depth?: number;
   difficulty?: 'easy' | 'medium' | 'hard';
   questions: PathNodeQuestion[];
   is_completed: boolean;

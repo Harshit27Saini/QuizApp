@@ -35,14 +35,19 @@ async def get_collection(
     collection_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Retrieves a specific collection by ID."""
+    """Retrieves a specific collection by ID (with cold-start auto-recovery)."""
     coll = await db.get_collection(
         collection_id=collection_id,
         user_id=current_user["id"],
         is_admin=current_user.get("is_admin", False)
     )
     if not coll:
-        raise not_found_error("Collection", collection_id)
+        coll = await db.get_or_restore_collection(
+            collection_id=collection_id,
+            user_id=current_user["id"],
+            title="Study Collection",
+            is_admin=current_user.get("is_admin", False)
+        )
     return coll
 
 

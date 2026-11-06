@@ -1,5 +1,5 @@
 import pytest
-from app.services.learning_path.generator import generate_document_learning_path
+from app.services.learning_path.generator import generate_document_learning_path, TRAIL_CONFIGS
 
 
 @pytest.mark.asyncio
@@ -30,6 +30,82 @@ async def test_generate_learning_path():
 
 
 @pytest.mark.asyncio
+async def test_branching_dungeon_trails():
+    """Verifies that side trails (deep_dive, trap_vault, secret_vault, gauntlet, boss) are
+    generated alongside the main path and have correct trail_type, branch_direction, and XP."""
+    mock_sections = [
+        {
+            "section_index": i,
+            "page_number": i + 1,
+            "heading": f"Control Systems Principle {i + 1}",
+            "content": f"Principle {i + 1}: Feedback loops enable dynamic system correction through proportional integral derivative control mechanisms."
+        }
+        for i in range(12)
+    ]
+
+    units = await generate_document_learning_path(
+        sections=mock_sections,
+        doc_title="Control Systems Engineering",
+        lesson_depth="standard"
+    )
+
+    main_units   = [u for u in units if u.get("trail_type", "main") == "main"]
+    side_trails  = [u for u in units if u.get("trail_type", "main") != "main"]
+
+    # Must have main units
+    assert len(main_units) >= 2, f"Expected main units, got {len(main_units)}"
+
+    # Must have side trails branching off
+    assert len(side_trails) >= 2, f"Expected side trails, got {len(side_trails)}"
+
+    # Every side trail must have a valid trail_type
+    valid_trail_types = set(TRAIL_CONFIGS.keys())
+    for trail in side_trails:
+        t = trail.get("trail_type", "")
+        assert t in valid_trail_types, f"Unknown trail_type: {t}"
+
+    # Branch directions must be left or right (or None for boss)
+    for trail in side_trails:
+        direction = trail.get("branch_direction")
+        assert direction in ("left", "right", None), f"Bad branch_direction: {direction}"
+
+    # XP rewards: side trails must offer more XP than main (25)
+    for trail in side_trails:
+        assert trail.get("xp_reward", 0) >= 40, f"Side trail XP too low: {trail.get('xp_reward')}"
+
+    # All units (main + trails) must have substantive_content and questions
+    for u in units:
+        assert "substantive_content" in u, f"Missing substantive_content in: {u.get('title')}"
+        assert len(u.get("questions", [])) >= 1, f"No questions in: {u.get('title')}"
+
+
+@pytest.mark.asyncio
+async def test_boss_node_exists_at_end():
+    """The final main unit should spawn an Apex Boss node."""
+    mock_sections = [
+        {
+            "section_index": i,
+            "page_number": i + 1,
+            "heading": f"Chapter {i + 1}",
+            "content": f"Chapter {i + 1} covers advanced equilibrium dynamics and institutional negotiation theory."
+        }
+        for i in range(8)
+    ]
+
+    units = await generate_document_learning_path(
+        sections=mock_sections,
+        doc_title="Game Theory Lecture Notes",
+        lesson_depth="standard"
+    )
+
+    boss_nodes = [u for u in units if u.get("trail_type") == "boss"]
+    assert len(boss_nodes) >= 1, "Expected at least one Apex Boss node at the end of the dungeon."
+    boss = boss_nodes[0]
+    assert boss.get("xp_reward", 0) >= 100, f"Boss should award >= 100 XP, got {boss.get('xp_reward')}"
+    assert len(boss.get("questions", [])) >= 1
+
+
+@pytest.mark.asyncio
 async def test_sandbox_slide_range_and_depth():
     mock_sections = [
         {"section_index": 0, "page_number": 1, "heading": "Cover", "content": "Department of Engineering Subject Code 101"},
@@ -37,7 +113,7 @@ async def test_sandbox_slide_range_and_depth():
         {"section_index": 2, "page_number": 12, "heading": "State Space Representation", "content": "State space representation models physical systems as a set of input, output, and state variables related by first-order differential equations."},
         {"section_index": 3, "page_number": 30, "heading": "Advanced Kalman Filtering", "content": "Kalman filtering uses a series of measurements observed over time containing statistical noise to estimate unknown variables."}
     ]
-    
+
     # Sandbox restricted to pages 10-15 with sprint depth
     units = await generate_document_learning_path(
         sections=mock_sections,
@@ -47,9 +123,10 @@ async def test_sandbox_slide_range_and_depth():
         lesson_depth="sprint"
     )
     assert len(units) >= 1
-    # Check that page 30 was not included in the sandbox units
-    assert all(u.get("source_page", 10) <= 20 for u in units)
-    assert units[0]["substantive_content"] is not None
+    # Main path units must only cover content within the sandbox range
+    main_units = [u for u in units if u.get("trail_type", "main") == "main"]
+    assert all(u.get("source_page", 10) <= 20 for u in main_units)
+    assert main_units[0]["substantive_content"] is not None
 
 
 @pytest.mark.asyncio
@@ -72,18 +149,19 @@ async def test_granular_129_slides_learning_path():
     )
 
     # Standard depth: ~6 slides per stone => 129 / 6 ≈ 22 stepping stones
-    main_units = [u for u in units if not u.get("is_challenge_trail")]
+    main_units = [u for u in units if u.get("trail_type", "main") == "main"]
     assert 16 <= len(main_units) <= 26, f"Expected 16-26 main units for 129 slides, got {len(main_units)}"
-    assert any(u.get("is_challenge_trail") for u in units), "Expected branching challenge gauntlets"
-    
-    # Check that each stepping stone covers between 4 and 8 slides
-    for u in units:
+
+    # Must have many side trails
+    side_trails = [u for u in units if u.get("trail_type", "main") != "main"]
+    assert len(side_trails) >= len(main_units), "Expected at least as many side trails as main units"
+
+    # Check slide span for main nodes only
+    for u in main_units:
         assert "substantive_content" in u
         assert "questions" in u
         start_p = u["source_page"]
         end_p = u.get("source_page_end", start_p)
         span = end_p - start_p + 1
-        max_allowed = 16 if u.get("is_challenge_trail") else 10
-        assert 1 <= span <= max_allowed, f"Stepping stone covers {span} slides, expected ~4-8"
-        assert "Slides " in u["title"] or "Slide " in u["title"] or u.get("is_challenge_trail")
-
+        assert 1 <= span <= 10, f"Main unit covers {span} slides, expected ~4-8"
+        assert "Slides " in u["title"] or "Slide " in u["title"]

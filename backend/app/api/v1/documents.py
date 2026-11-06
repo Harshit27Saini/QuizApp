@@ -24,9 +24,13 @@ async def upload_document(
     Uploads a document (PDF, DOCX, PPTX, TXT), extracts text and structural sections,
     saves the raw file to disk for viewing, and returns parsed sections for immediate document preview.
     """
-    coll = await db.get_collection(collection_id, current_user["id"], is_admin=current_user.get("is_admin", False))
-    if not coll:
-        raise not_found_error("Collection", collection_id)
+    # Retrieve collection or auto-restore if container rotated from cold-start
+    coll = await db.get_or_restore_collection(
+        collection_id=collection_id,
+        user_id=current_user["id"],
+        title="Study Collection",
+        is_admin=current_user.get("is_admin", False)
+    )
 
     # Validate file extension
     filename = file.filename or "uploaded_document"

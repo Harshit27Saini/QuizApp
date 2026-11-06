@@ -77,16 +77,172 @@ LEARNING_PATH_JSON_SCHEMA = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Trail type config — icon, XP, difficulty, description
+# ---------------------------------------------------------------------------
+TRAIL_CONFIGS = {
+    "main":          {"icon": "🌲", "xp": 25, "difficulty": "medium", "label": "Main Path"},
+    "deep_dive":     {"icon": "🔬", "xp": 45, "difficulty": "hard",   "label": "Deep Dive Lab"},
+    "trap_vault":    {"icon": "⚡", "xp": 40, "difficulty": "hard",   "label": "Exam Trap Vault"},
+    "secret_vault":  {"icon": "💎", "xp": 60, "difficulty": "hard",   "label": "Secret Crypt"},
+    "gauntlet":      {"icon": "👑", "xp": 75, "difficulty": "hard",   "label": "Challenge Gauntlet"},
+    "boss":          {"icon": "🌋", "xp": 100, "difficulty": "hard",  "label": "Apex Boss Lair"},
+}
+
+# How many side trails to spawn per main unit (varies by unit index for variety)
+# Pattern: at index 0 → 2 trails, 1 → 1 trail, 2 → 3 trails, 3 → 2 trails …
+_BRANCH_COUNTS = [2, 1, 3, 2, 1, 2, 3, 1, 2, 2, 1, 3]
+
+# Which trail types appear on left vs right alternating branches
+_LEFT_TRAIL_TYPES  = ["deep_dive",  "secret_vault", "deep_dive",  "trap_vault"]
+_RIGHT_TRAIL_TYPES = ["trap_vault", "gauntlet",     "secret_vault", "deep_dive"]
+
+
+def _make_side_trail_questions(
+    heading: str,
+    page_label: str,
+    trail_type: str,
+    sentences: List[str],
+    questions_per: int
+) -> List[Dict[str, Any]]:
+    """Craft thematic questions for a specific side trail biome."""
+    q_list = []
+    cfg = TRAIL_CONFIGS[trail_type]
+
+    if trail_type == "deep_dive":
+        prompts = [
+            f"🔬 Deep Dive: What underlying mechanism drives {heading} at a mathematical or first-principles level?",
+            f"🔬 Deep Dive: Which derivation step is most critical when formalizing {heading}?",
+            f"🔬 Deep Dive: Under what boundary conditions does the standard model for {heading} break down?",
+        ]
+        distractors = [
+            ["The system simplifies to a linear approximation with no residual coupling terms.", "All higher-order terms cancel identically, reducing the model to a scalar.", "The mechanism is purely empirical with no theoretical backing."],
+            ["The derivation collapses to a trivial identity with no real-world implication.", "Only integer solutions exist, eliminating all continuous parameter spaces.", "The derivation is undefined for all physically realizable inputs."],
+            ["The model holds universally for all possible inputs without any constraint.", "Boundary conditions are irrelevant when the sample size is large.", "The model never breaks down — it is an exact law."],
+        ]
+    elif trail_type == "trap_vault":
+        prompts = [
+            f"⚡ Exam Trap: Students commonly misidentify the dominant factor in {heading}. Which answer avoids this pitfall?",
+            f"⚡ Exam Trap: Which statement about {heading} looks correct but contains a subtle error?",
+            f"⚡ Exam Trap: In a timed exam, which distractor would most plausibly fool a student about {heading}?",
+        ]
+        distractors = [
+            ["The pitfall occurs because surface similarity masks a fundamentally different underlying process.", "The dominant factor is always the first variable listed in the formula.", "All factors contribute equally — none dominates under any condition."],
+            ["The subtle error is assuming steady-state holds during transient onset.", "The statement is entirely correct with no hidden flaw.", "The error only appears in edge cases that never appear in real exams."],
+            ["The correct answer is always the longest option in a well-constructed MCQ.", "Distractors are always false — just pick the most complicated-sounding answer.", "If two options look similar, the simpler one is always correct."],
+        ]
+    elif trail_type == "secret_vault":
+        prompts = [
+            f"💎 Secret Vault: Synthesize {heading} with its real-world failure mode in a multi-step scenario.",
+            f"💎 Secret Vault: A system using {heading} is under severe disturbance. Which two-step mitigation is correct?",
+            f"💎 Secret Vault: Identify the hidden assumption in {heading} that invalidates the standard model in extreme cases.",
+        ]
+        distractors = [
+            ["Ignore all second-order effects and apply the nominal formula without verification.", "Revert to open-loop control and disable all measurement feedback permanently.", "Increase all gain parameters simultaneously to override the disturbance."],
+            ["Disable monitoring to prevent false positive alerts during the disturbance.", "Apply the step response formula without checking initial condition consistency.", "Assume the disturbance is symmetric and cancel it algebraically."],
+            ["The standard model has no hidden assumptions — it is universally valid.", "The hidden assumption only matters for theoretical completeness, not practice.", "Extreme cases are out of scope for all standardized examinations."],
+        ]
+    else:  # gauntlet / generic
+        prompts = [
+            f"👑 Gauntlet: Synthesize {heading} across its full conceptual span. Which statement reflects the highest-order principle?",
+            f"👑 Gauntlet: When {heading} interacts with a secondary subsystem, what emergent behavior dominates?",
+            f"👑 Gauntlet: Which intervention produces the most robust outcome when {heading} is perturbed?",
+        ]
+        distractors = [
+            ["Passively wait for the system to self-correct without intervention.", "Apply the simplest model regardless of coupling effects.", "Assume all subsystems are independent to avoid complexity."],
+            ["The secondary subsystem amplifies all inputs linearly without saturation.", "Emergent behavior is always predictable from the linear superposition principle.", "No emergent behavior occurs — subsystems remain isolated."],
+            ["Maximum gain produces maximum robustness in all operating regimes.", "Reducing system complexity always improves robustness.", "The optimal intervention is to disable feedback loops entirely."],
+        ]
+
+    for qi in range(min(questions_per, len(prompts))):
+        core = sentences[qi % len(sentences)] if sentences else f"{heading} forms a core principle in this domain."
+        raw_q = {
+            "prompt": prompts[qi],
+            "options": [
+                {"id": "a", "text": core},
+                {"id": "b", "text": distractors[qi][0]},
+                {"id": "c", "text": distractors[qi][1]},
+                {"id": "d", "text": distractors[qi][2]},
+            ],
+            "correct_answers": ["a"],
+            "explanation": f"{cfg['icon']} {cfg['label']} — {page_label}: {core}"
+        }
+        q_list.append(shuffle_question_options(raw_q))
+
+    return q_list
+
+
+def _make_side_trail(
+    trail_type: str,
+    branch_direction: str,
+    branch_from_unit_index: int,
+    branch_depth: int,
+    heading: str,
+    page_label: str,
+    u_start_page: int,
+    u_end_page: int,
+    sentences: List[str],
+    questions_per: int
+) -> Dict[str, Any]:
+    """Build a fully-formed side trail node."""
+    cfg = TRAIL_CONFIGS[trail_type]
+    q_list = _make_side_trail_questions(heading, page_label, trail_type, sentences, questions_per)
+
+    trail_titles = {
+        "deep_dive":    f"🔬 Deep Dive: Under the Hood of {heading}",
+        "trap_vault":   f"⚡ Exam Traps & Pitfalls: {heading}",
+        "secret_vault": f"💎 Secret Crypt: Multi-Step Scenarios in {heading}",
+        "gauntlet":     f"👑 Challenge Gauntlet: Synthesis Trial",
+        "boss":         f"🌋 Apex Boss: Final Mastery Exam",
+    }
+
+    return {
+        "node_type": trail_type,
+        "title": trail_titles.get(trail_type, f"{cfg['icon']} {heading}"),
+        "concept_summary": f"{cfg['icon']} {cfg['label']}: {page_label} — {sentences[0] if sentences else heading}",
+        "key_takeaways": [
+            f"This {cfg['label']} trail branches off from the main path.",
+            sentences[1] if len(sentences) > 1 else f"Explores deep aspects of {heading}.",
+            f"Complete for {cfg['xp']} XP and bonus dungeon exploration credit.",
+        ],
+        "substantive_content": {
+            "overview": sentences[0] if sentences else f"{heading} explored in depth.",
+            "mechanisms": sentences[1:4] if len(sentences) >= 2 else [f"Core mechanisms of {heading}."],
+            "examples": [f"{cfg['label']} application: {heading} in real-world stress testing."],
+            "distinctions": f"This trail explores dimensions of {heading} not covered on the main path.",
+            "exam_pitfalls": f"High-yield traps and edge cases specific to {heading}.",
+            "source_quote": sentences[0] if sentences else "",
+            "source_page": u_start_page,
+            "source_page_end": u_end_page,
+            "page_range": page_label,
+        },
+        "source_page": u_start_page,
+        "source_page_end": u_end_page,
+        "slide_start": u_start_page,
+        "slide_end": u_end_page,
+        "is_challenge_trail": trail_type in ("gauntlet", "secret_vault", "boss"),
+        "trail_type": trail_type,
+        "branch_direction": branch_direction,
+        "branch_from_unit_index": branch_from_unit_index,
+        "branch_depth": branch_depth,
+        "difficulty": cfg["difficulty"],
+        "xp_reward": cfg["xp"],
+        "questions": q_list,
+    }
+
+
 def _generate_fallback_units(
     clean_sections: List[Dict[str, Any]],
     num_units: int,
     questions_per_unit: int = 3
 ) -> List[Dict[str, Any]]:
-    """Synthesizes high-yield structured substantive units directly from clean syllabus text."""
+    """Synthesizes high-yield structured substantive units directly from clean syllabus text,
+    plus rich branching dungeon side trails (deep dives, exam traps, secret vaults, gauntlets)."""
     units = []
     total_sections = len(clean_sections)
     actual_units = min(num_units, total_sections) if total_sections > 0 else 1
     node_types = ["lesson", "lesson", "scenario", "lesson", "checkpoint"]
+    main_unit_count = 0  # tracks only main-path unit indices
 
     for u_idx in range(actual_units):
         start = (u_idx * total_sections) // actual_units
@@ -125,7 +281,7 @@ def _generate_fallback_units(
                 "Empirical validation confirms whether parameter calibrations maintain stability across boundary conditions."
             ]
 
-        # Determine node type (periodic checkpoints and final boss checkpoint)
+        # Determine node type
         n_type = node_types[u_idx % len(node_types)]
         if u_idx == actual_units - 1 and actual_units >= 3:
             n_type = "checkpoint"
@@ -168,12 +324,11 @@ def _generate_fallback_units(
             "page_range": page_label
         }
 
-        # Clear, friendly, professional title with exact 4-8 slide scope
         clean_heading = re.sub(r"^(Slide|Page|Module|Unit)\s*\d+[:\-]?\s*", "", sec_heading, flags=re.IGNORECASE).strip()
         if not clean_heading:
             clean_heading = f"Topic {u_idx + 1}"
 
-        units.append({
+        main_node = {
             "node_type": n_type,
             "title": f"{page_label}: {clean_heading}",
             "concept_summary": sentences[0],
@@ -184,79 +339,76 @@ def _generate_fallback_units(
             "slide_start": u_start_page,
             "slide_end": u_end_page,
             "is_challenge_trail": False,
+            "trail_type": "main",
+            "branch_direction": None,
             "branch_from_unit_index": None,
+            "branch_depth": 0,
             "difficulty": "medium",
             "xp_reward": 25,
             "page_range": page_label,
             "questions": q_list
-        })
+        }
+        units.append(main_node)
+        current_main_idx = main_unit_count
+        main_unit_count += 1
 
-        # Every 2 main units, generate an optional Branching Challenge Gauntlet (Side Quest)
-        if (u_idx + 1) % 2 == 0 and (u_idx + 1) < actual_units:
-            prev_unit = units[-1]
-            earlier_unit = units[-2] if len(units) >= 2 else prev_unit
-            g_start = earlier_unit.get("source_page", u_start_page)
-            g_end = u_end_page
-            gauntlet_questions = [
-                {
-                    "prompt": f"👑 Challenge Trial: When analyzing the interaction between {earlier_unit.get('title', 'Part 1')} and {clean_heading}, which boundary condition governs system stability?",
-                    "options": [
-                        {"id": "a", "text": f"Coupled dynamic feedback between {earlier_unit.get('title', 'initial stages').split(': ')[-1]} and {clean_heading} prevents state divergence."},
-                        {"id": "b", "text": "The entire system passively reverts to an uncalibrated baseline without producing any measurable response."},
-                        {"id": "c", "text": "Boundary parameters are permanently fixed by initial conditions and cannot be altered by perturbations."},
-                        {"id": "d", "text": "Secondary variables operate in complete isolation with zero systemic cross-talk or coupling."}
-                    ],
-                    "correct_answers": ["a"],
-                    "explanation": f"Advanced synthesis challenge connecting concepts across multiple slide sets (Slides {g_start}–{g_end})."
-                },
-                {
-                    "prompt": f"👑 Challenge Trial: Under severe disturbance of {clean_heading}, which mitigation protocol provides maximal robustness?",
-                    "options": [
-                        {"id": "a", "text": "Implementing dynamic margin thresholds with automated parameter recalibration."},
-                        {"id": "b", "text": "Disabling all active feedback mechanisms whenever disturbance amplitudes exceed nominal limits."},
-                        {"id": "c", "text": "Relying strictly on nominal calibrations without verifying boundary disturbance."},
-                        {"id": "d", "text": "Suppressing error telemetry to avoid triggering diagnostic interrupts."}
-                    ],
-                    "correct_answers": ["a"],
-                    "explanation": "High-yield application question testing edge-case mastery."
-                }
+        # -----------------------------------------------------------------------
+        # BRANCHING DUNGEON SIDE TRAILS
+        # Spawn 1-3 side trails branching off this main node.
+        # Last main unit gets an Apex Boss instead of regular branches.
+        # -----------------------------------------------------------------------
+        is_last_unit = (u_idx == actual_units - 1)
+
+        if is_last_unit and actual_units >= 3:
+            # Final BOSS node branches right
+            boss_trail = _make_side_trail(
+                trail_type="boss",
+                branch_direction="right",
+                branch_from_unit_index=current_main_idx,
+                branch_depth=1,
+                heading=clean_heading,
+                page_label=page_label,
+                u_start_page=units[0].get("source_page", 1),
+                u_end_page=u_end_page,
+                sentences=sentences,
+                questions_per=questions_per_unit + 1,
+            )
+            boss_trail["concept_summary"] = f"🌋 APEX BOSS: Final mastery synthesis across all units from Slide {units[0].get('source_page', 1)} to {u_end_page}."
+            boss_trail["key_takeaways"] = [
+                "This is the final boss fight of the dungeon.",
+                "Questions synthesize ALL previous units together.",
+                f"Earn {boss_trail['xp_reward']} XP + 👑 Dungeon Master Crown on completion.",
             ]
-            shuffled_gq = [shuffle_question_options(q) for q in gauntlet_questions]
-            units.append({
-                "node_type": "challenge_gauntlet",
-                "title": f"👑 Challenge Gauntlet: Synthesis Trial",
-                "concept_summary": f"High-difficulty challenge trial testing complex synthesis of concepts across Slides {g_start}–{g_end}.",
-                "key_takeaways": [
-                    f"Synthesizes cross-cutting principles across Slides {g_start}–{g_end}.",
-                    "Tests multi-step reasoning and examination edge cases.",
-                    "Earns 3x XP (+75 XP) and the rare Gold Crown Map Badge."
-                ],
-                "substantive_content": {
-                    "overview": f"This is an advanced challenge trial. You are testing your ability to connect multiple concepts across Slides {g_start}–{g_end}.",
-                    "mechanisms": [
-                        "Cross-system interaction models and boundary stress tests.",
-                        "Multi-variable error propagation across sequential stages."
-                    ],
-                    "examples": [
-                        "Competitive exam synthesis question combining theoretical models with boundary condition analysis."
-                    ],
-                    "distinctions": "Tests active problem-solving rather than single-concept recall.",
-                    "exam_pitfalls": "Watch out for distractors that are true in isolation but fail under multi-variable synthesis.",
-                    "source_quote": sentences[0],
-                    "source_page": g_start,
-                    "source_page_end": g_end,
-                    "page_range": f"Slides {g_start}–{g_end}"
-                },
-                "source_page": g_start,
-                "source_page_end": g_end,
-                "slide_start": g_start,
-                "slide_end": g_end,
-                "is_challenge_trail": True,
-                "branch_from_unit_index": u_idx,
-                "difficulty": "hard",
-                "xp_reward": 75,
-                "questions": shuffled_gq
-            })
+            units.append(boss_trail)
+        else:
+            # Determine how many branches to add (from rotation pattern)
+            branch_count = _BRANCH_COUNTS[u_idx % len(_BRANCH_COUNTS)]
+            # Cap branches so we don't add more than 3
+            branch_count = min(branch_count, 3)
+
+            left_trail_types  = _LEFT_TRAIL_TYPES
+            right_trail_types = _RIGHT_TRAIL_TYPES
+
+            for b in range(branch_count):
+                direction = "left" if b % 2 == 0 else "right"
+                if direction == "left":
+                    t_type = left_trail_types[(current_main_idx + b) % len(left_trail_types)]
+                else:
+                    t_type = right_trail_types[(current_main_idx + b) % len(right_trail_types)]
+
+                side = _make_side_trail(
+                    trail_type=t_type,
+                    branch_direction=direction,
+                    branch_from_unit_index=current_main_idx,
+                    branch_depth=1,
+                    heading=clean_heading,
+                    page_label=page_label,
+                    u_start_page=u_start_page,
+                    u_end_page=u_end_page,
+                    sentences=sentences,
+                    questions_per=questions_per_unit,
+                )
+                units.append(side)
 
     return units
 
@@ -270,7 +422,8 @@ async def generate_document_learning_path(
     lesson_depth: str = "standard"
 ) -> List[Dict[str, Any]]:
     """
-    Analyzes document sections and synthesizes a progressive, multi-unit learning curriculum.
+    Analyzes document sections and synthesizes a progressive, multi-unit learning curriculum
+    with rich branching dungeon side trails (deep dives, exam traps, secret vaults, gauntlets, boss).
     Granular Stepping Stone Standard:
       Each stepping stone covers 4–8 slides/pages of content.
       - sprint: ~8 slides per stepping stone
@@ -315,64 +468,9 @@ async def generate_document_learning_path(
         slides_per_stone = 6
         questions_per_unit = 3
 
-    # Calculate granular stepping stones:
-    # E.g. 129 slides / 6 = ~22 units!
-    # Minimum 3 units for short docs; upper bound 35 units for massive textbooks.
+    # Calculate granular stepping stones
     target_units = max(3, round(page_span / slides_per_stone))
     num_units = min(35, min(target_units, max(3, len(clean_sections))))
 
-    # 4. For granular curricula (> 8 units) or MockAIProvider, synthesize directly
-    # from clean sections to guarantee exact 4-8 slide coverage without token limit truncation.
-    provider = get_ai_provider()
-    if provider.__class__.__name__ == "MockAIProvider" or num_units > 8:
-        return _generate_fallback_units(clean_sections, num_units, questions_per_unit)
-
-    # For compact curricula (<= 8 units), try LLM structured generation
-    context_chunks = []
-    for s in clean_sections[:16]:
-        heading = s.get("heading") or "Topic"
-        page = s.get("page_number") or 1
-        content = s.get("content", "")[:1200]
-        context_chunks.append(f"[Topic: {heading} - Page {page}]\n{content}")
-
-    full_context = "\n\n---\n\n".join(context_chunks)
-
-    system_instruction = f"""You are the master curriculum architect for Recall, an AI-powered personalized learning platform.
-Your task is to transform this technical syllabus material into a progressive {num_units}-unit learning curriculum.
-Granular standard: Each stepping stone covers 4–8 slides.
-
-Requirements:
-- Target units: Exactly {num_units} units.
-- Node types: Mix 'lesson', 'scenario' (case study application), and finish with 'checkpoint' (mastery boss test).
-- Substantive Study Material: For each unit, provide substantial, authoritative educational theory in 'substantive_content' so learners can read and master complex concepts (mechanisms, equations/rules, real-world examples, exam pitfalls).
-- Practice Questions: Exactly {questions_per_unit} active-recall questions per unit.
-  - 4 options ('a', 'b', 'c', 'd') with plausible academic distractors.
-  - Clear explanations quoting the text.
-"""
-
-    user_prompt = f"DOCUMENT TITLE: {doc_title}\nTARGET UNITS: {num_units}\nQUESTIONS PER UNIT: {questions_per_unit}\n\nCURRICULUM CONTENT:\n{full_context}"
-
-    try:
-        raw_payload = await provider.generate_structured_json(
-            system_instruction=system_instruction,
-            user_prompt=user_prompt,
-            response_schema=LEARNING_PATH_JSON_SCHEMA
-        )
-        raw_units = raw_payload.get("units", [])
-        validated_units = []
-        for u in raw_units:
-            q_list = []
-            for q in u.get("questions", []):
-                q_list.append(shuffle_question_options(q))
-            validated_units.append({
-                "node_type": u.get("node_type", "lesson"),
-                "title": u.get("title", "Learning Unit"),
-                "concept_summary": u.get("concept_summary", ""),
-                "key_takeaways": u.get("key_takeaways", []),
-                "substantive_content": u.get("substantive_content"),
-                "source_page": u.get("source_page", 1),
-                "questions": q_list
-            })
-        return validated_units if validated_units else _generate_fallback_units(clean_sections, num_units, questions_per_unit)
-    except Exception:
-        return _generate_fallback_units(clean_sections, num_units, questions_per_unit)
+    # Always use fallback generator which now produces rich branching trails
+    return _generate_fallback_units(clean_sections, num_units, questions_per_unit)

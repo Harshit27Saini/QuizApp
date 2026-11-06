@@ -164,5 +164,12 @@ Granular per-question responses. This schema provides the foundation for future 
 - `device_info`: JSONB (screen dimensions, user agent, zoom/ui_scale)
 - `created_at`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
 
+### `learning_paths` & `path_nodes` (Minecraft Dungeons Branching Map)
+- `learning_paths`: `id` (PK), `user_id`, `collection_id`, `document_id`, `title`, `total_units`, `completed_units`, `created_at`
+- `path_nodes`: `id` (PK), `path_id`, `unit_index`, `node_type`, `trail_type` ('main', 'deep_dive', 'trap_vault', 'secret_vault', 'gauntlet', 'boss'), `branch_direction` ('left', 'right'), `branch_depth`, `branch_from_unit_index`, `title`, `concept_summary`, `key_takeaways`, `substantive_content`, `source_page`, `slide_start`, `slide_end`, `is_challenge_trail`, `difficulty`, `questions`, `is_completed`, `is_locked`, `score`, `xp_reward`, `created_at`
+
+Complete SQL schema ready to execute in Supabase dashboard: `docs/supabase_schema.sql`.
+
+
 
 

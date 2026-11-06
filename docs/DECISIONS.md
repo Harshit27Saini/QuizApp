@@ -172,6 +172,31 @@
   5. Updated backend collection endpoints to grant full admin access, auto-adopt guest collections upon login, and added 1-click collection auto-recovery in the frontend UI.
 - **Consequences:** Fair and rigorous quiz questions, rich gamified learning path progression, seamless founder testing, and robust recovery from cloud container sleep.
 
+---
+
+## ADR 017: Minecraft Dungeons Branching Map and Persistent Supabase PostgreSQL Database Integration
+- **Date:** 2026-11-06
+- **Status:** Accepted
+- **Context:**
+  1. The learning path was previously a single-column linear serpentine trail. Users requested a "Minecraft Dungeons" style dungeon layout with a clear main quest spine and numerous optional side exploration paths (deep dives, exam traps, secret crypts, challenge gauntlets, and apex boss nodes).
+  2. The backend running on Render free tier suffered from container rotation and ephemeral disk wipes, resulting in "Collection not found" 404 errors when uploading materials into collections created in previous sessions.
+  3. Real database persistence was needed across backend deploys and container sleep cycles without requiring paid cloud hosting.
+- **Decision:**
+  1. Implemented Minecraft Dungeons style dungeon map on the frontend (`LearningPathPage.tsx`) featuring:
+     - Clear linear Main Quest highway in the center.
+     - Rich branching side trails alternating left and right with dashed trail connectors.
+     - 5 thematic biome trail types: 🔬 Deep Dive Lab (+45 XP), ⚡ Exam Trap Vault (+40 XP), 💎 Secret Crypt (+60 XP), 👑 Challenge Gauntlet (+75 XP), and 🌋 Apex Boss (+100 XP).
+     - Dual exploration progress meters: "Main Quest: X/Y" and "🗺️ Dungeon Explored: Z% (locations)" with a "👑 DUNGEON MASTER!" celebration badge at 100%.
+     - Responsive mobile layout adapting side branches inline.
+     - Side trails are permanently unlocked for free exploration without gating the main quest.
+  2. Integrated Supabase (PostgreSQL) repository in `backend/app/core/database.py` via `supabase-py` client:
+     - All primary entities (users, collections, documents, sections, quizzes, attempts, responses, flashcards, paths, nodes, feedback, telemetry, social) persist in PostgreSQL.
+     - Created `docs/supabase_schema.sql` defining relational tables, indexes, and RLS policies.
+     - Retained seamless fallback to in-memory/Firestore store for offline local testing and test suite execution.
+  3. Added auto-healing collection recovery (`get_or_restore_collection`) in `database.py`, `collections.py`, and `documents.py` so that even if container memory resets or ephemeral sessions rotate, collection UUIDs are restored automatically without failing document uploads.
+- **Consequences:** Highly engaging exploration-driven study map, elimination of cold-start 404 collection errors, and permanent zero-loss data persistence.
+
+
 
 
 

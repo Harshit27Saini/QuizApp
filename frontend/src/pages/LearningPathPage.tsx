@@ -10,6 +10,242 @@ import { SandboxSetupModal } from '../components/learning_path/SandboxSetupModal
 import { SteppingStoneRunner } from '../components/learning_path/SteppingStoneRunner';
 import type { LearningPath, PathNode, LearningPathGenerateOptions } from '../types';
 
+// ---------------------------------------------------------------------------
+// Trail styling configuration
+// ---------------------------------------------------------------------------
+const TRAIL_STYLES: Record<string, { color: string; bg: string; border: string; icon: string; label: string }> = {
+  main:         { color: 'var(--color-green)',  bg: 'rgba(88,204,2,0.10)',    border: 'var(--color-green)',  icon: '🌲', label: 'Main Quest' },
+  deep_dive:    { color: 'var(--color-blue)',   bg: 'rgba(28,176,246,0.12)',  border: 'var(--color-blue)',   icon: '🔬', label: 'Deep Dive' },
+  trap_vault:   { color: '#f5a623',             bg: 'rgba(245,166,35,0.12)', border: '#f5a623',             icon: '⚡', label: 'Exam Trap' },
+  secret_vault: { color: 'var(--color-purple)', bg: 'rgba(130,80,255,0.12)', border: 'var(--color-purple)', icon: '💎', label: 'Secret Vault' },
+  gauntlet:     { color: '#e8b400',             bg: 'rgba(232,180,0,0.15)',  border: '#e8b400',             icon: '👑', label: 'Gauntlet' },
+  boss:         { color: 'var(--color-red)',    bg: 'rgba(255,75,75,0.12)',  border: 'var(--color-red)',    icon: '🌋', label: 'Apex Boss' },
+};
+
+function getTrailStyle(node: PathNode) {
+  const t = node.trail_type ?? 'main';
+  return TRAIL_STYLES[t] ?? TRAIL_STYLES['main'];
+}
+
+// ---------------------------------------------------------------------------
+// DungeonSideNode — compact card for side trails
+// ---------------------------------------------------------------------------
+interface SideNodeProps {
+  node: PathNode;
+  onOpen: (node: PathNode) => void;
+}
+
+const DungeonSideNode: React.FC<SideNodeProps> = ({ node, onOpen }) => {
+  const style = getTrailStyle(node);
+  const isCompleted = node.is_completed;
+
+  return (
+    <div
+      onClick={() => onOpen(node)}
+      title={node.title}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '0.3rem',
+        cursor: 'pointer',
+        userSelect: 'none',
+        width: '84px',
+        flexShrink: 0,
+      }}
+    >
+      {/* Icon bubble */}
+      <div
+        style={{
+          width: '54px',
+          height: '54px',
+          borderRadius: '50%',
+          background: isCompleted ? 'rgba(88,204,2,0.15)' : style.bg,
+          border: `2.5px ${isCompleted ? 'solid var(--color-green)' : 'dashed ' + style.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '1.4rem',
+          boxShadow: `0 3px 10px ${isCompleted ? 'rgba(88,204,2,0.25)' : 'rgba(0,0,0,0.12)'}`,
+          transition: 'transform 0.15s, box-shadow 0.15s',
+          position: 'relative',
+        }}
+        className="dungeon-side-node-bubble"
+      >
+        {isCompleted ? '⭐' : style.icon}
+        {/* XP badge */}
+        <div style={{
+          position: 'absolute',
+          bottom: '-6px',
+          right: '-6px',
+          background: style.color,
+          color: '#fff',
+          fontSize: '0.6rem',
+          fontWeight: 900,
+          padding: '1px 4px',
+          borderRadius: '6px',
+          lineHeight: 1.4,
+          whiteSpace: 'nowrap',
+        }}>
+          +{node.xp_reward ?? 25}
+        </div>
+      </div>
+
+      {/* Label */}
+      <div style={{
+        fontSize: '0.65rem',
+        fontWeight: 800,
+        color: isCompleted ? 'var(--color-green)' : style.color,
+        textAlign: 'center',
+        lineHeight: 1.2,
+        maxWidth: '80px',
+      }}>
+        {style.label}
+      </div>
+
+      {/* Title snippet */}
+      <div style={{
+        fontSize: '0.6rem',
+        color: 'var(--color-text-muted)',
+        textAlign: 'center',
+        lineHeight: 1.2,
+        maxWidth: '80px',
+        overflow: 'hidden',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+        WebkitBoxOrient: 'vertical' as const,
+      }}>
+        {node.title}
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// MainDungeonNode — large 3D stepping stone for main path
+// ---------------------------------------------------------------------------
+interface MainNodeProps {
+  node: PathNode;
+  onOpen: (node: PathNode) => void;
+  companion: ReturnType<typeof companionService.getActiveCompanion>;
+  cheerQuote: string;
+  isCurrent: boolean;
+  isMobile: boolean;
+}
+
+const MainDungeonNode: React.FC<MainNodeProps> = ({ node, onOpen, companion, cheerQuote, isCurrent, isMobile }) => {
+  const isCompleted = node.is_completed;
+  const isLocked = node.is_locked;
+
+  const nodeTypeIcon = node.node_type === 'checkpoint'
+    ? '🏆'
+    : node.node_type === 'scenario'
+    ? '🎭'
+    : node.is_challenge_trail
+    ? '👑'
+    : '📖';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+      {/* Floating Companion beside current node */}
+      {isCurrent && (
+        <div style={{
+          position: 'absolute',
+          left: isMobile ? '50%' : '-145px',
+          top: isMobile ? '-96px' : '-8px',
+          transform: isMobile ? 'translateX(-50%)' : 'none',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: isMobile ? '150px' : '130px',
+          zIndex: 10
+        }}>
+          <div style={{
+            background: '#ffffff',
+            border: '2px solid var(--color-border)',
+            borderBottom: '3px solid var(--color-border-strong)',
+            padding: '0.375rem 0.625rem',
+            borderRadius: '12px',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            lineHeight: 1.3,
+            textAlign: 'center',
+            marginBottom: '4px',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
+          }}>
+            "{cheerQuote}"
+          </div>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: 'var(--radius-lg)',
+            overflow: 'hidden',
+            border: '2px solid var(--color-border)',
+            background: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+            fontSize: '2.5rem'
+          }}>
+            {companionService.getAvatarUrl(companion) ? (
+              <img
+                src={companionService.getAvatarUrl(companion)}
+                alt={companion.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : companion.avatarIcon}
+          </div>
+          <span style={{ fontSize: '0.7rem', fontWeight: 900, color: companion.badgeColor }}>
+            {companion.name}
+          </span>
+        </div>
+      )}
+
+      {/* 3D Stepping Stone Button */}
+      <div
+        onClick={() => onOpen(node)}
+        className={`stepping-stone-3d ${isCompleted ? 'completed' : isCurrent ? 'active' : 'locked'}`}
+        style={node.is_challenge_trail ? {
+          border: '3px solid var(--color-gold)',
+          boxShadow: '0 8px 24px rgba(255, 184, 0, 0.45)',
+          transform: 'scale(1.08)'
+        } : undefined}
+        title={isLocked ? 'Complete previous unit to unlock' : node.title}
+      >
+        {node.is_challenge_trail ? '👑' : isCompleted ? '⭐' : isCurrent ? nodeTypeIcon : '🔒'}
+      </div>
+
+      {/* Title Label */}
+      <div style={{
+        marginTop: '0.75rem',
+        fontWeight: 900,
+        fontSize: '0.9rem',
+        textAlign: 'center',
+        maxWidth: '180px',
+        color: isLocked ? 'var(--color-text-subtle)' : node.is_challenge_trail ? 'var(--color-gold)' : 'var(--color-text-main)'
+      }}>
+        {node.title}
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {node.is_challenge_trail ? (
+          <span className="badge badge-xp" style={{ fontSize: '0.7rem' }}>👑 +75 XP</span>
+        ) : (
+          <span className="badge" style={{ fontSize: '0.7rem', background: '#ffffff', border: '1.5px solid var(--color-border)' }}>
+            {node.node_type === 'checkpoint' ? 'Checkpoint' : node.node_type === 'scenario' ? 'Scenario' : 'Lesson'}
+          </span>
+        )}
+        {isCurrent && <span className="badge badge-mode" style={{ fontSize: '0.7rem' }}>START</span>}
+        {isCompleted && <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>MASTERED ✓</span>}
+      </div>
+    </div>
+  );
+};
+
+// ===========================================================================
+// Main Page Component
+// ===========================================================================
 export const LearningPathPage: React.FC = () => {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
@@ -18,24 +254,19 @@ export const LearningPathPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Sound state
   const [isMuted, setIsMuted] = useState(soundManager.isMuted);
   const [isMobile, setIsMobile] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth <= 640);
 
-  // Active Companion Cheerleader
   const activeCompanion = companionService.getActiveCompanion();
   const [cheerQuote, setCheerQuote] = useState<string>('');
 
-  // Sandbox Modal State
   const [showSandboxModal, setShowSandboxModal] = useState(false);
   const [lessonDepth, setLessonDepth] = useState<'sprint' | 'standard' | 'deep_dive'>('standard');
   const [showNandhiniUnlockCelebration, setShowNandhiniUnlockCelebration] = useState(false);
 
-  // Milestone Chest Reward Modal State
   const [openedChestIndex, setOpenedChestIndex] = useState<number | null>(null);
   const [claimedChests, setClaimedChests] = useState<Set<number>>(new Set());
 
-  // Active Stepping Stone Runner Modal
   const [activeNode, setActiveNode] = useState<PathNode | null>(null);
 
   const fetchPath = async (opts?: LearningPathGenerateOptions) => {
@@ -92,10 +323,30 @@ export const LearningPathPage: React.FC = () => {
   };
 
   const handleOpenNode = (node: PathNode) => {
-    if (node.is_locked) return;
+    // Side trails are always open; main nodes follow lock rules
+    const isMainLocked = (node.trail_type ?? 'main') === 'main' && node.is_locked;
+    if (isMainLocked) return;
     setActiveNode(node);
     setCheerQuote(companionService.getRandomCheer());
   };
+
+  // ---------------------------------------------------------------------------
+  // Derived dungeon map data
+  // ---------------------------------------------------------------------------
+  const mainNodes = path ? path.nodes.filter(n => (n.trail_type ?? 'main') === 'main') : [];
+  const sideTrailsByParent: Record<number, PathNode[]> = {};
+  if (path) {
+    path.nodes.filter(n => (n.trail_type ?? 'main') !== 'main').forEach(n => {
+      const parentIdx = n.branch_from_unit_index ?? 0;
+      if (!sideTrailsByParent[parentIdx]) sideTrailsByParent[parentIdx] = [];
+      sideTrailsByParent[parentIdx].push(n);
+    });
+  }
+
+  const totalNodes = path ? path.nodes.length : 0;
+  const exploredCount = path ? path.nodes.filter(n => n.is_completed).length : 0;
+  const explorationPct = totalNodes > 0 ? Math.round((exploredCount / totalNodes) * 100) : 0;
+  const mainProgress = mainNodes.filter(n => n.is_completed).length;
 
   const progressPercent = path && path.total_units > 0
     ? Math.round((path.completed_units / path.total_units) * 100)
@@ -103,7 +354,10 @@ export const LearningPathPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Top Banner Unit Header */}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Top Banner                                                          */}
+      {/* ------------------------------------------------------------------ */}
       <div style={{
         background: 'var(--color-green)',
         borderBottom: '4px solid var(--color-green-dark)',
@@ -126,9 +380,34 @@ export const LearningPathPage: React.FC = () => {
           <h1 style={{ fontSize: '1.5rem', fontWeight: 900, marginTop: '0.25rem', letterSpacing: '0.5px' }}>
             {path?.title.replace('Path: ', '') || 'Learning Journey'}
           </h1>
-          <p style={{ fontSize: '0.85rem', opacity: 0.9 }}>
-            Mastering syllabus concepts step-by-step with {activeCompanion.name}!
+          <p style={{ fontSize: '0.85rem', opacity: 0.9, margin: '0.1rem 0 0 0' }}>
+            Dungeon quest with {activeCompanion.name}! Explore every trail for maximum XP.
           </p>
+
+          {/* Exploration meters */}
+          {path && (
+            <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.78rem', opacity: 0.95 }}>
+                ⚔️ Main Quest: {mainProgress}/{mainNodes.length}
+              </span>
+              <span style={{ fontSize: '0.78rem', opacity: 0.95 }}>
+                🗺️ Dungeon Explored: {explorationPct}%&nbsp;
+                ({exploredCount}/{totalNodes} locations)
+              </span>
+              {explorationPct === 100 && (
+                <span style={{
+                  fontSize: '0.75rem',
+                  background: '#e8b400',
+                  color: '#000',
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '6px',
+                  fontWeight: 900
+                }}>
+                  👑 DUNGEON MASTER!
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -151,7 +430,7 @@ export const LearningPathPage: React.FC = () => {
             title="Re-chunk path into granular 4-8 slide stepping stones"
             style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
           >
-            🔄 Re-chunk (4–8 Slides/Stone)
+            🔄 Re-chunk
           </button>
           <button
             className="btn-3d btn-3d-white"
@@ -170,38 +449,76 @@ export const LearningPathPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ------------------------------------------------------------------ */}
+      {/* Trail Legend                                                        */}
+      {/* ------------------------------------------------------------------ */}
+      {path && !loading && (
+        <div style={{
+          display: 'flex',
+          gap: '0.75rem',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          padding: '0.5rem 0'
+        }}>
+          {Object.entries(TRAIL_STYLES).map(([key, s]) => (
+            <div key={key} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              color: s.color,
+              background: s.bg,
+              border: `1.5px solid ${s.border}`,
+              padding: '0.2rem 0.6rem',
+              borderRadius: '20px',
+            }}>
+              {s.icon} {s.label}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Main Content                                                        */}
+      {/* ------------------------------------------------------------------ */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '5rem', color: 'var(--color-text-muted)' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem', animation: 'gentlePulse 1.5s infinite' }}>🗺️</div>
-          <h3 style={{ fontWeight: 800 }}>Synthesizing your 3D learning quest path...</h3>
+          <h3 style={{ fontWeight: 800 }}>Generating your dungeon map...</h3>
         </div>
       ) : error ? (
         <div className="card" style={{ borderLeft: '4px solid var(--color-red)' }}>
           <p style={{ color: 'var(--color-red-dark)', fontWeight: 700 }}>{error}</p>
         </div>
       ) : path && path.nodes ? (
-        /* Serpentine 3D Path of Diverse Nodes & Chests */
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0', gap: '3rem', width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
-          {/* Re-chunk callout for legacy short paths */}
-          {path.nodes.length <= 6 && (
+
+        /* ---------------------------------------------------------------- */
+        /* DUNGEON MAP                                                       */
+        /* ---------------------------------------------------------------- */
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0.5rem', gap: '0', width: '100%', overflowX: 'hidden' }}>
+
+          {/* Re-chunk tip for short paths */}
+          {mainNodes.length <= 4 && (
             <div className="card" style={{
               width: '100%',
               maxWidth: '640px',
               padding: '1rem 1.25rem',
-              background: 'rgba(88, 204, 2, 0.12)',
+              background: 'rgba(88, 204, 2, 0.08)',
               border: '2px dashed var(--color-green)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               flexWrap: 'wrap',
-              gap: '0.75rem'
+              gap: '0.75rem',
+              marginBottom: '2rem'
             }}>
               <div>
                 <div style={{ fontWeight: 900, fontSize: '0.9rem', color: 'var(--color-green-dark)' }}>
                   ⚡ Granular 4–8 Slide Standard
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                  This path has {path.nodes.length} stones. Re-chunking breaks long documents (e.g. 129 slides) into ~22 bite-sized stepping stones.
+                  This map has {mainNodes.length} main nodes. Re-chunk for a fuller dungeon with more branching trails.
                 </div>
               </div>
               <button
@@ -214,163 +531,123 @@ export const LearningPathPage: React.FC = () => {
             </div>
           )}
 
-          {path.nodes.map((node, index) => {
-            const offsets = isMobile ? [0, 18, 0, -18] : [0, 60, 0, -60];
-            const xOffset = offsets[index % offsets.length];
-
-            const isCurrent = !node.is_locked && !node.is_completed;
-            const isCompleted = node.is_completed;
-            const isLocked = node.is_locked;
-
-            const nodeTypeIcon = node.node_type === 'checkpoint'
-              ? '🏆'
-              : node.node_type === 'scenario'
-              ? '🎭'
-              : '📖';
-
-            const showChest = index > 0 && index % 3 === 0;
+          {/* Dungeon rows */}
+          {mainNodes.map((mainNode, mainIdx) => {
+            const branches = sideTrailsByParent[mainIdx] ?? [];
+            const leftBranches = branches.filter(b => b.branch_direction === 'left');
+            const rightBranches = branches.filter(b => b.branch_direction === 'right');
+            const isCurrent = !mainNode.is_locked && !mainNode.is_completed;
 
             return (
-              <React.Fragment key={node.id}>
-                {/* Milestone Reward Chest between units */}
-                {showChest && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                    <div
-                      className="reward-chest-3d"
-                      onClick={() => handleOpenChest(index)}
-                      title="Click to claim Milestone Reward Chest!"
-                    >
-                      {claimedChests.has(index) ? '✨' : '🎁'}
-                    </div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-gold-dark)' }}>
-                      {claimedChests.has(index) ? 'Claimed ✓' : 'Milestone Chest'}
-                    </span>
-                  </div>
-                )}
+              <div key={mainNode.id} style={{ width: '100%', maxWidth: isMobile ? '100%' : '960px' }}>
 
-                {/* Stepping Stone Node */}
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    transform: `translateX(${xOffset}px)`,
-                    transition: 'transform var(--transition-normal)',
-                    position: 'relative'
-                  }}
-                >
-                  {/* Floating Companion Cheerleader standing beside or above current node */}
-                  {isCurrent && (
-                    <div style={{
-                      position: 'absolute',
-                      left: isMobile ? '50%' : (xOffset >= 0 ? '-140px' : '96px'),
-                      top: isMobile ? '-96px' : '-10px',
-                      transform: isMobile ? 'translateX(-50%)' : 'none',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      width: isMobile ? '150px' : '130px',
-                      zIndex: 10
-                    }}>
+                {/* Row: left branches | main node | right branches */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: isMobile ? '0.5rem' : '1rem',
+                  padding: '0.5rem 0',
+                  flexWrap: isMobile ? 'wrap' : 'nowrap',
+                }}>
+
+                  {/* Left branches (reverse order so closest to center is first) */}
+                  {!isMobile && leftBranches.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', gap: '0.5rem' }}>
+                      {leftBranches.map(branch => (
+                        <DungeonSideNode key={branch.id} node={branch} onOpen={handleOpenNode} />
+                      ))}
+                      {/* Connector line from main to left trails */}
                       <div style={{
-                        background: '#ffffff',
-                        border: '2px solid var(--color-border)',
-                        borderBottom: '3px solid var(--color-border-strong)',
-                        padding: '0.375rem 0.625rem',
-                        borderRadius: '12px',
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        lineHeight: 1.3,
-                        textAlign: 'center',
-                        marginBottom: '4px',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
-                      }}>
-                        "{cheerQuote}"
-                      </div>
-                      <div style={{
-                        width: '56px',
-                        height: '56px',
-                        borderRadius: 'var(--radius-lg)',
-                        overflow: 'hidden',
-                        border: '2px solid var(--color-border)',
-                        background: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-                        fontSize: '2.5rem'
-                      }}>
-                        {companionService.getAvatarUrl(activeCompanion) ? (
-                          <img
-                            src={companionService.getAvatarUrl(activeCompanion)}
-                            alt={activeCompanion.name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        ) : (
-                          activeCompanion.avatarIcon
-                        )}
-                      </div>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 900, color: activeCompanion.badgeColor }}>
-                        {activeCompanion.name}
-                      </span>
+                        width: `${leftBranches.length * 20}px`,
+                        height: '2px',
+                        background: `repeating-linear-gradient(90deg, var(--color-border-strong) 0, var(--color-border-strong) 6px, transparent 6px, transparent 12px)`,
+                        opacity: 0.5,
+                        flexShrink: 0,
+                      }} />
                     </div>
                   )}
 
-                  {/* 3D Stepping Stone Button */}
-                  <div
-                    onClick={() => handleOpenNode(node)}
-                    className={`stepping-stone-3d ${isCompleted ? 'completed' : isCurrent ? 'active' : 'locked'}`}
-                    style={node.is_challenge_trail ? {
-                      border: '3px solid var(--color-gold)',
-                      boxShadow: '0 8px 24px rgba(255, 184, 0, 0.45)',
-                      transform: 'scale(1.08)'
-                    } : undefined}
-                    title={isLocked ? 'Complete previous unit to unlock' : node.title}
-                  >
-                    {node.is_challenge_trail ? '👑' : isCompleted ? '⭐' : isCurrent ? nodeTypeIcon : '🔒'}
-                  </div>
+                  {/* Main node */}
+                  <MainDungeonNode
+                    node={mainNode}
+                    onOpen={handleOpenNode}
+                    companion={activeCompanion}
+                    cheerQuote={cheerQuote}
+                    isCurrent={isCurrent}
+                    isMobile={isMobile}
+                  />
 
-                  {/* Node Title Label */}
-                  <div style={{
-                    marginTop: '0.75rem',
-                    fontWeight: 900,
-                    fontSize: '0.9rem',
-                    textAlign: 'center',
-                    maxWidth: '190px',
-                    color: isLocked ? 'var(--color-text-subtle)' : node.is_challenge_trail ? 'var(--color-gold)' : 'var(--color-text-main)'
-                  }}>
-                    {node.title}
-                  </div>
+                  {/* Right branches */}
+                  {!isMobile && rightBranches.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+                      {/* Connector line from main to right trails */}
+                      <div style={{
+                        width: `${rightBranches.length * 20}px`,
+                        height: '2px',
+                        background: `repeating-linear-gradient(90deg, var(--color-border-strong) 0, var(--color-border-strong) 6px, transparent 6px, transparent 12px)`,
+                        opacity: 0.5,
+                        flexShrink: 0,
+                      }} />
+                      {rightBranches.map(branch => (
+                        <DungeonSideNode key={branch.id} node={branch} onOpen={handleOpenNode} />
+                      ))}
+                    </div>
+                  )}
 
-                  <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    {node.is_challenge_trail ? (
-                      <span className="badge badge-xp" style={{ fontSize: '0.7rem' }}>
-                        👑 +75 XP GAUNTLET
-                      </span>
-                    ) : (
-                      <span className="badge" style={{ fontSize: '0.7rem', background: '#ffffff', border: '1.5px solid var(--color-border)' }}>
-                        {node.node_type === 'checkpoint' ? 'Checkpoint' : node.node_type === 'scenario' ? 'Scenario' : 'Lesson'}
-                      </span>
-                    )}
-                    {isCurrent && (
-                      <span className="badge badge-mode" style={{ fontSize: '0.7rem' }}>
-                        START
-                      </span>
-                    )}
-                    {isCompleted && (
-                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
-                        MASTERED ✓
-                      </span>
-                    )}
-                  </div>
+                  {/* Mobile: stack all branches below */}
+                  {isMobile && branches.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
+                      {branches.map(branch => (
+                        <DungeonSideNode key={branch.id} node={branch} onOpen={handleOpenNode} />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </React.Fragment>
+
+                {/* Vertical connector + milestone chest */}
+                {mainIdx < mainNodes.length - 1 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {/* Dashed vertical spine */}
+                    <div style={{
+                      height: '28px',
+                      width: '3px',
+                      background: 'repeating-linear-gradient(180deg, var(--color-border-strong) 0, var(--color-border-strong) 5px, transparent 5px, transparent 10px)',
+                      opacity: 0.5
+                    }} />
+
+                    {/* Milestone chest every 3 main nodes */}
+                    {(mainIdx + 1) % 3 === 0 && (
+                      <>
+                        <div
+                          className="reward-chest-3d"
+                          onClick={() => handleOpenChest(mainIdx)}
+                          title="Milestone Chest — Click to claim!"
+                        >
+                          {claimedChests.has(mainIdx) ? '✨' : '🎁'}
+                        </div>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-gold-dark)', marginBottom: '4px' }}>
+                          {claimedChests.has(mainIdx) ? 'Claimed ✓' : 'Milestone Chest'}
+                        </span>
+                        <div style={{
+                          height: '20px',
+                          width: '3px',
+                          background: 'repeating-linear-gradient(180deg, var(--color-border-strong) 0, var(--color-border-strong) 5px, transparent 5px, transparent 10px)',
+                          opacity: 0.5
+                        }} />
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
       ) : null}
 
-      {/* Milestone Chest Opened Modal */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Milestone Chest Modal                                               */}
+      {/* ------------------------------------------------------------------ */}
       {openedChestIndex !== null && (
         <div style={{
           position: 'fixed',
@@ -389,11 +666,9 @@ export const LearningPathPage: React.FC = () => {
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.925rem', marginTop: '0.5rem' }}>
               Awesome dedication! You've unlocked bonus XP and syllabus momentum!
             </p>
-
             <div className="badge badge-xp" style={{ fontSize: '1.25rem', padding: '0.75rem 1.5rem', margin: '1.5rem 0' }}>
               ⚡ +50 BONUS XP EARNED!
             </div>
-
             <button
               className="btn-3d btn-3d-green"
               onClick={() => setOpenedChestIndex(null)}
@@ -405,7 +680,9 @@ export const LearningPathPage: React.FC = () => {
         </div>
       )}
 
-      {/* 4-Step Progressive Stepping Stone Runner */}
+      {/* ------------------------------------------------------------------ */}
+      {/* 4-Step Progressive Stepping Stone Runner                            */}
+      {/* ------------------------------------------------------------------ */}
       {activeNode && (
         <SteppingStoneRunner
           node={activeNode}
@@ -425,10 +702,15 @@ export const LearningPathPage: React.FC = () => {
                 }
                 return n;
               });
-              // Unlock next sequential node
+              // Unlock next main-path node only
               const currentIndex = path.nodes.findIndex(n => n.id === activeNode.id);
-              if (currentIndex >= 0 && currentIndex < path.nodes.length - 1) {
-                updatedNodes[currentIndex + 1].is_locked = false;
+              if (currentIndex >= 0) {
+                for (let i = currentIndex + 1; i < updatedNodes.length; i++) {
+                  if ((updatedNodes[i].trail_type ?? 'main') === 'main' && updatedNodes[i].is_locked) {
+                    updatedNodes[i] = { ...updatedNodes[i], is_locked: false };
+                    break;
+                  }
+                }
               }
               const completedCount = updatedNodes.filter(n => n.is_completed).length;
               setPath({
@@ -437,7 +719,6 @@ export const LearningPathPage: React.FC = () => {
                 completed_units: completedCount
               });
 
-              // Check for Nandhini 90% unlock
               const pct = (completedCount / updatedNodes.length) * 100;
               const justUnlocked = companionService.setOverallProgress(pct);
               if (justUnlocked) {
@@ -450,13 +731,17 @@ export const LearningPathPage: React.FC = () => {
         />
       )}
 
-      {/* Floating AI Pet Study Assistant */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Floating AI Pet Study Assistant                                     */}
+      {/* ------------------------------------------------------------------ */}
       <PetAssistantChat
         currentTopic={activeNode?.title || path?.title}
         contextText={activeNode?.substantive_content?.overview || activeNode?.concept_summary}
       />
 
-      {/* Sandbox Scope & Range Configuration Modal */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Sandbox Scope Modal                                                 */}
+      {/* ------------------------------------------------------------------ */}
       {showSandboxModal && (
         <SandboxSetupModal
           totalPages={path?.nodes?.length ? Math.max(...path.nodes.map(n => n.source_page || 1)) : 10}
@@ -466,7 +751,9 @@ export const LearningPathPage: React.FC = () => {
         />
       )}
 
-      {/* Nandhini 90% Mastery Unlock Celebration Modal */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Nandhini 90% Mastery Unlock Celebration Modal                      */}
+      {/* ------------------------------------------------------------------ */}
       {showNandhiniUnlockCelebration && (
         <div style={{
           position: 'fixed',

@@ -84,9 +84,35 @@ class InMemoryDB:
         return datetime.now(timezone.utc).isoformat()
 
 
-
 memory_db = InMemoryDB()
 
+# ---------------------------------------------------------------------------
+# Supabase client (singleton)
+# ---------------------------------------------------------------------------
+_supabase_client = None
+
+def get_supabase_client():
+    """Returns a Supabase client if SUPABASE_URL and SUPABASE_KEY are configured."""
+    global _supabase_client
+    if _supabase_client is not None:
+        return _supabase_client
+
+    url = settings.SUPABASE_URL
+    key = settings.SUPABASE_KEY
+    if url and key:
+        try:
+            from supabase import create_client
+            _supabase_client = create_client(url, key)
+            return _supabase_client
+        except Exception as e:
+            print(f"[Recall] Supabase init failed: {e}. Falling back to in-memory store.")
+            return None
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Legacy Firestore client (kept for backward compatibility)
+# ---------------------------------------------------------------------------
 _firestore_client = None
 
 def get_firestore_client():
@@ -119,11 +145,58 @@ def get_firestore_client():
 class Repository:
     """
     Unified Data Repository for Recall.
-    Uses Cloud Firestore when Firebase credentials are configured;
-    falls back cleanly to in-memory store for local testing & development.
+    Priority: Supabase (PostgreSQL) > Cloud Firestore > In-memory (dev/test).
     """
     def __init__(self):
-        self.firestore = get_firestore_client()
+        self.supabase = get_supabase_client()
+        self.firestore = None if self.supabase else get_firestore_client()
+
+    # -------------------------------------------------------------------------
+    # Internal Supabase helpers
+    # -------------------------------------------------------------------------
+    def _sb_insert(self, table: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Insert a row into a Supabase table and return the inserted row."""
+        result = self.supabase.table(table).insert(data).execute()
+        if result.data:
+            return result.data[0]
+        return data
+
+    def _sb_upsert(self, table: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        result = self.supabase.table(table).upsert(data).execute()
+        if result.data:
+            return result.data[0]
+        return data
+
+    def _sb_select_one(self, table: str, filters: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        q = self.supabase.table(table).select("*")
+        for col, val in filters.items():
+            q = q.eq(col, val)
+        result = q.limit(1).execute()
+        if result.data:
+            return result.data[0]
+        return None
+
+    def _sb_select_many(self, table: str, filters: Optional[Dict[str, Any]] = None,
+                        order_col: Optional[str] = None, order_desc: bool = True,
+                        limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        q = self.supabase.table(table).select("*")
+        if filters:
+            for col, val in filters.items():
+                q = q.eq(col, val)
+        if order_col:
+            q = q.order(order_col, desc=order_desc)
+        if limit:
+            q = q.limit(limit)
+        result = q.execute()
+        return result.data or []
+
+    def _sb_update(self, table: str, row_id: str, updates: Dict[str, Any]) -> bool:
+        self.supabase.table(table).update(updates).eq("id", row_id).execute()
+        return True
+
+    def _sb_delete(self, table: str, row_id: str) -> bool:
+        self.supabase.table(table).delete().eq("id", row_id).execute()
+        return True
 
     # -------------------------------------------------------------------------
     # Collections
@@ -137,15 +210,20 @@ class Repository:
             "created_at": memory_db.now_iso(),
             "updated_at": memory_db.now_iso()
         }
+        if self.supabase:
+            return self._sb_insert("collections", item)
         if self.firestore:
             self.firestore.collection("collections").document(item["id"]).set(item)
             return item
-
         memory_db.collections[item["id"]] = item
         memory_db._save_to_disk()
         return item
 
     async def list_collections(self, user_id: str, is_admin: bool = False) -> List[Dict[str, Any]]:
+        if self.supabase:
+            if is_admin:
+                return self._sb_select_many("collections", order_col="created_at", order_desc=True)
+            return self._sb_select_many("collections", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
         if self.firestore:
             if is_admin:
                 docs = self.firestore.collection("collections").stream()
@@ -158,6 +236,11 @@ class Repository:
         return [c for c in memory_db.collections.values() if c.get("user_id") == user_id or c.get("user_id") == "00000000-0000-0000-0000-000000000001"]
 
     async def get_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
+        if self.supabase:
+            item = self._sb_select_one("collections", {"id": collection_id})
+            if item and (is_admin or item.get("user_id") == user_id):
+                return item
+            return None
         if self.firestore:
             doc = self.firestore.collection("collections").document(collection_id).get()
             if doc.exists:
@@ -169,14 +252,48 @@ class Repository:
         if item:
             if is_admin or item.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
                 return item
-            # Auto-adopt guest collection or dev-seeded collection if a visitor created it before logging in
             if (item.get("user_id", "").startswith("guest_") or item.get("user_id") == "00000000-0000-0000-0000-000000000001") and not user_id.startswith("guest_"):
                 item["user_id"] = user_id
                 memory_db._save_to_disk()
                 return item
         return None
 
+    async def get_or_restore_collection(
+        self,
+        collection_id: str,
+        user_id: str,
+        title: str = "Study Collection",
+        is_admin: bool = False
+    ) -> Dict[str, Any]:
+        """Returns the collection or auto-restores it if erased during a cloud cold-start."""
+        existing = await self.get_collection(collection_id, user_id, is_admin=is_admin)
+        if existing:
+            return existing
+
+        item = {
+            "id": collection_id,
+            "user_id": user_id,
+            "title": title,
+            "description": "Auto-restored study collection",
+            "created_at": memory_db.now_iso(),
+            "updated_at": memory_db.now_iso()
+        }
+        if self.supabase:
+            return self._sb_insert("collections", item)
+        if self.firestore:
+            self.firestore.collection("collections").document(item["id"]).set(item)
+            return item
+        memory_db.collections[item["id"]] = item
+        memory_db._save_to_disk()
+        return item
+
     async def delete_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> bool:
+        if self.supabase:
+            item = self._sb_select_one("collections", {"id": collection_id})
+            if item and (is_admin or item.get("user_id") == user_id):
+                self._sb_delete("collections", collection_id)
+                return True
+            return False
         if self.firestore:
             ref = self.firestore.collection("collections").document(collection_id)
             doc = ref.get()
@@ -219,6 +336,8 @@ class Repository:
             "error_message": None,
             "created_at": memory_db.now_iso()
         }
+        if self.supabase:
+            return self._sb_insert("documents", doc)
         if self.firestore:
             self.firestore.collection("documents").document(doc["id"]).set(doc)
             return doc
@@ -227,6 +346,11 @@ class Repository:
         return doc
 
     async def list_documents(self, collection_id: str, user_id: str, is_admin: bool = False) -> List[Dict[str, Any]]:
+        if self.supabase:
+            items = self._sb_select_many("documents", filters={"collection_id": collection_id}, order_col="created_at", order_desc=True)
+            if not is_admin:
+                items = [d for d in items if d.get("user_id") == user_id]
+            return items
         if self.firestore:
             docs = self.firestore.collection("documents").where("collection_id", "==", collection_id).stream()
             items = [d.to_dict() for d in docs]
@@ -244,6 +368,11 @@ class Repository:
         ]
 
     async def get_document(self, document_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
+        if self.supabase:
+            doc = self._sb_select_one("documents", {"id": document_id})
+            if doc and (is_admin or doc.get("user_id") == user_id):
+                return doc
+            return None
         if self.firestore:
             doc = self.firestore.collection("documents").document(document_id).get()
             if doc.exists:
@@ -278,15 +407,20 @@ class Repository:
                 "created_at": memory_db.now_iso()
             }
             created.append(item)
-            if self.firestore:
+            if self.supabase:
+                self._sb_insert("document_sections", item)
+            elif self.firestore:
                 self.firestore.collection("document_sections").document(item["id"]).set(item)
             else:
                 memory_db.document_sections[item["id"]] = item
-        if not self.firestore:
+        if not self.supabase and not self.firestore:
             memory_db._save_to_disk()
         return created
 
     async def get_document_sections(self, document_id: str) -> List[Dict[str, Any]]:
+        if self.supabase:
+            items = self._sb_select_many("document_sections", filters={"document_id": document_id}, order_col="section_index", order_desc=False)
+            return items
         if self.firestore:
             docs = self.firestore.collection("document_sections").where("document_id", "==", document_id).stream()
             items = [d.to_dict() for d in docs]
@@ -316,16 +450,22 @@ class Repository:
             "document_ids": document_ids,
             "created_at": memory_db.now_iso()
         }
+        if self.supabase:
+            return self._sb_insert("quizzes", quiz)
         if self.firestore:
             self.firestore.collection("quizzes").document(quiz["id"]).set(quiz)
             return quiz
-
         memory_db.quizzes[quiz["id"]] = quiz
         for d_id in document_ids:
             memory_db.quiz_documents.append({"quiz_id": quiz["id"], "document_id": d_id})
         return quiz
 
     async def get_quiz(self, quiz_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        if self.supabase:
+            q = self._sb_select_one("quizzes", {"id": quiz_id})
+            if q and q["user_id"] == user_id:
+                return q
+            return None
         if self.firestore:
             doc = self.firestore.collection("quizzes").document(quiz_id).get()
             if doc.exists:
@@ -339,6 +479,8 @@ class Repository:
         return None
 
     async def list_quizzes(self, user_id: str) -> List[Dict[str, Any]]:
+        if self.supabase:
+            return self._sb_select_many("quizzes", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
         if self.firestore:
             docs = self.firestore.collection("quizzes").where("user_id", "==", user_id).stream()
             items = [d.to_dict() for d in docs]
@@ -364,13 +506,17 @@ class Repository:
                 "created_at": memory_db.now_iso()
             }
             created.append(item)
-            if self.firestore:
+            if self.supabase:
+                self._sb_insert("questions", item)
+            elif self.firestore:
                 self.firestore.collection("questions").document(item["id"]).set(item)
             else:
                 memory_db.questions[item["id"]] = item
         return created
 
     async def get_quiz_questions(self, quiz_id: str) -> List[Dict[str, Any]]:
+        if self.supabase:
+            return self._sb_select_many("questions", filters={"quiz_id": quiz_id})
         if self.firestore:
             docs = self.firestore.collection("questions").where("quiz_id", "==", quiz_id).stream()
             return [d.to_dict() for d in docs]
@@ -400,6 +546,8 @@ class Repository:
             "started_at": memory_db.now_iso(),
             "completed_at": None
         }
+        if self.supabase:
+            return self._sb_insert("quiz_attempts", attempt)
         if self.firestore:
             self.firestore.collection("quiz_attempts").document(attempt["id"]).set(attempt)
             return attempt
@@ -422,6 +570,21 @@ class Repository:
             "time_taken_seconds": time_taken_seconds,
             "completed_at": now
         }
+        if self.supabase:
+            self._sb_update("quiz_attempts", attempt_id, update_data)
+            for r in responses:
+                rid = str(uuid.uuid4())
+                self._sb_insert("question_responses", {
+                    "id": rid,
+                    "attempt_id": attempt_id,
+                    "question_id": r["question_id"],
+                    "user_id": user_id,
+                    "selected_options": r["selected_options"],
+                    "is_correct": r["is_correct"],
+                    "time_spent_seconds": r.get("time_spent_seconds", 0),
+                    "created_at": now
+                })
+            return self._sb_select_one("quiz_attempts", {"id": attempt_id}) or {}
         if self.firestore:
             self.firestore.collection("quiz_attempts").document(attempt_id).update(update_data)
             for r in responses:
@@ -437,16 +600,13 @@ class Repository:
                     "created_at": now
                 }
                 self.firestore.collection("question_responses").document(rid).set(r_payload)
-
             doc = self.firestore.collection("quiz_attempts").document(attempt_id).get()
             return doc.to_dict()
-
         attempt = memory_db.quiz_attempts[attempt_id]
         attempt["score"] = score
         attempt["correct_count"] = correct_count
         attempt["time_taken_seconds"] = time_taken_seconds
         attempt["completed_at"] = now
-
         for r in responses:
             rid = str(uuid.uuid4())
             memory_db.question_responses[rid] = {
@@ -462,6 +622,11 @@ class Repository:
         return attempt
 
     async def get_attempt(self, attempt_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        if self.supabase:
+            att = self._sb_select_one("quiz_attempts", {"id": attempt_id})
+            if att and att["user_id"] == user_id:
+                return att
+            return None
         if self.firestore:
             doc = self.firestore.collection("quiz_attempts").document(attempt_id).get()
             if doc.exists:
@@ -475,6 +640,11 @@ class Repository:
         return None
 
     async def list_attempts(self, user_id: str, quiz_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        if self.supabase:
+            filters: Dict[str, Any] = {"user_id": user_id}
+            if quiz_id:
+                filters["quiz_id"] = quiz_id
+            return self._sb_select_many("quiz_attempts", filters=filters, order_col="started_at", order_desc=True)
         if self.firestore:
             query = self.firestore.collection("quiz_attempts").where("user_id", "==", user_id)
             if quiz_id:
@@ -489,6 +659,8 @@ class Repository:
         return sorted(attempts, key=lambda x: x["started_at"], reverse=True)
 
     async def get_attempt_responses(self, attempt_id: str) -> List[Dict[str, Any]]:
+        if self.supabase:
+            return self._sb_select_many("question_responses", filters={"attempt_id": attempt_id})
         if self.firestore:
             docs = self.firestore.collection("question_responses").where("attempt_id", "==", attempt_id).stream()
             return [d.to_dict() for d in docs]
@@ -512,6 +684,8 @@ class Repository:
             "document_ids": document_ids,
             "created_at": memory_db.now_iso()
         }
+        if self.supabase:
+            return self._sb_insert("flashcard_decks", deck)
         if self.firestore:
             self.firestore.collection("flashcard_decks").document(deck["id"]).set(deck)
             return deck
@@ -519,6 +693,11 @@ class Repository:
         return deck
 
     async def get_flashcard_deck(self, deck_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+        if self.supabase:
+            deck = self._sb_select_one("flashcard_decks", {"id": deck_id})
+            if deck and deck["user_id"] == user_id:
+                return deck
+            return None
         if self.firestore:
             doc = self.firestore.collection("flashcard_decks").document(deck_id).get()
             if doc.exists:
@@ -532,6 +711,10 @@ class Repository:
         return None
 
     async def list_flashcard_decks(self, collection_id: str, user_id: str) -> List[Dict[str, Any]]:
+        if self.supabase:
+            q = self.supabase.table("flashcard_decks").select("*").eq("collection_id", collection_id).eq("user_id", user_id).order("created_at", desc=True)
+            result = q.execute()
+            return result.data or []
         if self.firestore:
             docs = self.firestore.collection("flashcard_decks").where("collection_id", "==", collection_id).where("user_id", "==", user_id).stream()
             items = [d.to_dict() for d in docs]
@@ -553,20 +736,24 @@ class Repository:
                 "created_at": memory_db.now_iso()
             }
             created.append(item)
-            if self.firestore:
+            if self.supabase:
+                self._sb_insert("flashcards", item)
+            elif self.firestore:
                 self.firestore.collection("flashcards").document(item["id"]).set(item)
             else:
                 memory_db.flashcards[item["id"]] = item
         return created
 
     async def get_deck_flashcards(self, deck_id: str) -> List[Dict[str, Any]]:
+        if self.supabase:
+            return self._sb_select_many("flashcards", filters={"deck_id": deck_id})
         if self.firestore:
             docs = self.firestore.collection("flashcards").where("deck_id", "==", deck_id).stream()
             return [d.to_dict() for d in docs]
         return [c for c in memory_db.flashcards.values() if c["deck_id"] == deck_id]
 
     # -------------------------------------------------------------------------
-    # Learning Paths (Duolingo-style progression)
+    # Learning Paths (Dungeon-style progression)
     # -------------------------------------------------------------------------
     async def create_learning_path(
         self,
@@ -582,9 +769,8 @@ class Repository:
         nodes = []
         for idx, u in enumerate(raw_units):
             node_id = str(uuid.uuid4())
-            # Format questions with unique IDs
             questions = []
-            for q_idx, q in enumerate(u.get("questions", [])):
+            for q in u.get("questions", []):
                 q_id = str(uuid.uuid4())
                 options = q.get("options", [])
                 questions.append({
@@ -595,11 +781,19 @@ class Repository:
                     "explanation": q.get("explanation", "Grounded in unit material.")
                 })
 
+            trail_type = u.get("trail_type", "main")
+            # Side trails are always unlocked (optional exploration)
+            is_locked = False if trail_type != "main" else (idx > 0)
+
             node = {
                 "id": node_id,
                 "path_id": path_id,
                 "unit_index": idx,
                 "node_type": u.get("node_type", "lesson"),
+                "trail_type": trail_type,
+                "branch_direction": u.get("branch_direction"),
+                "branch_depth": u.get("branch_depth", 0),
+                "branch_from_unit_index": u.get("branch_from_unit_index"),
                 "title": u.get("title", f"Unit {idx + 1}"),
                 "concept_summary": u.get("concept_summary", ""),
                 "key_takeaways": u.get("key_takeaways", []),
@@ -608,16 +802,17 @@ class Repository:
                 "slide_start": u.get("slide_start") or u.get("source_page"),
                 "slide_end": u.get("slide_end") or u.get("source_page_end") or u.get("source_page"),
                 "is_challenge_trail": u.get("is_challenge_trail", False),
-                "branch_from_unit_index": u.get("branch_from_unit_index"),
                 "difficulty": u.get("difficulty", "medium"),
                 "questions": questions,
                 "is_completed": False,
-                "is_locked": idx > 0,  # First node is unlocked by default!
+                "is_locked": is_locked,
                 "score": None,
                 "xp_reward": u.get("xp_reward", 25)
             }
             nodes.append(node)
-            if self.firestore:
+            if self.supabase:
+                self._sb_insert("path_nodes", node)
+            elif self.firestore:
                 self.firestore.collection("path_nodes").document(node_id).set(node)
             else:
                 memory_db.path_nodes[node_id] = node
@@ -632,7 +827,9 @@ class Repository:
             "completed_units": 0,
             "created_at": now
         }
-        if self.firestore:
+        if self.supabase:
+            self._sb_insert("learning_paths", path_data)
+        elif self.firestore:
             self.firestore.collection("learning_paths").document(path_id).set(path_data)
         else:
             memory_db.learning_paths[path_id] = path_data
@@ -645,7 +842,11 @@ class Repository:
 
     async def get_learning_path(self, path_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         path_data = None
-        if self.firestore:
+        if self.supabase:
+            path_data = self._sb_select_one("learning_paths", {"id": path_id})
+            if path_data and path_data.get("user_id") != user_id:
+                return None
+        elif self.firestore:
             doc = self.firestore.collection("learning_paths").document(path_id).get()
             if doc.exists and doc.to_dict().get("user_id") == user_id:
                 path_data = doc.to_dict()
@@ -658,7 +859,9 @@ class Repository:
             return None
 
         # Fetch nodes
-        if self.firestore:
+        if self.supabase:
+            nodes = self._sb_select_many("path_nodes", filters={"path_id": path_id}, order_col="unit_index", order_desc=False)
+        elif self.firestore:
             docs = self.firestore.collection("path_nodes").where("path_id", "==", path_id).stream()
             nodes = [d.to_dict() for d in docs]
         else:
@@ -675,7 +878,12 @@ class Repository:
 
     async def get_document_learning_path(self, document_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         path_id = None
-        if self.firestore:
+        if self.supabase:
+            q = self.supabase.table("learning_paths").select("id").eq("document_id", document_id).eq("user_id", user_id).limit(1)
+            result = q.execute()
+            if result.data:
+                path_id = result.data[0]["id"]
+        elif self.firestore:
             docs = self.firestore.collection("learning_paths").where("document_id", "==", document_id).where("user_id", "==", user_id).limit(1).stream()
             items = [d.to_dict() for d in docs]
             if items:
@@ -697,14 +905,15 @@ class Repository:
             return False
 
         path_id = existing["id"]
-        if self.firestore:
-            # Delete nodes
+        if self.supabase:
+            self.supabase.table("path_nodes").delete().eq("path_id", path_id).execute()
+            self._sb_delete("learning_paths", path_id)
+        elif self.firestore:
             docs = self.firestore.collection("path_nodes").where("path_id", "==", path_id).stream()
             for d in docs:
                 d.reference.delete()
             self.firestore.collection("learning_paths").document(path_id).delete()
         else:
-            # In-memory delete
             nodes_to_del = [n_id for n_id, n in memory_db.path_nodes.items() if n["path_id"] == path_id]
             for n_id in nodes_to_del:
                 del memory_db.path_nodes[n_id]
@@ -719,7 +928,7 @@ class Repository:
         user_id: str,
         score: float
     ) -> Dict[str, Any]:
-        """Marks the current unit node as completed and unlocks the next unit."""
+        """Marks the current unit node as completed and unlocks the next main-path unit."""
         path = await self.get_learning_path(path_id, user_id)
         if not path:
             return {}
@@ -731,7 +940,9 @@ class Repository:
                 target_idx = i
                 n["is_completed"] = True
                 n["score"] = score
-                if self.firestore:
+                if self.supabase:
+                    self._sb_update("path_nodes", node_id, {"is_completed": True, "score": score})
+                elif self.firestore:
                     self.firestore.collection("path_nodes").document(node_id).update({
                         "is_completed": True,
                         "score": score
@@ -741,20 +952,27 @@ class Repository:
                     memory_db.path_nodes[node_id]["score"] = score
                 break
 
-        # Unlock the next node if it exists
-        if target_idx is not None and target_idx + 1 < len(nodes):
-            next_node = nodes[target_idx + 1]
-            next_node["is_locked"] = False
-            if self.firestore:
-                self.firestore.collection("path_nodes").document(next_node["id"]).update({
-                    "is_locked": False
-                })
-            else:
-                memory_db.path_nodes[next_node["id"]]["is_locked"] = False
+        # Unlock the next MAIN node only (side trails are always open)
+        if target_idx is not None:
+            # Find next main-path node
+            for i in range(target_idx + 1, len(nodes)):
+                next_node = nodes[i]
+                if (next_node.get("trail_type", "main") == "main") and next_node.get("is_locked", False):
+                    next_node["is_locked"] = False
+                    if self.supabase:
+                        self._sb_update("path_nodes", next_node["id"], {"is_locked": False})
+                    elif self.firestore:
+                        self.firestore.collection("path_nodes").document(next_node["id"]).update({"is_locked": False})
+                    else:
+                        memory_db.path_nodes[next_node["id"]]["is_locked"] = False
+                    break
 
-        # Award user XP (25 XP for passing unit)
+        # Award XP on in-memory path
         if user_id in memory_db.profiles:
             memory_db.profiles[user_id]["xp"] = memory_db.profiles[user_id].get("xp", 0) + 25
+
+        if not self.supabase and not self.firestore:
+            memory_db._save_to_disk()
 
         return await self.get_learning_path(path_id, user_id)
 
@@ -780,6 +998,8 @@ class Repository:
             "cheerleader": "sydney",
             "created_at": memory_db.now_iso()
         }
+        if self.supabase:
+            return self._sb_insert("users", user_data)
         if self.firestore:
             self.firestore.collection("users").document(user_id).set(user_data)
         memory_db.users[user_id] = user_data
@@ -787,6 +1007,8 @@ class Repository:
 
     async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         clean_email = email.strip().lower()
+        if self.supabase:
+            return self._sb_select_one("users", {"email": clean_email})
         if self.firestore:
             docs = self.firestore.collection("users").where("email", "==", clean_email).limit(1).stream()
             results = [d.to_dict() for d in docs]
@@ -798,6 +1020,8 @@ class Repository:
         return None
 
     async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        if self.supabase:
+            return self._sb_select_one("users", {"id": user_id})
         if self.firestore:
             doc = self.firestore.collection("users").document(user_id).get()
             if doc.exists:
@@ -805,6 +1029,8 @@ class Repository:
         return memory_db.users.get(user_id)
 
     async def list_users(self) -> List[Dict[str, Any]]:
+        if self.supabase:
+            return self._sb_select_many("users", order_col="created_at", order_desc=True)
         if self.firestore:
             docs = self.firestore.collection("users").stream()
             return [d.to_dict() for d in docs]
@@ -836,12 +1062,16 @@ class Repository:
             "status": "open",
             "created_at": memory_db.now_iso()
         }
+        if self.supabase:
+            return self._sb_insert("feedback", item)
         if self.firestore:
             self.firestore.collection("feedback").document(fb_id).set(item)
         memory_db.feedback[fb_id] = item
         return item
 
     async def list_feedback(self) -> List[Dict[str, Any]]:
+        if self.supabase:
+            return self._sb_select_many("feedback", order_col="created_at", order_desc=True)
         if self.firestore:
             docs = self.firestore.collection("feedback").stream()
             items = [d.to_dict() for d in docs]
@@ -850,6 +1080,8 @@ class Repository:
         return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
 
     async def delete_feedback(self, feedback_id: str) -> bool:
+        if self.supabase:
+            self._sb_delete("feedback", feedback_id)
         if self.firestore:
             self.firestore.collection("feedback").document(feedback_id).delete()
         if feedback_id in memory_db.feedback:
@@ -881,6 +1113,8 @@ class Repository:
             "device_info": device_info or {},
             "created_at": memory_db.now_iso()
         }
+        if self.supabase:
+            self._sb_insert("telemetry_logs", item)
         if self.firestore:
             self.firestore.collection("telemetry_logs").document(log_id).set(item)
         memory_db.telemetry_logs[log_id] = item
@@ -892,6 +1126,14 @@ class Repository:
         user_id: Optional[str] = None,
         event_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
+        if self.supabase:
+            q = self.supabase.table("telemetry_logs").select("*").order("created_at", desc=True).limit(limit)
+            if user_id:
+                q = q.eq("user_id", user_id)
+            if event_type and event_type != "ALL":
+                q = q.eq("event_type", event_type)
+            result = q.execute()
+            return result.data or []
         if self.firestore:
             try:
                 from firebase_admin import firestore
@@ -918,6 +1160,8 @@ class Repository:
         return sorted_logs[:limit]
 
     async def clear_telemetry_logs(self) -> bool:
+        if self.supabase:
+            self.supabase.table("telemetry_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
         if self.firestore:
             try:
                 docs = self.firestore.collection("telemetry_logs").stream()
@@ -948,6 +1192,8 @@ class Repository:
             "status": "pending",
             "created_at": memory_db.now_iso()
         }
+        if self.supabase:
+            return self._sb_insert("friend_requests", req)
         if self.firestore:
             self.firestore.collection("friend_requests").document(req_id).set(req)
         memory_db.friend_requests[req_id] = req
@@ -955,27 +1201,36 @@ class Repository:
 
     async def list_incoming_friend_requests(self, to_email: str) -> List[Dict[str, Any]]:
         clean = to_email.strip().lower()
+        if self.supabase:
+            q = self.supabase.table("friend_requests").select("*").eq("to_email", clean).eq("status", "pending")
+            result = q.execute()
+            return result.data or []
         if self.firestore:
             docs = self.firestore.collection("friend_requests").where("to_email", "==", clean).where("status", "==", "pending").stream()
             return [d.to_dict() for d in docs]
         return [r for r in memory_db.friend_requests.values() if r["to_email"] == clean and r["status"] == "pending"]
 
     async def accept_friend_request(self, request_id: str, user_id: str, user_email: str) -> bool:
-        req = memory_db.friend_requests.get(request_id)
-        if self.firestore:
+        req = None
+        if self.supabase:
+            req = self._sb_select_one("friend_requests", {"id": request_id})
+        elif self.firestore:
             doc = self.firestore.collection("friend_requests").document(request_id).get()
             if doc.exists:
                 req = doc.to_dict()
+        else:
+            req = memory_db.friend_requests.get(request_id)
+
         if not req or req.get("status") != "pending":
             return False
 
-        req["status"] = "accepted"
-        if self.firestore:
+        if self.supabase:
+            self._sb_update("friend_requests", request_id, {"status": "accepted"})
+        elif self.firestore:
             self.firestore.collection("friend_requests").document(request_id).update({"status": "accepted"})
         else:
             memory_db.friend_requests[request_id]["status"] = "accepted"
 
-        # Record friendship both directions
         friendship_entry = {
             "id": str(uuid.uuid4()),
             "user1_id": req["from_user_id"],
@@ -985,12 +1240,17 @@ class Repository:
             "user2_email": user_email,
             "created_at": memory_db.now_iso()
         }
-        if self.firestore:
+        if self.supabase:
+            self._sb_insert("friendships", friendship_entry)
+        elif self.firestore:
             self.firestore.collection("friendships").document(friendship_entry["id"]).set(friendship_entry)
-        memory_db.friendships.append(friendship_entry)
+        else:
+            memory_db.friendships.append(friendship_entry)
         return True
 
     async def decline_friend_request(self, request_id: str, user_email: str) -> bool:
+        if self.supabase:
+            self._sb_update("friend_requests", request_id, {"status": "declined"})
         if self.firestore:
             self.firestore.collection("friend_requests").document(request_id).update({"status": "declined"})
         if request_id in memory_db.friend_requests:
@@ -1001,7 +1261,10 @@ class Repository:
         clean_email = user_email.strip().lower()
         friends = []
         source = memory_db.friendships
-        if self.firestore:
+        if self.supabase:
+            result = self.supabase.table("friendships").select("*").execute()
+            source = result.data or []
+        elif self.firestore:
             docs = self.firestore.collection("friendships").stream()
             source = [d.to_dict() for d in docs]
 

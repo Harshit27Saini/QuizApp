@@ -15,12 +15,17 @@ export const CollectionDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const cachedTitle = collectionId ? localStorage.getItem(`recall_coll_title_${collectionId}`) : null;
+
   const handleRecreateCollection = async () => {
-    const titleToUse = collection?.title || 'Study Collection';
+    const titleToUse = collection?.title || cachedTitle || 'Study Collection';
     const descToUse = collection?.description || '';
     try {
       setRecreating(true);
       const newColl = await api.createCollection(titleToUse, descToUse);
+      if (newColl?.id) {
+        localStorage.setItem(`recall_coll_title_${newColl.id}`, newColl.title);
+      }
       setError(null);
       navigate(`/collections/${newColl.id}`, { replace: true });
     } catch (err: any) {
@@ -39,6 +44,9 @@ export const CollectionDetailPage: React.FC = () => {
         api.listDocuments(collectionId)
       ]);
       setCollection(collData);
+      if (collData?.title) {
+        localStorage.setItem(`recall_coll_title_${collectionId}`, collData.title);
+      }
       setDocuments(docData);
     } catch (err: any) {
       setError(err.message || 'Failed to load collection details');
@@ -99,7 +107,7 @@ export const CollectionDetailPage: React.FC = () => {
             </button>
           </div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>
-            {collection?.title || 'Collection'}
+            {collection?.title || cachedTitle || 'Collection'}
           </h1>
           {collection?.description && (
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.925rem', marginTop: '0.25rem' }}>

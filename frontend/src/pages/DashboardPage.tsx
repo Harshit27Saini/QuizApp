@@ -54,7 +54,10 @@ export const DashboardPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      await api.createCollection(title.trim(), description.trim());
+      const created = await api.createCollection(title.trim(), description.trim());
+      if (created?.id) {
+        localStorage.setItem(`recall_coll_title_${created.id}`, created.title);
+      }
       setTitle('');
       setDescription('');
       setShowModal(false);

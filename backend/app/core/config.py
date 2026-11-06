@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS_PATH: str = ""  # path to serviceAccountKey.json
     FIREBASE_STORAGE_BUCKET: str = ""
 
+    # Supabase configuration (preferred persistent storage)
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""  # service role key (not anon key)
+
     # AI Configuration: 'mock', 'gemini', or 'groq'
     AI_PROVIDER: str = "mock"
     GEMINI_API_KEY: str = ""

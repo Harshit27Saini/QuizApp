@@ -26,7 +26,7 @@ class PathNode(BaseModel):
     id: str
     path_id: str
     unit_index: int
-    node_type: str = Field(default="lesson", description="lesson | scenario | checkpoint | challenge_gauntlet")
+    node_type: str = Field(default="lesson", description="lesson | scenario | checkpoint | challenge_gauntlet | deep_dive | trap_vault | secret_vault | boss")
     title: str
     concept_summary: str
     key_takeaways: List[str]
@@ -35,7 +35,11 @@ class PathNode(BaseModel):
     slide_start: Optional[int] = None
     slide_end: Optional[int] = None
     is_challenge_trail: bool = False
+    # Branching dungeon map fields
+    trail_type: str = Field(default="main", description="main | deep_dive | trap_vault | secret_vault | gauntlet | boss")
+    branch_direction: Optional[str] = Field(None, description="left | right — which side of the main path this branches to")
     branch_from_unit_index: Optional[int] = None
+    branch_depth: int = Field(default=0, description="How many levels deep from the main path (0=main, 1=direct branch, 2=branch of branch)")
     difficulty: str = "medium"
     questions: List[PathNodeQuestion]
     is_completed: bool = False
