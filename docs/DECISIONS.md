@@ -174,27 +174,25 @@
 
 ---
 
-## ADR 017: Minecraft Dungeons Branching Map and Persistent Supabase PostgreSQL Database Integration
-- **Date:** 2026-11-06
+## ADR 018: Level 2 Safe Modular Decomposition, Database Streamlining, and AI Branding Purge
+- **Date:** 2026-11-09
 - **Status:** Accepted
 - **Context:**
-  1. The learning path was previously a single-column linear serpentine trail. Users requested a "Minecraft Dungeons" style dungeon layout with a clear main quest spine and numerous optional side exploration paths (deep dives, exam traps, secret crypts, challenge gauntlets, and apex boss nodes).
-  2. The backend running on Render free tier suffered from container rotation and ephemeral disk wipes, resulting in "Collection not found" 404 errors when uploading materials into collections created in previous sessions.
-  3. Real database persistence was needed across backend deploys and container sleep cycles without requiring paid cloud hosting.
+  1. As features expanded (Minecraft dungeon map, 4-step runner, branching side nodes, reward chests, companions), `LearningPathPage.tsx` grew into a massive file with mixed concerns (inline nodes, modals, styling constants).
+  2. `backend/app/core/database.py` contained dead legacy Firebase/Firestore code intertwined with Supabase and in-memory stores across dozens of methods.
+  3. Tacky "AI" buzzwords ("AI Pet Assistant", "✨ AI Summary", "AI-Powered...") diluted the educational product identity and added robotic slop.
 - **Decision:**
-  1. Implemented Minecraft Dungeons style dungeon map on the frontend (`LearningPathPage.tsx`) featuring:
-     - Clear linear Main Quest highway in the center.
-     - Rich branching side trails alternating left and right with dashed trail connectors.
-     - 5 thematic biome trail types: 🔬 Deep Dive Lab (+45 XP), ⚡ Exam Trap Vault (+40 XP), 💎 Secret Crypt (+60 XP), 👑 Challenge Gauntlet (+75 XP), and 🌋 Apex Boss (+100 XP).
-     - Dual exploration progress meters: "Main Quest: X/Y" and "🗺️ Dungeon Explored: Z% (locations)" with a "👑 DUNGEON MASTER!" celebration badge at 100%.
-     - Responsive mobile layout adapting side branches inline.
-     - Side trails are permanently unlocked for free exploration without gating the main quest.
-  2. Integrated Supabase (PostgreSQL) repository in `backend/app/core/database.py` via `supabase-py` client:
-     - All primary entities (users, collections, documents, sections, quizzes, attempts, responses, flashcards, paths, nodes, feedback, telemetry, social) persist in PostgreSQL.
-     - Created `docs/supabase_schema.sql` defining relational tables, indexes, and RLS policies.
-     - Retained seamless fallback to in-memory/Firestore store for offline local testing and test suite execution.
-  3. Added auto-healing collection recovery (`get_or_restore_collection`) in `database.py`, `collections.py`, and `documents.py` so that even if container memory resets or ephemeral sessions rotate, collection UUIDs are restored automatically without failing document uploads.
-- **Consequences:** Highly engaging exploration-driven study map, elimination of cold-start 404 collection errors, and permanent zero-loss data persistence.
+  1. Extracted focused components under `frontend/src/components/learning_path/`:
+     - `dungeonConstants.ts`: Central biome styling dictionary (`TRAIL_STYLES`) and helpers.
+     - `DungeonSideNode.tsx`: Side trail bubble component.
+     - `MainDungeonNode.tsx`: 3D central stepping stone button and companion cheerleader badge.
+     - `MilestoneChestModal.tsx`: Milestone chest reward modal.
+     - `NandhiniUnlockModal.tsx`: 90% syllabus mastery celebration modal.
+  2. Streamlined `backend/app/core/database.py` by purging all dead Firestore code, leaving clean Supabase PostgreSQL as primary with isolated InMemoryDB fallback for automated testing, organized into 10 numbered sections.
+  3. Rebranded "AI" buzzwords across UI to clean, product-first terms: "Study Companion", "Key Concept Review", "Active Recall & Syllabus Mastery Platform".
+  4. Verified with full backend unit test suite (`pytest`, 35/35 passing) and frontend production build (`npm run build`, 0 errors).
+- **Consequences:** Codebase is clean, modular, and effortless to understand after 12 months. Zero regressions to any existing game mechanics or backend persistence.
+
 
 
 

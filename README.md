@@ -1,4 +1,4 @@
-# Recall — AI-Powered Personal Learning Platform
+# Recall — Active Recall & Syllabus Mastery Platform
 
 Recall is an open-source, personalized learning platform that transforms user-uploaded learning materials (PDF, DOCX, PPTX, TXT) into an interactive, curriculum-grounded learning experience.
 

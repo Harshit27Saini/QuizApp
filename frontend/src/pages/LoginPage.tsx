@@ -137,7 +137,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onContinueAsGue
             color: 'var(--color-text-muted)',
             marginTop: '0.35rem'
           }}>
-            AI-Powered Active Recall & Playtest Learning
+            Active Recall & Syllabus Mastery Platform
           </p>
         </div>
 

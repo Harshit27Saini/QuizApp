@@ -190,7 +190,7 @@ export const api = {
       body: JSON.stringify({ answers }),
     }),
 
-  // AI Pet Study Assistants (Sydney, Connie, Milo, Scooby, Bunny)
+  // Study Companions (Sydney, Connie, Milo, Scooby, Bunny)
   listPetAssistants: () =>
     request<PetProfile[]>('/learning-paths/pets'),
   chatWithPet: (payload: PetChatRequest) =>

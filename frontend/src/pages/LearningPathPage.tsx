@@ -8,240 +8,12 @@ import { xpService } from '../services/xp';
 import { PetAssistantChat } from '../components/learning_path/PetAssistantChat';
 import { SandboxSetupModal } from '../components/learning_path/SandboxSetupModal';
 import { SteppingStoneRunner } from '../components/learning_path/SteppingStoneRunner';
+import { DungeonSideNode } from '../components/learning_path/DungeonSideNode';
+import { MainDungeonNode } from '../components/learning_path/MainDungeonNode';
+import { MilestoneChestModal } from '../components/learning_path/MilestoneChestModal';
+import { NandhiniUnlockModal } from '../components/learning_path/NandhiniUnlockModal';
+import { TRAIL_STYLES } from '../components/learning_path/dungeonConstants';
 import type { LearningPath, PathNode, LearningPathGenerateOptions } from '../types';
-
-// ---------------------------------------------------------------------------
-// Trail styling configuration
-// ---------------------------------------------------------------------------
-const TRAIL_STYLES: Record<string, { color: string; bg: string; border: string; icon: string; label: string }> = {
-  main:         { color: 'var(--color-green)',  bg: 'rgba(88,204,2,0.10)',    border: 'var(--color-green)',  icon: '🌲', label: 'Main Quest' },
-  deep_dive:    { color: 'var(--color-blue)',   bg: 'rgba(28,176,246,0.12)',  border: 'var(--color-blue)',   icon: '🔬', label: 'Deep Dive' },
-  trap_vault:   { color: '#f5a623',             bg: 'rgba(245,166,35,0.12)', border: '#f5a623',             icon: '⚡', label: 'Exam Trap' },
-  secret_vault: { color: 'var(--color-purple)', bg: 'rgba(130,80,255,0.12)', border: 'var(--color-purple)', icon: '💎', label: 'Secret Vault' },
-  gauntlet:     { color: '#e8b400',             bg: 'rgba(232,180,0,0.15)',  border: '#e8b400',             icon: '👑', label: 'Gauntlet' },
-  boss:         { color: 'var(--color-red)',    bg: 'rgba(255,75,75,0.12)',  border: 'var(--color-red)',    icon: '🌋', label: 'Apex Boss' },
-};
-
-function getTrailStyle(node: PathNode) {
-  const t = node.trail_type ?? 'main';
-  return TRAIL_STYLES[t] ?? TRAIL_STYLES['main'];
-}
-
-// ---------------------------------------------------------------------------
-// DungeonSideNode — compact card for side trails
-// ---------------------------------------------------------------------------
-interface SideNodeProps {
-  node: PathNode;
-  onOpen: (node: PathNode) => void;
-}
-
-const DungeonSideNode: React.FC<SideNodeProps> = ({ node, onOpen }) => {
-  const style = getTrailStyle(node);
-  const isCompleted = node.is_completed;
-
-  return (
-    <div
-      onClick={() => onOpen(node)}
-      title={node.title}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '0.3rem',
-        cursor: 'pointer',
-        userSelect: 'none',
-        width: '84px',
-        flexShrink: 0,
-      }}
-    >
-      {/* Icon bubble */}
-      <div
-        style={{
-          width: '54px',
-          height: '54px',
-          borderRadius: '50%',
-          background: isCompleted ? 'rgba(88,204,2,0.15)' : style.bg,
-          border: `2.5px ${isCompleted ? 'solid var(--color-green)' : 'dashed ' + style.border}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '1.4rem',
-          boxShadow: `0 3px 10px ${isCompleted ? 'rgba(88,204,2,0.25)' : 'rgba(0,0,0,0.12)'}`,
-          transition: 'transform 0.15s, box-shadow 0.15s',
-          position: 'relative',
-        }}
-        className="dungeon-side-node-bubble"
-      >
-        {isCompleted ? '⭐' : style.icon}
-        {/* XP badge */}
-        <div style={{
-          position: 'absolute',
-          bottom: '-6px',
-          right: '-6px',
-          background: style.color,
-          color: '#fff',
-          fontSize: '0.6rem',
-          fontWeight: 900,
-          padding: '1px 4px',
-          borderRadius: '6px',
-          lineHeight: 1.4,
-          whiteSpace: 'nowrap',
-        }}>
-          +{node.xp_reward ?? 25}
-        </div>
-      </div>
-
-      {/* Label */}
-      <div style={{
-        fontSize: '0.65rem',
-        fontWeight: 800,
-        color: isCompleted ? 'var(--color-green)' : style.color,
-        textAlign: 'center',
-        lineHeight: 1.2,
-        maxWidth: '80px',
-      }}>
-        {style.label}
-      </div>
-
-      {/* Title snippet */}
-      <div style={{
-        fontSize: '0.6rem',
-        color: 'var(--color-text-muted)',
-        textAlign: 'center',
-        lineHeight: 1.2,
-        maxWidth: '80px',
-        overflow: 'hidden',
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical' as const,
-      }}>
-        {node.title}
-      </div>
-    </div>
-  );
-};
-
-// ---------------------------------------------------------------------------
-// MainDungeonNode — large 3D stepping stone for main path
-// ---------------------------------------------------------------------------
-interface MainNodeProps {
-  node: PathNode;
-  onOpen: (node: PathNode) => void;
-  companion: ReturnType<typeof companionService.getActiveCompanion>;
-  cheerQuote: string;
-  isCurrent: boolean;
-  isMobile: boolean;
-}
-
-const MainDungeonNode: React.FC<MainNodeProps> = ({ node, onOpen, companion, cheerQuote, isCurrent, isMobile }) => {
-  const isCompleted = node.is_completed;
-  const isLocked = node.is_locked;
-
-  const nodeTypeIcon = node.node_type === 'checkpoint'
-    ? '🏆'
-    : node.node_type === 'scenario'
-    ? '🎭'
-    : node.is_challenge_trail
-    ? '👑'
-    : '📖';
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-      {/* Floating Companion beside current node */}
-      {isCurrent && (
-        <div style={{
-          position: 'absolute',
-          left: isMobile ? '50%' : '-145px',
-          top: isMobile ? '-96px' : '-8px',
-          transform: isMobile ? 'translateX(-50%)' : 'none',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          width: isMobile ? '150px' : '130px',
-          zIndex: 10
-        }}>
-          <div style={{
-            background: '#ffffff',
-            border: '2px solid var(--color-border)',
-            borderBottom: '3px solid var(--color-border-strong)',
-            padding: '0.375rem 0.625rem',
-            borderRadius: '12px',
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            lineHeight: 1.3,
-            textAlign: 'center',
-            marginBottom: '4px',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
-          }}>
-            "{cheerQuote}"
-          </div>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: 'var(--radius-lg)',
-            overflow: 'hidden',
-            border: '2px solid var(--color-border)',
-            background: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-            fontSize: '2.5rem'
-          }}>
-            {companionService.getAvatarUrl(companion) ? (
-              <img
-                src={companionService.getAvatarUrl(companion)}
-                alt={companion.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : companion.avatarIcon}
-          </div>
-          <span style={{ fontSize: '0.7rem', fontWeight: 900, color: companion.badgeColor }}>
-            {companion.name}
-          </span>
-        </div>
-      )}
-
-      {/* 3D Stepping Stone Button */}
-      <div
-        onClick={() => onOpen(node)}
-        className={`stepping-stone-3d ${isCompleted ? 'completed' : isCurrent ? 'active' : 'locked'}`}
-        style={node.is_challenge_trail ? {
-          border: '3px solid var(--color-gold)',
-          boxShadow: '0 8px 24px rgba(255, 184, 0, 0.45)',
-          transform: 'scale(1.08)'
-        } : undefined}
-        title={isLocked ? 'Complete previous unit to unlock' : node.title}
-      >
-        {node.is_challenge_trail ? '👑' : isCompleted ? '⭐' : isCurrent ? nodeTypeIcon : '🔒'}
-      </div>
-
-      {/* Title Label */}
-      <div style={{
-        marginTop: '0.75rem',
-        fontWeight: 900,
-        fontSize: '0.9rem',
-        textAlign: 'center',
-        maxWidth: '180px',
-        color: isLocked ? 'var(--color-text-subtle)' : node.is_challenge_trail ? 'var(--color-gold)' : 'var(--color-text-main)'
-      }}>
-        {node.title}
-      </div>
-
-      <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-        {node.is_challenge_trail ? (
-          <span className="badge badge-xp" style={{ fontSize: '0.7rem' }}>👑 +75 XP</span>
-        ) : (
-          <span className="badge" style={{ fontSize: '0.7rem', background: '#ffffff', border: '1.5px solid var(--color-border)' }}>
-            {node.node_type === 'checkpoint' ? 'Checkpoint' : node.node_type === 'scenario' ? 'Scenario' : 'Lesson'}
-          </span>
-        )}
-        {isCurrent && <span className="badge badge-mode" style={{ fontSize: '0.7rem' }}>START</span>}
-        {isCompleted && <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>MASTERED ✓</span>}
-      </div>
-    </div>
-  );
-};
 
 // ===========================================================================
 // Main Page Component
@@ -677,37 +449,10 @@ export const LearningPathPage: React.FC = () => {
       {/* ------------------------------------------------------------------ */}
       {/* Milestone Chest Modal                                               */}
       {/* ------------------------------------------------------------------ */}
-      {openedChestIndex !== null && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(3px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 300,
-          padding: '1rem'
-        }}>
-          <div className="card" style={{ width: '100%', maxWidth: '440px', padding: '2rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '0.5rem' }}>🎁✨</div>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 900 }}>Milestone Chest Unlocked!</h2>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.925rem', marginTop: '0.5rem' }}>
-              Awesome dedication! You've unlocked bonus XP and syllabus momentum!
-            </p>
-            <div className="badge badge-xp" style={{ fontSize: '1.25rem', padding: '0.75rem 1.5rem', margin: '1.5rem 0' }}>
-              ⚡ +50 BONUS XP EARNED!
-            </div>
-            <button
-              className="btn-3d btn-3d-green"
-              onClick={() => setOpenedChestIndex(null)}
-              style={{ width: '100%', padding: '0.875rem' }}
-            >
-              Claim & Continue Quest →
-            </button>
-          </div>
-        </div>
-      )}
+      <MilestoneChestModal
+        isOpen={openedChestIndex !== null}
+        onClose={() => setOpenedChestIndex(null)}
+      />
 
       {/* ------------------------------------------------------------------ */}
       {/* 4-Step Progressive Stepping Stone Runner                            */}
@@ -761,7 +506,7 @@ export const LearningPathPage: React.FC = () => {
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Floating AI Pet Study Assistant                                     */}
+      {/* Floating Study Companion                                            */}
       {/* ------------------------------------------------------------------ */}
       <PetAssistantChat
         currentTopic={activeNode?.title || path?.title}
@@ -783,71 +528,15 @@ export const LearningPathPage: React.FC = () => {
       {/* ------------------------------------------------------------------ */}
       {/* Nandhini 90% Mastery Unlock Celebration Modal                      */}
       {/* ------------------------------------------------------------------ */}
-      {showNandhiniUnlockCelebration && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.75)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000,
-          padding: '1rem'
-        }}>
-          <div className="card" style={{
-            maxWidth: '440px',
-            width: '100%',
-            textAlign: 'center',
-            padding: '2.5rem 1.75rem',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '1rem',
-            borderRadius: 'var(--radius-xl)',
-            border: '4px solid var(--color-green)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-            animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-          }}>
-            <div style={{ fontSize: '3rem' }}>👑 ⭐</div>
-            <div style={{
-              width: '90px',
-              height: '90px',
-              borderRadius: '50%',
-              overflow: 'hidden',
-              border: '4px solid var(--color-green)',
-              boxShadow: '0 0 20px rgba(88, 204, 2, 0.5)'
-            }}>
-              <img src="/avatars/nandhini_3d.png" alt="Nandhini" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--color-text-main)', margin: 0 }}>
-              Nandhini Unlocked! 🎉
-            </h2>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
-              Phenomenal dedication! You've achieved <strong>90% syllabus mastery</strong>. Nandhini is now unlocked as your #1 Study Companion!
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', marginTop: '0.5rem' }}>
-              <button
-                className="btn-3d btn-3d-green"
-                style={{ width: '100%', padding: '0.75rem', fontSize: '1rem' }}
-                onClick={() => {
-                  companionService.setActiveCompanion('nandhini');
-                  setShowNandhiniUnlockCelebration(false);
-                  triggerConfetti();
-                }}
-              >
-                Set Nandhini as Active Companion ⭐
-              </button>
-              <button
-                className="btn-3d btn-3d-white"
-                style={{ width: '100%', padding: '0.5rem', fontSize: '0.85rem' }}
-                onClick={() => setShowNandhiniUnlockCelebration(false)}
-              >
-                Keep Current Companion
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <NandhiniUnlockModal
+        isOpen={showNandhiniUnlockCelebration}
+        onSetCompanion={() => {
+          companionService.setActiveCompanion('nandhini');
+          setShowNandhiniUnlockCelebration(false);
+          triggerConfetti();
+        }}
+        onClose={() => setShowNandhiniUnlockCelebration(false)}
+      />
     </div>
   );
 };

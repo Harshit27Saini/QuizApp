@@ -802,7 +802,7 @@ export const DocumentPreviewPage: React.FC = () => {
                           onClick={() => generatePageSummary(page, sections)}
                           disabled={summarizingPage === page}
                         >
-                          {summarizingPage === page ? 'Analyzing...' : summary ? '✨ Hide Summary' : '✨ AI Summary'}
+                          {summarizingPage === page ? 'Analyzing...' : summary ? 'Hide Summary' : 'Key Concept Summary'}
                         </button>
                         <button
                           className={`btn-3d ${isRead ? 'btn-3d-green' : 'btn-3d-white'}`}

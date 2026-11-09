@@ -13,14 +13,14 @@ from app.schemas.learning_path import (
 )
 from app.schemas.pet_assistant import PetChatRequest, PetChatResponse
 
-router = APIRouter(prefix="/learning-paths", tags=["Duolingo-style Learning Paths & Pet Assistants"])
+router = APIRouter(prefix="/learning-paths", tags=["Learning Paths & Study Companions"])
 
 
 @router.get("/pets", response_model=List[Dict[str, Any]])
 async def list_pet_assistants(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Returns the available Pet Study Assistants (Sydney, Connie, Milo, Scooby, Bunny)."""
+    """Returns the available Study Companions (Sydney, Connie, Milo, Scooby, Bunny)."""
     return list(PET_PROFILES.values())
 
 
@@ -30,7 +30,7 @@ async def chat_with_pet_assistant(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """
-    Direct in-lesson chat with your chosen Pet Assistant (e.g. Sydney, Connie, Milo).
+    Direct in-lesson chat with your chosen Study Companion (e.g. Sydney, Connie, Milo).
     Answers questions, gives real-world analogies, and clarifies difficult academic material.
     """
     history_dicts = [{"role": m.role, "content": m.content} for m in (payload.chat_history or [])]

@@ -164,7 +164,6 @@ export const PetAssistantChat: React.FC<PetAssistantChatProps> = ({
       >
         <span style={{ fontSize: '1.4rem' }}>{activePet.avatar}</span>
         <span>Study with {activePet.name}</span>
-        <span className="badge badge-mode" style={{ fontSize: '0.75rem' }}>AI</span>
       </button>
 
       {/* Slide-out Drawer Modal */}
