@@ -168,6 +168,12 @@ Granular per-question responses. This schema provides the foundation for future 
 - `learning_paths`: `id` (PK), `user_id`, `collection_id`, `document_id`, `title`, `total_units`, `completed_units`, `created_at`
 - `path_nodes`: `id` (PK), `path_id`, `unit_index`, `node_type`, `trail_type` ('main', 'deep_dive', 'trap_vault', 'secret_vault', 'gauntlet', 'boss'), `branch_direction` ('left', 'right'), `branch_depth`, `branch_from_unit_index`, `title`, `concept_summary`, `key_takeaways`, `substantive_content`, `source_page`, `slide_start`, `slide_end`, `is_challenge_trail`, `difficulty`, `questions`, `is_completed`, `is_locked`, `score`, `xp_reward`, `created_at`
 
+### `groups`, `group_members`, `battles` & `battle_scores` (Squad Competitions)
+- `groups`: `id` (PK), `name`, `emoji`, `owner_id`, `owner_email`, `created_at`
+- `group_members`: `group_id`, `user_id`, `email`, `name`, `role` ('owner' | 'member'), `joined_at`
+- `battles`: `id` (PK), `group_id`, `mode` ('1v1' | 'nvn' | 'marathon' | 'sudden_death'), `quiz_id`, `status` ('waiting' | 'active' | 'finished'), `teams`, `created_by`, `started_at`, `finished_at`
+- `battle_scores`: `battle_id`, `user_id`, `email`, `name`, `score`, `accuracy`, `time_taken_seconds`, `eliminated_at`
+
 Complete SQL schema ready to execute in Supabase dashboard: `docs/supabase_schema.sql`.
 
 

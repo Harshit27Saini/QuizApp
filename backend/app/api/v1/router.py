@@ -9,6 +9,8 @@ from app.api.v1.learning_paths import router as learning_paths_router
 from app.api.v1.feedback import router as feedback_router
 from app.api.v1.friends import router as friends_router
 from app.api.v1.telemetry import router as telemetry_router
+from app.api.v1.groups import router as groups_router
+from app.api.v1.battles import router as battles_router
 
 api_v1_router = APIRouter(prefix="/api/v1")
 
@@ -22,3 +24,5 @@ api_v1_router.include_router(learning_paths_router)
 api_v1_router.include_router(feedback_router)
 api_v1_router.include_router(friends_router)
 api_v1_router.include_router(telemetry_router)
+api_v1_router.include_router(groups_router)
+api_v1_router.include_router(battles_router)

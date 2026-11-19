@@ -17,6 +17,10 @@ import { ShopPage } from './pages/ShopPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { AdminFeedbackPage } from './pages/AdminFeedbackPage';
+import { GroupsPage } from './pages/GroupsPage';
+import { GroupDetailPage } from './pages/GroupDetailPage';
+import { BattleRoomPage } from './pages/BattleRoomPage';
+import { BattleResultPage } from './pages/BattleResultPage';
 import { telemetry } from './services/telemetry';
 import './styles/global.css';
 
@@ -60,6 +64,10 @@ export const App: React.FC = () => {
           <Route path="/attempts/:attemptId/result" element={<QuizResultPage />} />
           <Route path="/history" element={<QuizHistoryPage />} />
           <Route path="/companions" element={<CompanionsPage />} />
+          <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/groups/:groupId" element={<GroupDetailPage />} />
+          <Route path="/battles/:battleId" element={<BattleRoomPage />} />
+          <Route path="/battles/:battleId/result" element={<BattleResultPage />} />
         </Routes>
       </AppLayout>
     </BrowserRouter>

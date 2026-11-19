@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { friendService, type LeaderboardEntry, type FriendRequest } from '../services/friends';
 import { xpService } from '../services/xp';
@@ -269,6 +270,33 @@ export const LeaderboardPage: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Squad Battles Callout */}
+      <div className="card" style={{
+        background: 'linear-gradient(135deg, rgba(28, 176, 246, 0.08), rgba(88, 204, 2, 0.08))',
+        border: '2px solid var(--color-blue)',
+        padding: '1rem 1.25rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '0.75rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ fontSize: '1.75rem' }}>⚔️</span>
+          <div>
+            <div style={{ fontWeight: 900, fontSize: '0.95rem', color: 'var(--color-blue-dark)' }}>
+              Group Battles & Game Modes
+            </div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+              Form squads with friends & compete in 1v1 Blitz, NvN Team Battle, Marathon, or Sudden Death!
+            </div>
+          </div>
+        </div>
+        <Link to="/groups" className="btn-3d btn-3d-blue" style={{ fontSize: '0.85rem', textDecoration: 'none', padding: '0.4rem 0.9rem' }}>
+          Open Groups ⚔️
+        </Link>
+      </div>
 
       {/* Incoming Friend Requests Alert */}
       {requests.length > 0 && (

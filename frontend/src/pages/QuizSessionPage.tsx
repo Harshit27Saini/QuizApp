@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
+import { battlesApi } from '../services/battles';
 import { soundManager } from '../utils/sound';
 import type { QuestionPublic } from '../types';
 
@@ -130,6 +131,25 @@ export const QuizSessionPage: React.FC = () => {
         time_taken_seconds: timeTaken,
         answers: answersPayload
       });
+
+      const searchParams = new URLSearchParams(location.search);
+      const battleId = searchParams.get('battle_id');
+      if (battleId) {
+        try {
+          const calculatedAccuracy = Math.round((result.correct_count / Math.max(1, result.total_questions || questions.length)) * 100);
+          await battlesApi.submitScore(battleId, {
+            score: result.score,
+            accuracy: calculatedAccuracy,
+            time_taken_seconds: timeTaken
+          });
+          navigate(`/battles/${battleId}/result`);
+          return;
+        } catch (battleErr) {
+          console.error("Battle score submission:", battleErr);
+          navigate(`/battles/${battleId}/result`);
+          return;
+        }
+      }
 
       navigate(`/attempts/${result.id}/result`, {
         state: {

@@ -47,6 +47,11 @@ class InMemoryDB:
         self.telemetry_logs: Dict[str, Dict[str, Any]] = {}
         self.friend_requests: Dict[str, Dict[str, Any]] = {}
         self.friendships: List[Dict[str, Any]] = []
+        # Groups & Battles
+        self.groups: Dict[str, Dict[str, Any]] = {}
+        self.group_members: List[Dict[str, Any]] = []
+        self.battles: Dict[str, Dict[str, Any]] = {}
+        self.battle_scores: List[Dict[str, Any]] = []
 
         if not os.getenv("PYTEST_CURRENT_TEST"):
             self._load_from_disk()
@@ -91,6 +96,10 @@ class InMemoryDB:
                 "telemetry_logs": self.telemetry_logs,
                 "friend_requests": self.friend_requests,
                 "friendships": self.friendships,
+                "groups": self.groups,
+                "group_members": self.group_members,
+                "battles": self.battles,
+                "battle_scores": self.battle_scores,
             }
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f)
@@ -1393,6 +1402,193 @@ class Repository:
                     "cheerleader": "Connie"
                 })
         return friends
+
+    # =========================================================================
+    # 11. GROUPS & BATTLES
+    # =========================================================================
+    async def create_group(
+        self,
+        owner_id: str,
+        owner_email: str,
+        owner_name: str,
+        name: str,
+        emoji: str = "🔥"
+    ) -> Dict[str, Any]:
+        group_id = str(uuid.uuid4())
+        now = memory_db.now_iso()
+        group = {
+            "id": group_id,
+            "name": name,
+            "emoji": emoji,
+            "owner_id": owner_id,
+            "owner_email": owner_email,
+            "created_at": now
+        }
+        memory_db.groups[group_id] = group
+        # Add owner as a member
+        owner_entry = {
+            "group_id": group_id,
+            "user_id": owner_id,
+            "email": owner_email,
+            "name": owner_name,
+            "role": "owner",
+            "joined_at": now
+        }
+        memory_db.group_members.append(owner_entry)
+        memory_db._save_to_disk()
+        return group
+
+    async def get_group(self, group_id: str) -> Optional[Dict[str, Any]]:
+        return memory_db.groups.get(group_id)
+
+    async def list_user_groups(self, user_id: str, user_email: str) -> List[Dict[str, Any]]:
+        clean_email = user_email.strip().lower()
+        member_group_ids = {
+            m["group_id"]
+            for m in memory_db.group_members
+            if m.get("user_id") == user_id or m.get("email", "").lower() == clean_email
+        }
+        result = []
+        for gid in member_group_ids:
+            g = memory_db.groups.get(gid)
+            if g:
+                members = [m for m in memory_db.group_members if m["group_id"] == gid]
+                result.append({**g, "member_count": len(members)})
+        return sorted(result, key=lambda x: x.get("created_at", ""), reverse=True)
+
+    async def list_group_members(self, group_id: str) -> List[Dict[str, Any]]:
+        return [m for m in memory_db.group_members if m["group_id"] == group_id]
+
+    async def add_group_member(
+        self,
+        group_id: str,
+        user_id: str,
+        email: str,
+        name: str,
+        role: str = "member"
+    ) -> Dict[str, Any]:
+        entry = {
+            "group_id": group_id,
+            "user_id": user_id,
+            "email": email.strip().lower(),
+            "name": name,
+            "role": role,
+            "joined_at": memory_db.now_iso()
+        }
+        memory_db.group_members.append(entry)
+        memory_db._save_to_disk()
+        return entry
+
+    async def remove_group_member(self, group_id: str, user_id: str) -> bool:
+        before = len(memory_db.group_members)
+        memory_db.group_members = [
+            m for m in memory_db.group_members
+            if not (m["group_id"] == group_id and m["user_id"] == user_id)
+        ]
+        after = len(memory_db.group_members)
+        if before != after:
+            memory_db._save_to_disk()
+            return True
+        return False
+
+    async def delete_group(self, group_id: str) -> bool:
+        if group_id not in memory_db.groups:
+            return False
+        del memory_db.groups[group_id]
+        memory_db.group_members = [m for m in memory_db.group_members if m["group_id"] != group_id]
+        # Also remove associated battles
+        battle_ids = [bid for bid, b in memory_db.battles.items() if b.get("group_id") == group_id]
+        for bid in battle_ids:
+            del memory_db.battles[bid]
+        memory_db.battle_scores = [s for s in memory_db.battle_scores if s.get("battle_id") not in battle_ids]
+        memory_db._save_to_disk()
+        return True
+
+    async def create_battle(
+        self,
+        group_id: str,
+        mode: str,
+        quiz_id: Optional[str],
+        created_by: str
+    ) -> Dict[str, Any]:
+        battle_id = str(uuid.uuid4())
+        now = memory_db.now_iso()
+        battle = {
+            "id": battle_id,
+            "group_id": group_id,
+            "mode": mode,
+            "quiz_id": quiz_id,
+            "status": "waiting",
+            "teams": {},
+            "created_by": created_by,
+            "started_at": now,
+            "finished_at": None
+        }
+        memory_db.battles[battle_id] = battle
+        memory_db._save_to_disk()
+        return battle
+
+    async def get_battle(self, battle_id: str) -> Optional[Dict[str, Any]]:
+        return memory_db.battles.get(battle_id)
+
+    async def list_battles_for_group(self, group_id: str) -> List[Dict[str, Any]]:
+        result = [b for b in memory_db.battles.values() if b.get("group_id") == group_id]
+        return sorted(result, key=lambda x: x.get("started_at", ""), reverse=True)
+
+    async def add_battle_score(
+        self,
+        battle_id: str,
+        user_id: str,
+        email: str,
+        name: str
+    ) -> Dict[str, Any]:
+        entry = {
+            "battle_id": battle_id,
+            "user_id": user_id,
+            "email": email.strip().lower(),
+            "name": name,
+            "score": None,
+            "accuracy": None,
+            "time_taken_seconds": None,
+            "eliminated_at": None
+        }
+        memory_db.battle_scores.append(entry)
+        # Mark battle as active once first player joins
+        if battle_id in memory_db.battles and memory_db.battles[battle_id]["status"] == "waiting":
+            memory_db.battles[battle_id]["status"] = "active"
+        memory_db._save_to_disk()
+        return entry
+
+    async def list_battle_scores(self, battle_id: str) -> List[Dict[str, Any]]:
+        return [s for s in memory_db.battle_scores if s["battle_id"] == battle_id]
+
+    async def update_battle_score(
+        self,
+        battle_id: str,
+        user_id: str,
+        score: float,
+        accuracy: float,
+        time_taken_seconds: int,
+        eliminated_at: Optional[str] = None
+    ) -> Dict[str, Any]:
+        for entry in memory_db.battle_scores:
+            if entry["battle_id"] == battle_id and entry["user_id"] == user_id:
+                entry["score"] = score
+                entry["accuracy"] = accuracy
+                entry["time_taken_seconds"] = time_taken_seconds
+                entry["eliminated_at"] = eliminated_at
+                memory_db._save_to_disk()
+                return entry
+        return {}
+
+    async def update_battle_status(self, battle_id: str, status: str) -> bool:
+        if battle_id in memory_db.battles:
+            memory_db.battles[battle_id]["status"] = status
+            if status == "finished":
+                memory_db.battles[battle_id]["finished_at"] = memory_db.now_iso()
+            memory_db._save_to_disk()
+            return True
+        return False
 
 
 db = Repository()

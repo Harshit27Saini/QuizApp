@@ -59,6 +59,7 @@ Use this table to instantly navigate to the exact source files responsible for a
 | **XP Economy, Streaks & Quests** | `services/xp.ts`<br>`services/quests.ts` | `core/database.py` | `services/xp.ts` (client)<br>`core/database.py` (server) | `users` |
 | **Daily To-Do Task Queue** | `pages/TodoListPage.tsx`<br>`services/todos.ts` | Local storage service | `services/todos.ts` | Client state |
 | **Weekly League & Social Leaderboard** | `pages/LeaderboardPage.tsx` | `GET /api/v1/friends/leaderboard`<br>`POST /api/v1/friends/request` | `api/v1/friends.py` | `friend_requests`<br>`friendships`<br>`users` |
+| **Groups & Battles** | `pages/GroupsPage.tsx`<br>`pages/GroupDetailPage.tsx`<br>`pages/BattleRoomPage.tsx`<br>`pages/BattleResultPage.tsx` | `GET/POST /api/v1/groups/`<br>`POST /api/v1/groups/:id/invite`<br>`POST /api/v1/battles/`<br>`POST /api/v1/battles/:id/join`<br>`POST /api/v1/battles/:id/submit` | `api/v1/groups.py`<br>`api/v1/battles.py` | `groups`<br>`group_members`<br>`battles`<br>`battle_scores` |
 | **Backpack Inventory & Streak Freezes**| `pages/InventoryPage.tsx`<br>`pages/ShopPage.tsx` | Client service | `services/xp.ts` | Client state |
 | **Just Start Mode (ADHD 5-Min Sprint)** | `pages/JustStartPage.tsx` | Standalone UI | Web Audio API / Timer | Client state |
 | **Founder Triage & Diagnostics Hub** | `pages/AdminFeedbackPage.tsx` | `GET /api/v1/feedback/`<br>`GET /api/v1/telemetry/logs` | `api/v1/feedback.py`<br>`api/v1/telemetry.py` | `feedback`<br>`telemetry_logs` |
@@ -225,11 +226,13 @@ backend/app/
 │   └── v1/
 │       ├── attempts.py         # Quiz submission & historical score retrieval
 │       ├── auth.py             # User signup, password verification, Google OAuth, Founder claim
+│       ├── battles.py          # Battle CRUD, join, score submit, XP rewards
 │       ├── collections.py      # Study collection CRUD & cold-start auto-recovery
 │       ├── documents.py        # File ingestion, SHA-256 deduplication, preview
 │       ├── feedback.py         # Playtester bug reporting & triage inbox
 │       ├── flashcards.py       # Flashcard deck generation & SM-2 review
 │       ├── friends.py          # Social leaderboard, friend invites, XP high-fives
+│       ├── groups.py           # Group CRUD, member invite/kick, owner enforcement
 │       ├── learning_paths.py   # Dungeon path generation, node completion, companion chat
 │       ├── quizzes.py          # Exam quiz generation (STRICT & CONCEPTUAL modes)
 │       ├── router.py           # Master v1 router aggregator

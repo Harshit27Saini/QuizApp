@@ -304,3 +304,60 @@ create table if not exists public.friendships (
 alter table public.friendships enable row level security;
 create policy "service_role_all" on public.friendships using (true) with check (true);
 
+-- ============================================================
+-- Groups & Battles (Squad Competitions)
+-- ============================================================
+create table if not exists public.groups (
+  id          text primary key,
+  name        text not null,
+  emoji       text default '🔥',
+  owner_id    text not null,
+  owner_email text not null,
+  created_at  timestamptz default now()
+);
+alter table public.groups enable row level security;
+create policy "service_role_all" on public.groups using (true) with check (true);
+
+create table if not exists public.group_members (
+  id          uuid primary key default gen_random_uuid(),
+  group_id    text not null references public.groups(id) on delete cascade,
+  user_id     text not null,
+  email       text not null,
+  name        text not null,
+  role        text default 'member',
+  joined_at   timestamptz default now()
+);
+alter table public.group_members enable row level security;
+create policy "service_role_all" on public.group_members using (true) with check (true);
+create index if not exists idx_group_members_group_id on public.group_members(group_id);
+
+create table if not exists public.battles (
+  id          text primary key,
+  group_id    text not null references public.groups(id) on delete cascade,
+  mode        text not null,
+  quiz_id     text,
+  status      text default 'waiting',
+  teams       jsonb default '{}'::jsonb,
+  created_by  text not null,
+  started_at  timestamptz default now(),
+  finished_at timestamptz
+);
+alter table public.battles enable row level security;
+create policy "service_role_all" on public.battles using (true) with check (true);
+create index if not exists idx_battles_group_id on public.battles(group_id);
+
+create table if not exists public.battle_scores (
+  id                 uuid primary key default gen_random_uuid(),
+  battle_id          text not null references public.battles(id) on delete cascade,
+  user_id            text not null,
+  email              text not null,
+  name               text not null,
+  score              numeric,
+  accuracy           numeric,
+  time_taken_seconds integer,
+  eliminated_at      timestamptz
+);
+alter table public.battle_scores enable row level security;
+create policy "service_role_all" on public.battle_scores using (true) with check (true);
+create index if not exists idx_battle_scores_battle_id on public.battle_scores(battle_id);
+

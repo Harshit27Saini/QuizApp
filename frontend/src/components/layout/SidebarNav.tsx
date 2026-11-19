@@ -52,6 +52,7 @@ export const SidebarNav: React.FC = () => {
     { to: '/', label: 'Learn', icon: '🗺️' },
     { to: '/inventory', label: 'Backpack', icon: '🎒', badge: 'SHIELD' },
     { to: '/leaderboard', label: 'Leagues', icon: '🏆', badge: 'GOLD' },
+    { to: '/groups', label: 'Groups', icon: '⚔️' },
     { to: '/todos', label: 'To-Do', icon: '📝', badge: 'XP' },
     { to: '/shop', label: 'Shop', icon: '🛒' },
     { to: '/just-start', label: 'Just Start', icon: '🛋️', badge: '5 MIN' },
