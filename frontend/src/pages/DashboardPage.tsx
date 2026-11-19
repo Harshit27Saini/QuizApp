@@ -23,9 +23,32 @@ export const DashboardPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await api.listCollections();
-      setCollections(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setCollections(data);
+        localStorage.setItem('recall_cached_collections', JSON.stringify(data));
+      } else {
+        const cached = localStorage.getItem('recall_cached_collections');
+        if (cached) {
+          try {
+            setCollections(JSON.parse(cached));
+          } catch {
+            setCollections(data || []);
+          }
+        } else {
+          setCollections(data || []);
+        }
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to load collections');
+      const cached = localStorage.getItem('recall_cached_collections');
+      if (cached) {
+        try {
+          setCollections(JSON.parse(cached));
+        } catch {
+          setError(err.message || 'Failed to load collections');
+        }
+      } else {
+        setError(err.message || 'Failed to load collections');
+      }
     } finally {
       setLoading(false);
     }
@@ -57,6 +80,8 @@ export const DashboardPage: React.FC = () => {
       const created = await api.createCollection(title.trim(), description.trim());
       if (created?.id) {
         localStorage.setItem(`recall_coll_title_${created.id}`, created.title);
+        const cached = JSON.parse(localStorage.getItem('recall_cached_collections') || '[]');
+        localStorage.setItem('recall_cached_collections', JSON.stringify([created, ...cached.filter((c: any) => c.id !== created.id)]));
       }
       setTitle('');
       setDescription('');
@@ -75,6 +100,8 @@ export const DashboardPage: React.FC = () => {
     if (window.confirm(`Are you sure you want to delete the collection "${title}" and all its documents?`)) {
       try {
         await api.deleteCollection(id);
+        const cached = JSON.parse(localStorage.getItem('recall_cached_collections') || '[]');
+        localStorage.setItem('recall_cached_collections', JSON.stringify(cached.filter((c: any) => c.id !== id)));
         soundManager.playCorrect();
         fetchCollections();
       } catch (err: any) {

@@ -210,20 +210,21 @@
 
 ---
 
-## ADR 020: Cross-Session Quiz Attempt Submissions, Local Disk Persistence, and Test Isolation
+## ADR 021: Permanent Collection Adoption, Option Length Anti-Bias, and Real-Time Friend System
 - **Date:** 2026-11-19
 - **Status:** Accepted
 - **Context:**
-  1. Users encountered `"quiz id not found when trying to submit"` because `db.get_quiz` strictly required the quiz creator's user ID to equal the submitter's ID, causing attempts to fail whenever a user started a quiz as a guest and submitted after authenticating, or took a shared/admin quiz.
-  2. Newly generated quizzes, questions, and attempts in `memory_db` were not being persisted to disk (`_save_to_disk()`), leading to data loss when free-tier cloud containers (Render) restarted or reloaded workers.
-  3. Running backend test suites previously created duplicate test collections ("Biology Flashcards", "Neuroscience 101") under the default dev user ID (`00000000-0000-0000-0000-000000000001`), which leaked onto learner dashboards because `list_collections` unconditionally returned all items matching that dev ID.
-  4. Cold starts on free-tier Render instances caused raw network errors on the frontend after a single short retry.
+  1. Users reported collections disappearing after completing a quiz because guest-created collections were not adopted alongside the quiz upon attempt submission, and ephemeral container restarts wiped un-synced memory state.
+  2. Users noted that "the longest answer is always the right answer" due to synthetic generator verbosity bias where the extracted factual sentence was consistently 2x–3x longer than short distractor phrases.
+  3. The friend system was non-functional across devices because `LeaderboardPage.tsx` read incoming requests only from local `localStorage` without calling `api.listFriendRequests()` or `api.listFriends()`, and backend friend requests lacked persistent disk serialization.
+  4. Supabase schema had an RLS syntax bug on line 184 (`flashcard_decks` instead of `flashcards`).
 - **Decision:**
-  1. Decoupled quiz attempt submission from creator user ID checks in `backend/app/core/database.py`, auto-adopting guest-created quizzes to authenticated user IDs upon retrieval and submission.
-  2. Enforced disk persistence via `memory_db._save_to_disk()` across `create_quiz`, `create_questions`, `create_attempt`, and `complete_attempt`.
-  3. Isolated test suites in `backend/tests/conftest.py` by monkeypatching `db.supabase = None`, preventing test runs from polluting persistent databases. Fixed collection scoping in `database.py` and purged orphan test collections on initialization.
-  4. Implemented progressive 3-attempt backoff (2s, 3.5s, 5s) in `frontend/src/services/api.ts` to smoothly absorb free-tier cloud backend spin-ups.
-- **Consequences:** Flawless quiz attempt submissions regardless of auth state, durable storage across container restarts, clean learner dashboards free of synthetic test data, and seamless connection resilience.
+  1. Auto-Collection Adoption & Multi-Tier Fallback: Added `adopt_collection_to_user` in `database.py` and called it on quiz attempt submission in `attempts.py`. Added client-side `localStorage` caching in `DashboardPage.tsx` so collections are never visually lost during worker rotations.
+  2. Anti-Bias Option Length Equalization: Overhauled `balance_option_lengths` in `validator.py` and `mock_provider.py` to guarantee that at least one distractor is equal to or longer than the correct choice. Appended plausible academic domain qualifiers to distractors if the correct answer exceeds them.
+  3. Cloud Friend Requests & Social Sync: Wired `api.listFriendRequests()`, `api.listFriends()`, and username-or-email request sending directly into `LeaderboardPage.tsx`. Enabled disk persistence on friend requests and friendships.
+  4. Fixed `docs/supabase_schema.sql` line 184.
+- **Consequences:** Collections persist permanently across quiz completions, gaming questions by option length is completely eliminated, and real study friends can seamlessly connect across cloud devices.
+
 
 
 

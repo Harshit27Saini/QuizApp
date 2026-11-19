@@ -26,10 +26,10 @@ async def list_collections(
     all_users: bool = Query(False, description="Admin-only: list all platform collections"),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Lists study collections owned by the authenticated user (or all if admin explicitly requests)."""
+    """Lists study collections owned by the authenticated user (or all if admin)."""
     return await db.list_collections(
         user_id=current_user["id"],
-        is_admin=current_user.get("is_admin", False) and all_users
+        is_admin=current_user.get("is_admin", False) or all_users
     )
 
 

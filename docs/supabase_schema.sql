@@ -181,7 +181,7 @@ create table if not exists public.flashcards (
   mastered     boolean default false,
   created_at   timestamptz default now()
 );
-alter table public.flashcard_decks enable row level security;
+alter table public.flashcards enable row level security;
 create policy "service_role_all" on public.flashcards using (true) with check (true);
 create index if not exists idx_flashcards_deck_id on public.flashcards(deck_id);
 

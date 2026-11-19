@@ -16,8 +16,26 @@ async def send_friend_request(
     payload: FriendRequestPayload,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Sends a study friend request to a peer via their email address."""
+    """Sends a study friend request to a peer via their email address or username."""
     clean_target = payload.target_email.strip().lower()
+    if clean_target == current_user["email"].strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot send a friend request to yourself."
+        )
+
+    # If the user typed a nickname without '@', resolve against registered accounts or format cleanly
+    if "@" not in clean_target:
+        all_users = await db.list_users()
+        matched = next(
+            (u for u in all_users if u.get("display_name", "").strip().lower() == clean_target or u.get("email", "").split("@")[0].lower() == clean_target),
+            None
+        )
+        if matched:
+            clean_target = matched["email"].strip().lower()
+        else:
+            clean_target = f"{clean_target}@playtest.local"
+
     if clean_target == current_user["email"].strip().lower():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -26,7 +44,7 @@ async def send_friend_request(
 
     # Check existing friends
     existing_friends = await db.list_friends(current_user["id"], current_user["email"])
-    if any(f["email"].lower() == clean_target for f in existing_friends):
+    if any(f.get("email", "").lower() == clean_target for f in existing_friends):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You are already study friends with this user!"

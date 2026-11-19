@@ -92,8 +92,9 @@ CRITICAL RULES:
 
 4. STRICT LENGTH PARITY & ANTI-BIAS (CRITICAL):
    - NEVER MAKE THE CORRECT ANSWER THE LONGEST CHOICE! This is a fatal giveaway in automated exams.
-   - All 4 options (A, B, C, D) MUST have strictly balanced character length (within ±15% length of each other).
-   - If the correct answer is 12 words, all 3 distractors MUST also be ~10-14 words long with equal technical nuance.
+   - At least ONE or TWO distractors MUST be equal to or slightly longer than the correct answer.
+   - All 4 options (A, B, C, D) MUST have strictly balanced character length (within ±10% length of each other).
+   - If the correct answer is 12 words, all 3 distractors MUST also be ~11-15 words long with equal technical nuance.
    - Distractors MUST represent real, plausible domain misconceptions, not short lazy phrases or joke options.
 
 

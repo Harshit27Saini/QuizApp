@@ -64,6 +64,13 @@ async def submit_quiz_attempt(
         ]
     )
 
+    # Auto-adopt parent collection to user if quiz is associated with a collection
+    if quiz.get("collection_id") and not current_user["id"].startswith("guest_"):
+        try:
+            await db.adopt_collection_to_user(quiz["collection_id"], current_user["id"])
+        except Exception:
+            pass
+
     return {
         **completed_attempt,
         "xp_earned": scoring_result["xp_earned"],

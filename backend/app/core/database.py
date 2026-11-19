@@ -241,17 +241,62 @@ class Repository:
         return item
 
     async def list_collections(self, user_id: str, is_admin: bool = False) -> List[Dict[str, Any]]:
+        sb_colls = []
         if self.supabase:
             try:
-                if is_admin:
-                    return self._sb_select_many("collections", order_col="created_at", order_desc=True)
-                return self._sb_select_many("collections", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
+                if is_admin or user_id == "00000000-0000-0000-0000-000000000001":
+                    sb_colls = self._sb_select_many("collections", order_col="created_at", order_desc=True)
+                else:
+                    sb_colls = self._sb_select_many("collections", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
             except Exception as e:
                 self._disable_supabase("list_collections", e)
 
-        if is_admin:
+        # Sync Supabase collections into memory_db
+        for c in sb_colls:
+            memory_db.collections[c["id"]] = c
+        if sb_colls:
+            memory_db._save_to_disk()
+            return sb_colls
+
+        # If admin or dev founder, return all platform collections
+        if is_admin or user_id == "00000000-0000-0000-0000-000000000001":
             return sorted(list(memory_db.collections.values()), key=lambda x: x.get("created_at", ""), reverse=True)
-        return [c for c in memory_db.collections.values() if c.get("user_id") == user_id]
+
+        # For student, return their collections and any guest collections on this session
+        colls = [
+            c for c in memory_db.collections.values()
+            if c.get("user_id") == user_id or c.get("user_id", "").startswith("guest_")
+        ]
+        return sorted(colls, key=lambda x: x.get("created_at", ""), reverse=True)
+
+    async def adopt_collection_to_user(self, collection_id: str, user_id: str) -> None:
+        """Adopts a guest-created collection, its documents, and its quizzes to an authenticated user ID."""
+        if not user_id or user_id.startswith("guest_"):
+            return
+
+        if collection_id in memory_db.collections:
+            coll = memory_db.collections[collection_id]
+            if coll.get("user_id") != user_id:
+                coll["user_id"] = user_id
+                coll["updated_at"] = memory_db.now_iso()
+
+        for doc in memory_db.documents.values():
+            if doc.get("collection_id") == collection_id and doc.get("user_id") != user_id:
+                doc["user_id"] = user_id
+
+        for q in memory_db.quizzes.values():
+            if q.get("collection_id") == collection_id and q.get("user_id") != user_id:
+                q["user_id"] = user_id
+
+        memory_db._save_to_disk()
+
+        if self.supabase:
+            try:
+                self._sb_update("collections", collection_id, {"user_id": user_id})
+                self.supabase.table("documents").update({"user_id": user_id}).eq("collection_id", collection_id).execute()
+                self.supabase.table("quizzes").update({"user_id": user_id}).eq("collection_id", collection_id).execute()
+            except Exception:
+                pass
 
     async def get_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
         if self.supabase:
@@ -1229,24 +1274,30 @@ class Repository:
             try:
                 res = self._sb_insert("friend_requests", req)
                 memory_db.friend_requests[req_id] = req
+                memory_db._save_to_disk()
                 return res
             except Exception as e:
                 self._disable_supabase("create_friend_request", e)
 
         memory_db.friend_requests[req_id] = req
+        memory_db._save_to_disk()
         return req
 
     async def list_incoming_friend_requests(self, to_email: str) -> List[Dict[str, Any]]:
         clean = to_email.strip().lower()
+        sb_reqs = []
         if self.supabase:
             try:
                 q = self.supabase.table("friend_requests").select("*").eq("to_email", clean).eq("status", "pending")
                 result = q.execute()
-                return result.data or []
+                sb_reqs = result.data or []
             except Exception as e:
                 self._disable_supabase("list_incoming_friend_requests", e)
 
-        return [r for r in memory_db.friend_requests.values() if r["to_email"] == clean and r["status"] == "pending"]
+        for r in sb_reqs:
+            memory_db.friend_requests[r["id"]] = r
+
+        return [r for r in memory_db.friend_requests.values() if r.get("to_email") == clean and r.get("status") == "pending"]
 
     async def accept_friend_request(self, request_id: str, user_id: str, user_email: str) -> bool:
         req = None
@@ -1268,13 +1319,14 @@ class Repository:
             except Exception as e:
                 self._disable_supabase("accept_friend_request_update", e)
 
-        memory_db.friend_requests[request_id]["status"] = "accepted"
+        if request_id in memory_db.friend_requests:
+            memory_db.friend_requests[request_id]["status"] = "accepted"
 
         friendship_entry = {
             "id": str(uuid.uuid4()),
             "user1_id": req["from_user_id"],
             "user1_email": req["from_email"],
-            "user1_name": req["from_name"],
+            "user1_name": req.get("from_name") or req["from_email"].split("@")[0],
             "user2_id": user_id,
             "user2_email": user_email,
             "created_at": memory_db.now_iso()
@@ -1286,6 +1338,7 @@ class Repository:
                 self._disable_supabase("accept_friend_request_friendship", e)
 
         memory_db.friendships.append(friendship_entry)
+        memory_db._save_to_disk()
         return True
 
     async def decline_friend_request(self, request_id: str, user_email: str) -> bool:
@@ -1297,6 +1350,7 @@ class Repository:
 
         if request_id in memory_db.friend_requests:
             memory_db.friend_requests[request_id]["status"] = "declined"
+            memory_db._save_to_disk()
         return True
 
     async def list_friends(self, user_id: str, user_email: str) -> List[Dict[str, Any]]:
@@ -1306,7 +1360,15 @@ class Repository:
         if self.supabase:
             try:
                 result = self.supabase.table("friendships").select("*").execute()
-                source = result.data or []
+                sb_friendships = result.data or []
+                if sb_friendships:
+                    # Sync into memory_db
+                    known_ids = {f["id"] for f in memory_db.friendships}
+                    for sf in sb_friendships:
+                        if sf["id"] not in known_ids:
+                            memory_db.friendships.append(sf)
+                    memory_db._save_to_disk()
+                    source = memory_db.friendships
             except Exception as e:
                 self._disable_supabase("list_friends", e)
                 source = memory_db.friendships
@@ -1314,7 +1376,7 @@ class Repository:
         for f in source:
             if f.get("user1_id") == user_id or f.get("user1_email") == clean_email:
                 friends.append({
-                    "id": f.get("user2_id"),
+                    "id": f.get("user2_id") or f.get("id"),
                     "email": f.get("user2_email"),
                     "name": f.get("user2_email", "").split("@")[0],
                     "streak": 5,
@@ -1323,7 +1385,7 @@ class Repository:
                 })
             elif f.get("user2_id") == user_id or f.get("user2_email") == clean_email:
                 friends.append({
-                    "id": f.get("user1_id"),
+                    "id": f.get("user1_id") or f.get("id"),
                     "email": f.get("user1_email"),
                     "name": f.get("user1_name") or f.get("user1_email", "").split("@")[0],
                     "streak": 6,

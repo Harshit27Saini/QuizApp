@@ -66,15 +66,15 @@ class MockAIProvider(BaseAIProvider):
             is_msq = (idx % 2 == 1)
 
             if not is_msq:
-                # Authentic Academic Exam Question (MCQ)
+                # Authentic Academic Exam Question (MCQ) with balanced option lengths
                 questions.append({
                     "question_type": "MCQ",
                     "prompt": f"What is the primary role or mechanism of {core_term} within this system?",
                     "options": [
                         {"id": "a", "text": clean_sentence},
-                        {"id": "b", "text": f"It acts as a competitive inhibitor against {secondary_term} activation."},
-                        {"id": "c", "text": f"It permanently decreases system throughput by downregulating {distractor_pool[min(idx, len(distractor_pool)-1)]}."},
-                        {"id": "d", "text": f"It operates passively without consuming energy or altering state variables."}
+                        {"id": "b", "text": f"It acts as a primary competitive antagonist against {secondary_term} activation across the entire functional pathway under baseline conditions."},
+                        {"id": "c", "text": f"It permanently decreases overall system throughput by downregulating {distractor_pool[min(idx, len(distractor_pool)-1)]} receptor concentration and signal transduction."},
+                        {"id": "d", "text": f"It operates as a passive thermodynamic buffer without consuming cellular energy or altering steady-state operational variables across intervals."}
                     ],
                     "correct_answers": ["a"],
                     "explanation": f"The primary function is explicitly verified: {clean_sentence}",
@@ -83,15 +83,15 @@ class MockAIProvider(BaseAIProvider):
                     "difficulty": "medium"
                 })
             else:
-                # Authentic Academic Multi-Select Question (MSQ)
+                # Authentic Academic Multi-Select Question (MSQ) with balanced option lengths
                 questions.append({
                     "question_type": "MSQ",
                     "prompt": f"Which of the following characteristics accurately describe the function and behavior of {core_term}? (Select all that apply)",
                     "options": [
                         {"id": "a", "text": clean_sentence},
-                        {"id": "b", "text": f"It plays an active functional role in the regulation of {secondary_term}."},
-                        {"id": "c", "text": f"It directly halts all downstream processing under standard operational conditions."},
-                        {"id": "d", "text": f"It functions identically to {distractor_pool[min(idx+1, len(distractor_pool)-1)]} with zero variance in pathway activity."}
+                        {"id": "b", "text": f"It plays an active functional role in the regulation and expression of {secondary_term} throughout the primary operational cycle."},
+                        {"id": "c", "text": f"It directly halts all downstream processing and signal cascades under standard baseline operational and physiological conditions."},
+                        {"id": "d", "text": f"It functions identically to {distractor_pool[min(idx+1, len(distractor_pool)-1)]} with zero variance in pathway activity or cellular response dynamics."}
                     ],
                     "correct_answers": ["a", "b"],
                     "explanation": f"Both statements accurately describe {core_term}: {clean_sentence}",

@@ -27,18 +27,67 @@ export const LeaderboardPage: React.FC = () => {
     let isMounted = true;
     const handleUpdate = async () => {
       try {
+        // 1. Fetch live incoming friend requests from cloud API
+        let cloudRequests: FriendRequest[] = [];
+        try {
+          const rawReqs = await api.listFriendRequests();
+          if (Array.isArray(rawReqs)) {
+            cloudRequests = rawReqs.map((r: any) => ({
+              id: r.id,
+              fromName: r.from_name || r.from_email?.split('@')[0] || 'Study Peer',
+              fromEmail: r.from_email,
+              avatarIcon: '👤',
+              timestamp: r.created_at ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'
+            }));
+          }
+        } catch {}
+
+        const localReqs = friendService.getIncomingRequests();
+        const reqMap = new Map<string, FriendRequest>();
+        [...localReqs, ...cloudRequests].forEach(r => reqMap.set(r.id, r));
+        const combinedRequests = Array.from(reqMap.values());
+        if (isMounted) {
+          setRequests(combinedRequests);
+        }
+
+        // 2. Fetch live leaderboard
         if (filter === 'all') {
           const apiEntries = await api.getSocialLeaderboard();
           if (isMounted && Array.isArray(apiEntries) && apiEntries.length > 0) {
             setLeaderboard(apiEntries);
-            setRequests(friendService.getIncomingRequests());
             return;
           }
+        } else if (filter === 'friends') {
+          try {
+            const rawFriends = await api.listFriends();
+            if (Array.isArray(rawFriends) && rawFriends.length > 0) {
+              const friendEntries: LeaderboardEntry[] = rawFriends.map((f: any, idx: number) => ({
+                rank: idx + 2,
+                userId: f.id,
+                name: f.name || f.email?.split('@')[0] || 'Friend',
+                avatarIcon: '👤',
+                cheerleader: f.cheerleader || 'Sydney',
+                streak: f.streak || 1,
+                weeklyXp: f.weekly_xp || 50,
+                isCurrentUser: false,
+                tier: 'gold'
+              }));
+              const localBoard = friendService.getLeaderboard('friends');
+              const currUser = localBoard.find(b => b.isCurrentUser);
+              const combined = currUser ? [currUser, ...friendEntries] : friendEntries;
+              combined.sort((a, b) => b.weeklyXp - a.weeklyXp);
+              const ranked = combined.map((e, i) => ({ ...e, rank: i + 1 }));
+              if (isMounted) {
+                setLeaderboard(ranked);
+                return;
+              }
+            }
+          } catch {}
         }
       } catch {}
+
       if (isMounted) {
         setLeaderboard(friendService.getLeaderboard(filter));
-        setRequests(friendService.getIncomingRequests());
       }
     };
 
@@ -63,20 +112,18 @@ export const LeaderboardPage: React.FC = () => {
     const query = friendSearch.trim();
     if (!query) return;
 
-    // Try cloud API first if logged in
+    // Try cloud API
     try {
-      if (localStorage.getItem('recall_auth_token')) {
-        await api.sendFriendRequest(query);
-        setToastMessage(`🎉 Friend request sent to ${query}!`);
-        soundManager.playCorrect();
-        triggerConfetti();
-        setFriendSearch('');
-        setTimeout(() => setToastMessage(null), 4000);
-        return;
-      }
+      await api.sendFriendRequest(query);
+      setToastMessage(`🎉 Friend request sent to ${query}!`);
+      soundManager.playCorrect();
+      triggerConfetti();
+      setFriendSearch('');
+      setTimeout(() => setToastMessage(null), 4000);
+      window.dispatchEvent(new CustomEvent('recall:friends-changed'));
+      return;
     } catch (err: any) {
-      // If cloud returns an error (e.g. self-add or already friend), show error
-      if (err.message && !err.message.includes('401')) {
+      if (err.message && (err.message.includes('already') || err.message.includes('yourself'))) {
         setToastMessage(`⚠️ ${err.message}`);
         soundManager.playError();
         setTimeout(() => setToastMessage(null), 4000);
@@ -111,29 +158,24 @@ export const LeaderboardPage: React.FC = () => {
 
   const handleAcceptRequest = async (id: string) => {
     try {
-      if (localStorage.getItem('recall_auth_token')) {
-        await api.acceptFriendRequest(id);
-      }
+      await api.acceptFriendRequest(id);
     } catch {}
 
     friendService.acceptRequest(id);
-    setRequests(friendService.getIncomingRequests());
-    setLeaderboard(friendService.getLeaderboard(filter));
     soundManager.playVictory();
     triggerConfetti();
     setToastMessage('🎉 Friend request accepted! You can now compete on the leaderboard.');
     setTimeout(() => setToastMessage(null), 4000);
+    window.dispatchEvent(new CustomEvent('recall:friends-changed'));
   };
 
   const handleDeclineRequest = async (id: string) => {
     try {
-      if (localStorage.getItem('recall_auth_token')) {
-        await api.declineFriendRequest(id);
-      }
+      await api.declineFriendRequest(id);
     } catch {}
 
     friendService.declineRequest(id);
-    setRequests(friendService.getIncomingRequests());
+    window.dispatchEvent(new CustomEvent('recall:friend-requests-changed'));
   };
 
   const handleHighFive = async (friendId: string, name: string) => {

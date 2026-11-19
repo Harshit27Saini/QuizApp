@@ -48,25 +48,49 @@ def shuffle_question_options(q: Dict[str, Any]) -> Dict[str, Any]:
 
 def balance_option_lengths(options: List[Dict[str, str]], correct_ids: List[str]) -> List[Dict[str, str]]:
     """
-    Prevents the notorious LLM flaw where the correct answer is significantly longer than distractors.
-    Tolerates no length giveaways, keeping options within balanced bounds.
+    Prevents the notorious LLM flaw where the correct answer is the longest choice.
+    Ensures that at least one distractor is equal to or longer than the correct answer,
+    preventing learners from gaming questions simply by selecting the longest choice.
     """
     if not options or len(options) < 2:
         return options
-    
-    lens = [len(opt["text"]) for opt in options]
-    avg_len = sum(lens) / len(lens)
-    
-    for opt in options:
-        if opt["id"] in correct_ids and len(opt["text"]) > avg_len * 1.35 and len(opt["text"]) > 55:
-            text = opt["text"]
-            if " (" in text and ")" in text:
-                text = text.split(" (")[0].strip()
-            elif "; " in text:
-                text = text.split("; ")[0].strip()
-            elif ", which " in text:
-                text = text.split(", which ")[0].strip()
-            opt["text"] = text
+
+    correct_set = set(str(c).strip().lower() for c in correct_ids)
+    correct_opts = [o for o in options if o["id"].strip().lower() in correct_set]
+    distractor_opts = [o for o in options if o["id"].strip().lower() not in correct_set]
+
+    if not correct_opts or not distractor_opts:
+        return options
+
+    # 1. Trim verbose non-essential subordinate clauses from correct answers
+    for co in correct_opts:
+        text = co["text"]
+        for sep in [", which ", "; ", " (", ", resulting in ", ", thereby ", ", due to "]:
+            if sep in text:
+                candidate = text.split(sep)[0].strip()
+                if len(candidate) >= 30:
+                    text = candidate
+                    break
+        co["text"] = text
+
+    max_correct_len = max(len(o["text"]) for o in correct_opts)
+    max_distractor_len = max(len(o["text"]) for o in distractor_opts)
+
+    # 2. If the correct answer is still strictly longer than all distractors,
+    # expand the longest distractor so a distractor is explicitly equal to or longer than the correct answer!
+    if max_correct_len >= max_distractor_len:
+        longest_distractor = max(distractor_opts, key=lambda o: len(o["text"]))
+        expansion_phrases = [
+            " under standard baseline operational conditions across the entire pathway",
+            " through the primary functional mechanism within normal theoretical parameters",
+            " while maintaining steady-state equilibrium throughout the biological cycle"
+        ]
+        clean_d = longest_distractor["text"].rstrip(".")
+        added = random.choice(expansion_phrases)
+        while len(clean_d) + len(added) < max_correct_len:
+            added += " across all verified experimental conditions"
+        longest_distractor["text"] = f"{clean_d}{added}."
+
     return options
 
 

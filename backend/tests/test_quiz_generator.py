@@ -108,3 +108,23 @@ async def test_generate_quiz_questions_with_mock():
     assert questions[0]["question_type"] in ["MCQ", "MSQ"]
     assert len(questions[0]["options"]) >= 2
     assert questions[0]["source_quote"] != ""
+
+
+def test_balance_option_lengths_anti_bias():
+    from app.services.quiz_engine.validator import balance_option_lengths
+
+    options = [
+        {"id": "a", "text": "This is an extremely verbose correct answer that spans multiple lines and gives away the solution by being the longest choice in the exam"},
+        {"id": "b", "text": "Short distractor one"},
+        {"id": "c", "text": "Short distractor two"},
+        {"id": "d", "text": "Short distractor three"}
+    ]
+    balanced = balance_option_lengths(options, correct_ids=["a"])
+
+    correct_opt = next(o for o in balanced if o["id"] == "a")
+    distractors = [o for o in balanced if o["id"] != "a"]
+
+    max_distractor_len = max(len(o["text"]) for o in distractors)
+    # The correct answer must NOT be strictly longer than all distractors!
+    assert len(correct_opt["text"]) <= max_distractor_len
+
