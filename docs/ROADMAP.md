@@ -119,6 +119,11 @@
 - [x] Real-User League Leaderboard (`/leaderboard`):
   - Replaced hardcoded placeholder rivals with live registered database accounts
 - [x] Deprecation of Raw PDF Embeds in favor of structured text & section preview
+- [x] Resilient Database Failover (seamless auto-routing to persistent storage upon cloud DNS/Supabase pause)
+- [x] Unlimited Section Quiz Drill System (endless active recall question generation per section until student advances)
+- [x] Dynamic Multi-Slide Just Start Mode (progressive multi-slide focus stream with 1-click active recall checks)
+- [x] Cross-Session Quiz Attempt Submissions (guest-to-authenticated auto-adoption and durable disk persistence)
+- [x] Free-Tier Cloud Cold Start Grace Absorption (progressive 3-attempt backoff in frontend client)
 - [ ] OCR integration (Tesseract / EasyOCR) for scanned PDFs and handwritten notes
 - [ ] Additional question formats:
   - Fill in the blanks

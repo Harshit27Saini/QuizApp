@@ -50,6 +50,16 @@ class InMemoryDB:
 
         if not os.getenv("PYTEST_CURRENT_TEST"):
             self._load_from_disk()
+            # Clean up any leftover synthetic test collections created by automated test runners
+            test_titles = {"Biology Flashcards", "Neuroscience 101"}
+            orphan_coll_ids = [
+                cid for cid, c in self.collections.items()
+                if c.get("user_id") == "00000000-0000-0000-0000-000000000001" and c.get("title") in test_titles
+            ]
+            for cid in orphan_coll_ids:
+                del self.collections[cid]
+            if orphan_coll_ids:
+                self._save_to_disk()
 
     def _get_disk_path(self) -> str:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -239,9 +249,9 @@ class Repository:
             except Exception as e:
                 self._disable_supabase("list_collections", e)
 
-        if is_admin or user_id == "00000000-0000-0000-0000-000000000001":
+        if is_admin:
             return sorted(list(memory_db.collections.values()), key=lambda x: x.get("created_at", ""), reverse=True)
-        return [c for c in memory_db.collections.values() if c.get("user_id") == user_id or c.get("user_id") == "00000000-0000-0000-0000-000000000001"]
+        return [c for c in memory_db.collections.values() if c.get("user_id") == user_id]
 
     async def get_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
         if self.supabase:
@@ -301,7 +311,7 @@ class Repository:
         if self.supabase:
             try:
                 item = self._sb_select_one("collections", {"id": collection_id})
-                if item and (is_admin or item.get("user_id") == user_id):
+                if item and (is_admin or item.get("user_id") == user_id or item.get("user_id") == "00000000-0000-0000-0000-000000000001"):
                     self._sb_delete("collections", collection_id)
                     if collection_id in memory_db.collections:
                         del memory_db.collections[collection_id]
@@ -460,6 +470,7 @@ class Repository:
             try:
                 res = self._sb_insert("quizzes", quiz)
                 memory_db.quizzes[quiz["id"]] = quiz
+                memory_db._save_to_disk()
                 return res
             except Exception as e:
                 self._disable_supabase("create_quiz", e)
@@ -467,21 +478,32 @@ class Repository:
         memory_db.quizzes[quiz["id"]] = quiz
         for d_id in document_ids:
             memory_db.quiz_documents.append({"quiz_id": quiz["id"], "document_id": d_id})
+        memory_db._save_to_disk()
         return quiz
 
-    async def get_quiz(self, quiz_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    async def get_quiz(self, quiz_id: str, user_id: str = "", is_admin: bool = False) -> Optional[Dict[str, Any]]:
         if self.supabase:
             try:
                 q = self._sb_select_one("quizzes", {"id": quiz_id})
-                if q and q["user_id"] == user_id:
-                    return q
                 if q:
-                    return None
+                    # Auto-adopt guest quiz if user is now authenticated
+                    if user_id and q.get("user_id", "").startswith("guest_") and not user_id.startswith("guest_"):
+                        q["user_id"] = user_id
+                        try:
+                            self._sb_update("quizzes", quiz_id, {"user_id": user_id})
+                        except Exception:
+                            pass
+                    memory_db.quizzes[quiz_id] = q
+                    return q
             except Exception as e:
                 self._disable_supabase("get_quiz", e)
 
         q = memory_db.quizzes.get(quiz_id)
-        if q and q["user_id"] == user_id:
+        if q:
+            # Auto-adopt guest quiz if user is now authenticated
+            if user_id and q.get("user_id", "").startswith("guest_") and not user_id.startswith("guest_"):
+                q["user_id"] = user_id
+                memory_db._save_to_disk()
             return q
         return None
 
@@ -520,16 +542,21 @@ class Repository:
                     self._disable_supabase("create_questions", e)
             memory_db.questions[item["id"]] = item
 
+        memory_db._save_to_disk()
         return created
 
     async def get_quiz_questions(self, quiz_id: str) -> List[Dict[str, Any]]:
         if self.supabase:
             try:
-                return self._sb_select_many("questions", filters={"quiz_id": quiz_id})
+                res = self._sb_select_many("questions", filters={"quiz_id": quiz_id})
+                if res:
+                    for item in res:
+                        memory_db.questions[item["id"]] = item
+                    return res
             except Exception as e:
                 self._disable_supabase("get_quiz_questions", e)
 
-        return [q for q in memory_db.questions.values() if q["quiz_id"] == quiz_id]
+        return [q for q in memory_db.questions.values() if q.get("quiz_id") == quiz_id]
 
     # =========================================================================
     # 4. QUIZ ATTEMPTS & RESPONSES
@@ -559,11 +586,13 @@ class Repository:
             try:
                 res = self._sb_insert("quiz_attempts", attempt)
                 memory_db.quiz_attempts[attempt["id"]] = attempt
+                memory_db._save_to_disk()
                 return res
             except Exception as e:
                 self._disable_supabase("create_attempt", e)
 
         memory_db.quiz_attempts[attempt["id"]] = attempt
+        memory_db._save_to_disk()
         return attempt
 
     async def complete_attempt(
@@ -597,7 +626,11 @@ class Repository:
                         "time_spent_seconds": r.get("time_spent_seconds", 0),
                         "created_at": now
                     })
-                return self._sb_select_one("quiz_attempts", {"id": attempt_id}) or {}
+                ret = self._sb_select_one("quiz_attempts", {"id": attempt_id}) or {}
+                if attempt_id in memory_db.quiz_attempts:
+                    memory_db.quiz_attempts[attempt_id].update(update_data)
+                memory_db._save_to_disk()
+                return ret
             except Exception as e:
                 self._disable_supabase("complete_attempt", e)
 
@@ -618,6 +651,7 @@ class Repository:
                 "time_spent_seconds": r.get("time_spent_seconds", 0),
                 "created_at": now
             }
+        memory_db._save_to_disk()
         return attempt
 
     async def get_attempt(self, attempt_id: str, user_id: str) -> Optional[Dict[str, Any]]:

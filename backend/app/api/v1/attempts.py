@@ -19,7 +19,11 @@ async def submit_quiz_attempt(
     Submits student answers, calculates deterministic score, updates attempt records,
     and returns comprehensive feedback with correct answers, explanations, and source quotes.
     """
-    quiz = await db.get_quiz(payload.quiz_id, current_user["id"])
+    quiz = await db.get_quiz(
+        quiz_id=payload.quiz_id,
+        user_id=current_user["id"],
+        is_admin=current_user.get("is_admin", False)
+    )
     if not quiz:
         raise not_found_error("Quiz", payload.quiz_id)
 

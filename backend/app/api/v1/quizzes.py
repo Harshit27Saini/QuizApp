@@ -89,7 +89,11 @@ async def get_quiz(
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Retrieves an existing quiz and its active questions (sanitized for test-taking)."""
-    quiz = await db.get_quiz(quiz_id, current_user["id"])
+    quiz = await db.get_quiz(
+        quiz_id=quiz_id,
+        user_id=current_user["id"],
+        is_admin=current_user.get("is_admin", False)
+    )
     if not quiz:
         raise not_found_error("Quiz", quiz_id)
 

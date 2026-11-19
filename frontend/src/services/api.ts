@@ -43,22 +43,29 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
   }
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      ...options,
-      headers,
-    });
-  } catch (_netErr: any) {
-    // Retry once after 3s (in case Render is waking up from free-tier sleep or redeploying)
+  let response: Response | undefined;
+  const maxRetries = 3;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      await new Promise((r) => setTimeout(r, 3000));
-      response = await fetch(url, { ...options, headers });
-    } catch {
-      throw new Error(
-        'Unable to reach cloud backend. If the server is waking up or deploying, please wait a moment and refresh.'
-      );
+      response = await fetch(url, {
+        ...options,
+        headers,
+      });
+      break;
+    } catch (_netErr: any) {
+      if (attempt < maxRetries) {
+        // Wait progressively: 2s, 3.5s, 5s (total ~10.5s cold-start grace window)
+        const delay = attempt === 0 ? 2000 : attempt === 1 ? 3500 : 5000;
+        await new Promise((r) => setTimeout(r, delay));
+      }
     }
+  }
+
+  if (!response) {
+    throw new Error(
+      'Unable to reach cloud backend. If the server is waking up or deploying, please wait a moment and refresh.'
+    );
   }
 
   if (!response.ok) {
