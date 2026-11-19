@@ -165,3 +165,72 @@ async def test_granular_129_slides_learning_path():
         span = end_p - start_p + 1
         assert 1 <= span <= 10, f"Main unit covers {span} slides, expected ~4-8"
         assert "Slides " in u["title"] or "Slide " in u["title"]
+
+
+@pytest.mark.asyncio
+async def test_drill_questions_endpoint():
+    """Verifies that infinite drill generates section-specific questions."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.core.database import db
+
+    client = TestClient(app)
+
+    # 1. Create a collection & document in local database
+    coll = await db.create_collection("test_user_drill", "Neuroscience Collection")
+    doc = await db.create_document(
+        collection_id=coll["id"],
+        user_id="test_user_drill",
+        filename="Neuroscience_101.pdf",
+        file_type="pdf",
+        file_size_bytes=1024,
+        storage_path="/mock/path.pdf",
+        total_pages=5
+    )
+    await db.create_document_sections([
+        {
+            "document_id": doc["id"],
+            "section_index": 0,
+            "page_number": 1,
+            "heading": "Synaptic Plasticity",
+            "content": "Long term potentiation strengthens synapses based on recent patterns of activity."
+        }
+    ])
+
+    # 2. Create learning path
+    path = await db.create_learning_path(
+        user_id="test_user_drill",
+        collection_id=coll["id"],
+        document_id=doc["id"],
+        title="Neuroscience Path",
+        raw_units=[
+            {
+                "title": "Unit 1: Synaptic Plasticity",
+                "concept_summary": "LTP is a persistent strengthening of synapses.",
+                "key_takeaways": ["LTP strengthens transmission", "Requires NMDA receptor activation"],
+                "substantive_content": {
+                    "overview": "Overview of synaptic transmission and plasticity.",
+                    "mechanisms": ["NMDA receptor activation: Calcium influx triggers kinase cascades"]
+                },
+                "source_page": 1,
+                "slide_start": 1,
+                "slide_end": 2,
+                "questions": []
+            }
+        ]
+    )
+
+    # 3. Call drill questions endpoint
+    headers = {"X-User-Id": "test_user_drill"}
+    res = client.post(
+        f"/api/v1/learning-paths/{path['id']}/units/0/drill-questions",
+        json={"document_id": doc["id"], "unit_index": 0, "count": 3},
+        headers=headers
+    )
+    assert res.status_code == 200
+    questions = res.json()
+    assert len(questions) >= 1
+    assert "prompt" in questions[0]
+    assert "options" in questions[0]
+    assert len(questions[0]["options"]) == 4
+

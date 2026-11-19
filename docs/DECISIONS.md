@@ -193,6 +193,21 @@
   4. Verified with full backend unit test suite (`pytest`, 35/35 passing) and frontend production build (`npm run build`, 0 errors).
 - **Consequences:** Codebase is clean, modular, and effortless to understand after 12 months. Zero regressions to any existing game mechanics or backend persistence.
 
+---
+
+## ADR 019: Resilient Database Failover, Unlimited Section Drill System, and Dynamic Just Start Overhaul
+- **Date:** 2026-11-19
+- **Status:** Accepted
+- **Context:**
+  1. Ephemeral cloud failures or paused Supabase free-tier instances caused unhandled `ConnectError` DNS exceptions, breaking the frontend with "Unable to reach cloud backend".
+  2. Users needed an unlimited question drilling mode section-by-section or slide grouping, allowing endless active recall practice per section until the user explicitly decides to advance.
+  3. The "Feeling Overwhelmed" / Just Start mode was a static single-paragraph screen; adding time merely updated the clock without advancing slides or providing more questions.
+- **Decision:**
+  1. Implemented automatic resilient failover in `backend/app/core/database.py`: any Supabase connectivity or query exception seamlessly routes to disk-persisted in-memory storage, eliminating 500 outages.
+  2. Added `InfiniteSectionDrill.tsx` and `POST /api/v1/learning-paths/{path_id}/units/{unit_index}/drill-questions` providing endless questions per unit/slide-group, real-time accuracy and streak metrics, instant option grading, and user-driven section advancement.
+  3. Overhauled `JustStartPage.tsx` into a dynamic multi-slide stream where each slide has a summary, 1-click recall check, and advancing slides or adding time actually progresses to the next slide and question.
+- **Consequences:** Zero backend downtime from database DNS pauses, true unlimited drilling for exam mastery, and an interactive, friction-free "Just Start" study flow.
+
 
 
 

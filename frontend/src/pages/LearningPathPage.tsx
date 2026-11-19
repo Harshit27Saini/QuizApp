@@ -12,6 +12,7 @@ import { DungeonSideNode } from '../components/learning_path/DungeonSideNode';
 import { MainDungeonNode } from '../components/learning_path/MainDungeonNode';
 import { MilestoneChestModal } from '../components/learning_path/MilestoneChestModal';
 import { NandhiniUnlockModal } from '../components/learning_path/NandhiniUnlockModal';
+import { InfiniteSectionDrill } from '../components/learning_path/InfiniteSectionDrill';
 import { TRAIL_STYLES } from '../components/learning_path/dungeonConstants';
 import type { LearningPath, PathNode, LearningPathGenerateOptions } from '../types';
 
@@ -40,6 +41,7 @@ export const LearningPathPage: React.FC = () => {
   const [claimedChests, setClaimedChests] = useState<Set<number>>(new Set());
 
   const [activeNode, setActiveNode] = useState<PathNode | null>(null);
+  const [learningModeTab, setLearningModeTab] = useState<'dungeon' | 'infinite_drill'>('dungeon');
 
   const fetchPath = async (opts?: LearningPathGenerateOptions) => {
     if (!documentId) return;
@@ -222,9 +224,38 @@ export const LearningPathPage: React.FC = () => {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Trail Legend                                                        */}
+      {/* Learning Mode Switcher Tabs (Dungeon Map vs Unlimited Drill)       */}
       {/* ------------------------------------------------------------------ */}
       {path && !loading && (
+        <div style={{
+          display: 'flex',
+          gap: '0.75rem',
+          justifyContent: 'center',
+          alignItems: 'center',
+          margin: '0.5rem 0 1rem 0',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            className={`btn-3d ${learningModeTab === 'dungeon' ? 'btn-3d-green' : 'btn-3d-white'}`}
+            onClick={() => setLearningModeTab('dungeon')}
+            style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
+          >
+            🗺️ Dungeon Quest Map
+          </button>
+          <button
+            className={`btn-3d ${learningModeTab === 'infinite_drill' ? 'btn-3d-blue' : 'btn-3d-white'}`}
+            onClick={() => setLearningModeTab('infinite_drill')}
+            style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
+          >
+            ♾️ Unlimited Section Drill
+          </button>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Trail Legend                                                        */}
+      {/* ------------------------------------------------------------------ */}
+      {path && !loading && learningModeTab === 'dungeon' && (
         <div style={{
           display: 'flex',
           gap: '0.75rem',
@@ -293,11 +324,17 @@ export const LearningPathPage: React.FC = () => {
           </div>
         </div>
       ) : path && path.nodes ? (
-
-        /* ---------------------------------------------------------------- */
-        /* DUNGEON MAP                                                       */
-        /* ---------------------------------------------------------------- */
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0.5rem', gap: '0', width: '100%', overflowX: 'hidden' }}>
+        learningModeTab === 'infinite_drill' ? (
+          <InfiniteSectionDrill
+            pathId={path.id}
+            documentId={documentId || ''}
+            nodes={path.nodes}
+          />
+        ) : (
+          /* ---------------------------------------------------------------- */
+          /* DUNGEON MAP                                                       */
+          /* ---------------------------------------------------------------- */
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0.5rem', gap: '0', width: '100%', overflowX: 'hidden' }}>
 
           {/* Re-chunk tip for short paths */}
           {mainNodes.length <= 4 && (
@@ -443,7 +480,8 @@ export const LearningPathPage: React.FC = () => {
               </div>
             );
           })}
-        </div>
+          </div>
+        )
       ) : null}
 
       {/* ------------------------------------------------------------------ */}

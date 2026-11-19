@@ -189,6 +189,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ answers }),
     }),
+  getDrillQuestions: (pathId: string, unitIndex: number, payload: { document_id: string; count?: number }) =>
+    request<any[]>(`/learning-paths/${pathId}/units/${unitIndex}/drill-questions`, {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, unit_index: unitIndex }),
+    }),
 
   // Study Companions (Sydney, Connie, Milo, Scooby, Bunny)
   listPetAssistants: () =>

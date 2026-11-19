@@ -21,3 +21,4 @@ export function getTrailStyle(node: PathNode): TrailStyle {
   const t = node.trail_type ?? 'main';
   return TRAIL_STYLES[t] ?? TRAIL_STYLES['main'];
 }
+

@@ -40,3 +40,4 @@ export const MilestoneChestModal: React.FC<MilestoneChestModalProps> = ({ isOpen
     </div>
   );
 };
+

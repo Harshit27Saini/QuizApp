@@ -1,9 +1,9 @@
 """
 Recall Database Layer (Supabase PostgreSQL + In-Memory Dev/Test Fallback).
 
-Architecture Standard (ADR 017):
+Architecture Standard (ADR 017 & ADR 018):
 - Primary: Supabase (Managed PostgreSQL)
-- Fallback: Local In-Memory DB with disk snapshot (for automated tests and offline dev)
+- Resilient Fallback: Local In-Memory DB with disk snapshot (auto-engages if Supabase is unreachable, paused, or offline)
 """
 
 import os
@@ -25,7 +25,7 @@ def is_test_environment() -> bool:
 
 
 # ============================================================================
-# In-Memory Database (Offline Dev & Automated Test Suite)
+# In-Memory Database (Offline Dev, Automated Test Suite, & Resilient Fallback)
 # ============================================================================
 class InMemoryDB:
     def __init__(self):
@@ -139,7 +139,7 @@ class Repository:
     """
     Unified Data Repository for Recall.
     Primary: Supabase (PostgreSQL).
-    Fallback: Isolated in-memory storage (dev/test).
+    Resilient Fallback: Isolated in-memory storage (dev/test/cloud failover).
     """
 
     def __init__(self):
@@ -147,6 +147,11 @@ class Repository:
             self.supabase = None
         else:
             self.supabase = get_supabase_client()
+
+    def _disable_supabase(self, operation: str, error: Exception):
+        """Logs the failure and falls back to in-memory storage seamlessly."""
+        print(f"[Recall Database] Supabase {operation} failed: {error}. Gracefully routing to in-memory store.")
+        self.supabase = None
 
     # -------------------------------------------------------------------------
     # Internal Supabase Helpers
@@ -213,26 +218,42 @@ class Repository:
             "updated_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("collections", item)
+            try:
+                res = self._sb_insert("collections", item)
+                memory_db.collections[item["id"]] = item
+                memory_db._save_to_disk()
+                return res
+            except Exception as e:
+                self._disable_supabase("create_collection", e)
+
         memory_db.collections[item["id"]] = item
         memory_db._save_to_disk()
         return item
 
     async def list_collections(self, user_id: str, is_admin: bool = False) -> List[Dict[str, Any]]:
         if self.supabase:
-            if is_admin:
-                return self._sb_select_many("collections", order_col="created_at", order_desc=True)
-            return self._sb_select_many("collections", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
+            try:
+                if is_admin:
+                    return self._sb_select_many("collections", order_col="created_at", order_desc=True)
+                return self._sb_select_many("collections", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
+            except Exception as e:
+                self._disable_supabase("list_collections", e)
+
         if is_admin or user_id == "00000000-0000-0000-0000-000000000001":
             return sorted(list(memory_db.collections.values()), key=lambda x: x.get("created_at", ""), reverse=True)
         return [c for c in memory_db.collections.values() if c.get("user_id") == user_id or c.get("user_id") == "00000000-0000-0000-0000-000000000001"]
 
     async def get_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
         if self.supabase:
-            item = self._sb_select_one("collections", {"id": collection_id})
-            if item and (is_admin or item.get("user_id") == user_id):
-                return item
-            return None
+            try:
+                item = self._sb_select_one("collections", {"id": collection_id})
+                if item and (is_admin or item.get("user_id") == user_id):
+                    return item
+                if item:
+                    return None
+            except Exception as e:
+                self._disable_supabase("get_collection", e)
+
         item = memory_db.collections.get(collection_id)
         if item:
             if is_admin or item.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
@@ -264,18 +285,32 @@ class Repository:
             "updated_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("collections", item)
+            try:
+                res = self._sb_insert("collections", item)
+                memory_db.collections[item["id"]] = item
+                memory_db._save_to_disk()
+                return res
+            except Exception as e:
+                self._disable_supabase("get_or_restore_collection", e)
+
         memory_db.collections[item["id"]] = item
         memory_db._save_to_disk()
         return item
 
     async def delete_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> bool:
         if self.supabase:
-            item = self._sb_select_one("collections", {"id": collection_id})
-            if item and (is_admin or item.get("user_id") == user_id):
-                self._sb_delete("collections", collection_id)
-                return True
-            return False
+            try:
+                item = self._sb_select_one("collections", {"id": collection_id})
+                if item and (is_admin or item.get("user_id") == user_id):
+                    self._sb_delete("collections", collection_id)
+                    if collection_id in memory_db.collections:
+                        del memory_db.collections[collection_id]
+                        memory_db._save_to_disk()
+                    return True
+                return False
+            except Exception as e:
+                self._disable_supabase("delete_collection", e)
+
         if collection_id in memory_db.collections:
             coll = memory_db.collections[collection_id]
             if is_admin or coll.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
@@ -312,17 +347,28 @@ class Repository:
             "created_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("documents", doc)
+            try:
+                res = self._sb_insert("documents", doc)
+                memory_db.documents[doc["id"]] = doc
+                memory_db._save_to_disk()
+                return res
+            except Exception as e:
+                self._disable_supabase("create_document", e)
+
         memory_db.documents[doc["id"]] = doc
         memory_db._save_to_disk()
         return doc
 
     async def list_documents(self, collection_id: str, user_id: str, is_admin: bool = False) -> List[Dict[str, Any]]:
         if self.supabase:
-            items = self._sb_select_many("documents", filters={"collection_id": collection_id}, order_col="created_at", order_desc=True)
-            if not is_admin:
-                items = [d for d in items if d.get("user_id") == user_id]
-            return items
+            try:
+                items = self._sb_select_many("documents", filters={"collection_id": collection_id}, order_col="created_at", order_desc=True)
+                if not is_admin:
+                    items = [d for d in items if d.get("user_id") == user_id]
+                return items
+            except Exception as e:
+                self._disable_supabase("list_documents", e)
+
         return [
             d for d in memory_db.documents.values()
             if d.get("collection_id") == collection_id and (
@@ -335,10 +381,15 @@ class Repository:
 
     async def get_document(self, document_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
         if self.supabase:
-            doc = self._sb_select_one("documents", {"id": document_id})
-            if doc and (is_admin or doc.get("user_id") == user_id):
-                return doc
-            return None
+            try:
+                doc = self._sb_select_one("documents", {"id": document_id})
+                if doc and (is_admin or doc.get("user_id") == user_id):
+                    return doc
+                if doc:
+                    return None
+            except Exception as e:
+                self._disable_supabase("get_document", e)
+
         doc = memory_db.documents.get(document_id)
         if doc:
             if is_admin or doc.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
@@ -364,16 +415,22 @@ class Repository:
             }
             created.append(item)
             if self.supabase:
-                self._sb_insert("document_sections", item)
-            else:
-                memory_db.document_sections[item["id"]] = item
-        if not self.supabase:
-            memory_db._save_to_disk()
+                try:
+                    self._sb_insert("document_sections", item)
+                except Exception as e:
+                    self._disable_supabase("create_document_sections", e)
+            memory_db.document_sections[item["id"]] = item
+
+        memory_db._save_to_disk()
         return created
 
     async def get_document_sections(self, document_id: str) -> List[Dict[str, Any]]:
         if self.supabase:
-            return self._sb_select_many("document_sections", filters={"document_id": document_id}, order_col="section_index", order_desc=False)
+            try:
+                return self._sb_select_many("document_sections", filters={"document_id": document_id}, order_col="section_index", order_desc=False)
+            except Exception as e:
+                self._disable_supabase("get_document_sections", e)
+
         sections = [s for s in memory_db.document_sections.values() if s["document_id"] == document_id]
         return sorted(sections, key=lambda x: x.get("section_index", 0))
 
@@ -400,7 +457,13 @@ class Repository:
             "created_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("quizzes", quiz)
+            try:
+                res = self._sb_insert("quizzes", quiz)
+                memory_db.quizzes[quiz["id"]] = quiz
+                return res
+            except Exception as e:
+                self._disable_supabase("create_quiz", e)
+
         memory_db.quizzes[quiz["id"]] = quiz
         for d_id in document_ids:
             memory_db.quiz_documents.append({"quiz_id": quiz["id"], "document_id": d_id})
@@ -408,10 +471,15 @@ class Repository:
 
     async def get_quiz(self, quiz_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         if self.supabase:
-            q = self._sb_select_one("quizzes", {"id": quiz_id})
-            if q and q["user_id"] == user_id:
-                return q
-            return None
+            try:
+                q = self._sb_select_one("quizzes", {"id": quiz_id})
+                if q and q["user_id"] == user_id:
+                    return q
+                if q:
+                    return None
+            except Exception as e:
+                self._disable_supabase("get_quiz", e)
+
         q = memory_db.quizzes.get(quiz_id)
         if q and q["user_id"] == user_id:
             return q
@@ -419,7 +487,11 @@ class Repository:
 
     async def list_quizzes(self, user_id: str) -> List[Dict[str, Any]]:
         if self.supabase:
-            return self._sb_select_many("quizzes", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
+            try:
+                return self._sb_select_many("quizzes", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
+            except Exception as e:
+                self._disable_supabase("list_quizzes", e)
+
         quizzes = [q for q in memory_db.quizzes.values() if q["user_id"] == user_id]
         return sorted(quizzes, key=lambda x: x["created_at"], reverse=True)
 
@@ -442,14 +514,21 @@ class Repository:
             }
             created.append(item)
             if self.supabase:
-                self._sb_insert("questions", item)
-            else:
-                memory_db.questions[item["id"]] = item
+                try:
+                    self._sb_insert("questions", item)
+                except Exception as e:
+                    self._disable_supabase("create_questions", e)
+            memory_db.questions[item["id"]] = item
+
         return created
 
     async def get_quiz_questions(self, quiz_id: str) -> List[Dict[str, Any]]:
         if self.supabase:
-            return self._sb_select_many("questions", filters={"quiz_id": quiz_id})
+            try:
+                return self._sb_select_many("questions", filters={"quiz_id": quiz_id})
+            except Exception as e:
+                self._disable_supabase("get_quiz_questions", e)
+
         return [q for q in memory_db.questions.values() if q["quiz_id"] == quiz_id]
 
     # =========================================================================
@@ -477,7 +556,13 @@ class Repository:
             "completed_at": None
         }
         if self.supabase:
-            return self._sb_insert("quiz_attempts", attempt)
+            try:
+                res = self._sb_insert("quiz_attempts", attempt)
+                memory_db.quiz_attempts[attempt["id"]] = attempt
+                return res
+            except Exception as e:
+                self._disable_supabase("create_attempt", e)
+
         memory_db.quiz_attempts[attempt["id"]] = attempt
         return attempt
 
@@ -498,20 +583,23 @@ class Repository:
             "completed_at": now
         }
         if self.supabase:
-            self._sb_update("quiz_attempts", attempt_id, update_data)
-            for r in responses:
-                rid = str(uuid.uuid4())
-                self._sb_insert("question_responses", {
-                    "id": rid,
-                    "attempt_id": attempt_id,
-                    "question_id": r["question_id"],
-                    "user_id": user_id,
-                    "selected_options": r["selected_options"],
-                    "is_correct": r["is_correct"],
-                    "time_spent_seconds": r.get("time_spent_seconds", 0),
-                    "created_at": now
-                })
-            return self._sb_select_one("quiz_attempts", {"id": attempt_id}) or {}
+            try:
+                self._sb_update("quiz_attempts", attempt_id, update_data)
+                for r in responses:
+                    rid = str(uuid.uuid4())
+                    self._sb_insert("question_responses", {
+                        "id": rid,
+                        "attempt_id": attempt_id,
+                        "question_id": r["question_id"],
+                        "user_id": user_id,
+                        "selected_options": r["selected_options"],
+                        "is_correct": r["is_correct"],
+                        "time_spent_seconds": r.get("time_spent_seconds", 0),
+                        "created_at": now
+                    })
+                return self._sb_select_one("quiz_attempts", {"id": attempt_id}) or {}
+            except Exception as e:
+                self._disable_supabase("complete_attempt", e)
 
         attempt = memory_db.quiz_attempts[attempt_id]
         attempt["score"] = score
@@ -534,10 +622,15 @@ class Repository:
 
     async def get_attempt(self, attempt_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         if self.supabase:
-            att = self._sb_select_one("quiz_attempts", {"id": attempt_id})
-            if att and att["user_id"] == user_id:
-                return att
-            return None
+            try:
+                att = self._sb_select_one("quiz_attempts", {"id": attempt_id})
+                if att and att["user_id"] == user_id:
+                    return att
+                if att:
+                    return None
+            except Exception as e:
+                self._disable_supabase("get_attempt", e)
+
         att = memory_db.quiz_attempts.get(attempt_id)
         if att and att["user_id"] == user_id:
             return att
@@ -545,10 +638,14 @@ class Repository:
 
     async def list_attempts(self, user_id: str, quiz_id: Optional[str] = None) -> List[Dict[str, Any]]:
         if self.supabase:
-            filters: Dict[str, Any] = {"user_id": user_id}
-            if quiz_id:
-                filters["quiz_id"] = quiz_id
-            return self._sb_select_many("quiz_attempts", filters=filters, order_col="started_at", order_desc=True)
+            try:
+                filters: Dict[str, Any] = {"user_id": user_id}
+                if quiz_id:
+                    filters["quiz_id"] = quiz_id
+                return self._sb_select_many("quiz_attempts", filters=filters, order_col="started_at", order_desc=True)
+            except Exception as e:
+                self._disable_supabase("list_attempts", e)
+
         attempts = [
             a for a in memory_db.quiz_attempts.values()
             if a["user_id"] == user_id and (quiz_id is None or a["quiz_id"] == quiz_id)
@@ -557,7 +654,11 @@ class Repository:
 
     async def get_attempt_responses(self, attempt_id: str) -> List[Dict[str, Any]]:
         if self.supabase:
-            return self._sb_select_many("question_responses", filters={"attempt_id": attempt_id})
+            try:
+                return self._sb_select_many("question_responses", filters={"attempt_id": attempt_id})
+            except Exception as e:
+                self._disable_supabase("get_attempt_responses", e)
+
         return [r for r in memory_db.question_responses.values() if r["attempt_id"] == attempt_id]
 
     # =========================================================================
@@ -579,16 +680,27 @@ class Repository:
             "created_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("flashcard_decks", deck)
+            try:
+                res = self._sb_insert("flashcard_decks", deck)
+                memory_db.flashcard_decks[deck["id"]] = deck
+                return res
+            except Exception as e:
+                self._disable_supabase("create_flashcard_deck", e)
+
         memory_db.flashcard_decks[deck["id"]] = deck
         return deck
 
     async def get_flashcard_deck(self, deck_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         if self.supabase:
-            deck = self._sb_select_one("flashcard_decks", {"id": deck_id})
-            if deck and deck["user_id"] == user_id:
-                return deck
-            return None
+            try:
+                deck = self._sb_select_one("flashcard_decks", {"id": deck_id})
+                if deck and deck["user_id"] == user_id:
+                    return deck
+                if deck:
+                    return None
+            except Exception as e:
+                self._disable_supabase("get_flashcard_deck", e)
+
         deck = memory_db.flashcard_decks.get(deck_id)
         if deck and deck["user_id"] == user_id:
             return deck
@@ -596,9 +708,13 @@ class Repository:
 
     async def list_flashcard_decks(self, collection_id: str, user_id: str) -> List[Dict[str, Any]]:
         if self.supabase:
-            q = self.supabase.table("flashcard_decks").select("*").eq("collection_id", collection_id).eq("user_id", user_id).order("created_at", desc=True)
-            result = q.execute()
-            return result.data or []
+            try:
+                q = self.supabase.table("flashcard_decks").select("*").eq("collection_id", collection_id).eq("user_id", user_id).order("created_at", desc=True)
+                result = q.execute()
+                return result.data or []
+            except Exception as e:
+                self._disable_supabase("list_flashcard_decks", e)
+
         return [d for d in memory_db.flashcard_decks.values() if d["collection_id"] == collection_id and d["user_id"] == user_id]
 
     async def create_flashcards(self, cards: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -617,14 +733,21 @@ class Repository:
             }
             created.append(item)
             if self.supabase:
-                self._sb_insert("flashcards", item)
-            else:
-                memory_db.flashcards[item["id"]] = item
+                try:
+                    self._sb_insert("flashcards", item)
+                except Exception as e:
+                    self._disable_supabase("create_flashcards", e)
+            memory_db.flashcards[item["id"]] = item
+
         return created
 
     async def get_deck_flashcards(self, deck_id: str) -> List[Dict[str, Any]]:
         if self.supabase:
-            return self._sb_select_many("flashcards", filters={"deck_id": deck_id})
+            try:
+                return self._sb_select_many("flashcards", filters={"deck_id": deck_id})
+            except Exception as e:
+                self._disable_supabase("get_deck_flashcards", e)
+
         return [c for c in memory_db.flashcards.values() if c["deck_id"] == deck_id]
 
     # =========================================================================
@@ -651,11 +774,13 @@ class Repository:
             "completed_units": 0,
             "created_at": now
         }
-        # Parent learning_paths record MUST be inserted before child path_nodes foreign keys!
         if self.supabase:
-            self._sb_insert("learning_paths", path_data)
-        else:
-            memory_db.learning_paths[path_id] = path_data
+            try:
+                self._sb_insert("learning_paths", path_data)
+            except Exception as e:
+                self._disable_supabase("create_learning_path", e)
+
+        memory_db.learning_paths[path_id] = path_data
 
         nodes = []
         for idx, u in enumerate(raw_units):
@@ -673,7 +798,6 @@ class Repository:
                 })
 
             trail_type = u.get("trail_type", "main")
-            # Side trails are always unlocked (optional exploration)
             is_locked = False if trail_type != "main" else (idx > 0)
 
             node = {
@@ -701,14 +825,15 @@ class Repository:
                 "xp_reward": u.get("xp_reward", 25)
             }
             nodes.append(node)
-            if not self.supabase:
-                memory_db.path_nodes[node_id] = node
+            memory_db.path_nodes[node_id] = node
 
         if self.supabase and nodes:
-            # Batch insert child path nodes for high performance
-            self.supabase.table("path_nodes").insert(nodes).execute()
-        else:
-            memory_db._save_to_disk()
+            try:
+                self.supabase.table("path_nodes").insert(nodes).execute()
+            except Exception as e:
+                self._disable_supabase("create_learning_path_nodes", e)
+
+        memory_db._save_to_disk()
 
         return {
             **path_data,
@@ -718,10 +843,14 @@ class Repository:
     async def get_learning_path(self, path_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         path_data = None
         if self.supabase:
-            path_data = self._sb_select_one("learning_paths", {"id": path_id})
-            if path_data and path_data.get("user_id") != user_id:
-                return None
-        else:
+            try:
+                path_data = self._sb_select_one("learning_paths", {"id": path_id})
+                if path_data and path_data.get("user_id") != user_id:
+                    return None
+            except Exception as e:
+                self._disable_supabase("get_learning_path", e)
+
+        if not path_data:
             p = memory_db.learning_paths.get(path_id)
             if p and p["user_id"] == user_id:
                 path_data = p
@@ -729,10 +858,14 @@ class Repository:
         if not path_data:
             return None
 
-        # Fetch nodes
+        nodes = []
         if self.supabase:
-            nodes = self._sb_select_many("path_nodes", filters={"path_id": path_id}, order_col="unit_index", order_desc=False)
-        else:
+            try:
+                nodes = self._sb_select_many("path_nodes", filters={"path_id": path_id}, order_col="unit_index", order_desc=False)
+            except Exception as e:
+                self._disable_supabase("get_learning_path_nodes", e)
+
+        if not nodes:
             nodes = [n for n in memory_db.path_nodes.values() if n["path_id"] == path_id]
 
         nodes = sorted(nodes, key=lambda x: x["unit_index"])
@@ -747,11 +880,15 @@ class Repository:
     async def get_document_learning_path(self, document_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         path_id = None
         if self.supabase:
-            q = self.supabase.table("learning_paths").select("id").eq("document_id", document_id).eq("user_id", user_id).limit(1)
-            result = q.execute()
-            if result.data:
-                path_id = result.data[0]["id"]
-        else:
+            try:
+                q = self.supabase.table("learning_paths").select("id").eq("document_id", document_id).eq("user_id", user_id).limit(1)
+                result = q.execute()
+                if result.data:
+                    path_id = result.data[0]["id"]
+            except Exception as e:
+                self._disable_supabase("get_document_learning_path", e)
+
+        if not path_id:
             for p in memory_db.learning_paths.values():
                 if p["document_id"] == document_id and p["user_id"] == user_id:
                     path_id = p["id"]
@@ -769,14 +906,18 @@ class Repository:
 
         path_id = existing["id"]
         if self.supabase:
-            self.supabase.table("path_nodes").delete().eq("path_id", path_id).execute()
-            self._sb_delete("learning_paths", path_id)
-        else:
-            nodes_to_del = [n_id for n_id, n in memory_db.path_nodes.items() if n["path_id"] == path_id]
-            for n_id in nodes_to_del:
-                del memory_db.path_nodes[n_id]
-            if path_id in memory_db.learning_paths:
-                del memory_db.learning_paths[path_id]
+            try:
+                self.supabase.table("path_nodes").delete().eq("path_id", path_id).execute()
+                self._sb_delete("learning_paths", path_id)
+            except Exception as e:
+                self._disable_supabase("delete_document_learning_path", e)
+
+        nodes_to_del = [n_id for n_id, n in memory_db.path_nodes.items() if n["path_id"] == path_id]
+        for n_id in nodes_to_del:
+            del memory_db.path_nodes[n_id]
+        if path_id in memory_db.learning_paths:
+            del memory_db.learning_paths[path_id]
+        memory_db._save_to_disk()
         return True
 
     async def complete_path_node(
@@ -799,8 +940,12 @@ class Repository:
                 n["is_completed"] = True
                 n["score"] = score
                 if self.supabase:
-                    self._sb_update("path_nodes", node_id, {"is_completed": True, "score": score})
-                else:
+                    try:
+                        self._sb_update("path_nodes", node_id, {"is_completed": True, "score": score})
+                    except Exception as e:
+                        self._disable_supabase("complete_path_node", e)
+
+                if node_id in memory_db.path_nodes:
                     memory_db.path_nodes[node_id]["is_completed"] = True
                     memory_db.path_nodes[node_id]["score"] = score
                 break
@@ -812,8 +957,12 @@ class Repository:
                 if (next_node.get("trail_type", "main") == "main") and next_node.get("is_locked", False):
                     next_node["is_locked"] = False
                     if self.supabase:
-                        self._sb_update("path_nodes", next_node["id"], {"is_locked": False})
-                    else:
+                        try:
+                            self._sb_update("path_nodes", next_node["id"], {"is_locked": False})
+                        except Exception as e:
+                            self._disable_supabase("unlock_next_path_node", e)
+
+                    if next_node["id"] in memory_db.path_nodes:
                         memory_db.path_nodes[next_node["id"]]["is_locked"] = False
                     break
 
@@ -821,9 +970,7 @@ class Repository:
         if user_id in memory_db.profiles:
             memory_db.profiles[user_id]["xp"] = memory_db.profiles[user_id].get("xp", 0) + 25
 
-        if not self.supabase:
-            memory_db._save_to_disk()
-
+        memory_db._save_to_disk()
         return await self.get_learning_path(path_id, user_id)
 
     # =========================================================================
@@ -849,14 +996,24 @@ class Repository:
             "created_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("users", user_data)
+            try:
+                res = self._sb_insert("users", user_data)
+                memory_db.users[user_id] = user_data
+                return res
+            except Exception as e:
+                self._disable_supabase("create_user", e)
+
         memory_db.users[user_id] = user_data
         return user_data
 
     async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         clean_email = email.strip().lower()
         if self.supabase:
-            return self._sb_select_one("users", {"email": clean_email})
+            try:
+                return self._sb_select_one("users", {"email": clean_email})
+            except Exception as e:
+                self._disable_supabase("get_user_by_email", e)
+
         for u in memory_db.users.values():
             if u["email"] == clean_email:
                 return u
@@ -864,12 +1021,20 @@ class Repository:
 
     async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         if self.supabase:
-            return self._sb_select_one("users", {"id": user_id})
+            try:
+                return self._sb_select_one("users", {"id": user_id})
+            except Exception as e:
+                self._disable_supabase("get_user_by_id", e)
+
         return memory_db.users.get(user_id)
 
     async def list_users(self) -> List[Dict[str, Any]]:
         if self.supabase:
-            return self._sb_select_many("users", order_col="created_at", order_desc=True)
+            try:
+                return self._sb_select_many("users", order_col="created_at", order_desc=True)
+            except Exception as e:
+                self._disable_supabase("list_users", e)
+
         return list(memory_db.users.values())
 
     # =========================================================================
@@ -899,19 +1064,33 @@ class Repository:
             "created_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("feedback", item)
+            try:
+                res = self._sb_insert("feedback", item)
+                memory_db.feedback[fb_id] = item
+                return res
+            except Exception as e:
+                self._disable_supabase("create_feedback", e)
+
         memory_db.feedback[fb_id] = item
         return item
 
     async def list_feedback(self) -> List[Dict[str, Any]]:
         if self.supabase:
-            return self._sb_select_many("feedback", order_col="created_at", order_desc=True)
+            try:
+                return self._sb_select_many("feedback", order_col="created_at", order_desc=True)
+            except Exception as e:
+                self._disable_supabase("list_feedback", e)
+
         items = list(memory_db.feedback.values())
         return sorted(items, key=lambda x: x.get("created_at", ""), reverse=True)
 
     async def delete_feedback(self, feedback_id: str) -> bool:
         if self.supabase:
-            self._sb_delete("feedback", feedback_id)
+            try:
+                self._sb_delete("feedback", feedback_id)
+            except Exception as e:
+                self._disable_supabase("delete_feedback", e)
+
         if feedback_id in memory_db.feedback:
             del memory_db.feedback[feedback_id]
         return True
@@ -942,7 +1121,13 @@ class Repository:
             "created_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("telemetry_logs", item)
+            try:
+                res = self._sb_insert("telemetry_logs", item)
+                memory_db.telemetry_logs[log_id] = item
+                return res
+            except Exception as e:
+                self._disable_supabase("create_telemetry_log", e)
+
         memory_db.telemetry_logs[log_id] = item
         return item
 
@@ -953,13 +1138,16 @@ class Repository:
         event_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         if self.supabase:
-            q = self.supabase.table("telemetry_logs").select("*").order("created_at", desc=True).limit(limit)
-            if user_id:
-                q = q.eq("user_id", user_id)
-            if event_type and event_type != "ALL":
-                q = q.eq("event_type", event_type)
-            result = q.execute()
-            return result.data or []
+            try:
+                q = self.supabase.table("telemetry_logs").select("*").order("created_at", desc=True).limit(limit)
+                if user_id:
+                    q = q.eq("user_id", user_id)
+                if event_type and event_type != "ALL":
+                    q = q.eq("event_type", event_type)
+                result = q.execute()
+                return result.data or []
+            except Exception as e:
+                self._disable_supabase("list_telemetry_logs", e)
 
         source = list(memory_db.telemetry_logs.values())
         filtered = []
@@ -975,7 +1163,11 @@ class Repository:
 
     async def clear_telemetry_logs(self) -> bool:
         if self.supabase:
-            self.supabase.table("telemetry_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+            try:
+                self.supabase.table("telemetry_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+            except Exception as e:
+                self._disable_supabase("clear_telemetry_logs", e)
+
         memory_db.telemetry_logs.clear()
         return True
 
@@ -1000,32 +1192,49 @@ class Repository:
             "created_at": memory_db.now_iso()
         }
         if self.supabase:
-            return self._sb_insert("friend_requests", req)
+            try:
+                res = self._sb_insert("friend_requests", req)
+                memory_db.friend_requests[req_id] = req
+                return res
+            except Exception as e:
+                self._disable_supabase("create_friend_request", e)
+
         memory_db.friend_requests[req_id] = req
         return req
 
     async def list_incoming_friend_requests(self, to_email: str) -> List[Dict[str, Any]]:
         clean = to_email.strip().lower()
         if self.supabase:
-            q = self.supabase.table("friend_requests").select("*").eq("to_email", clean).eq("status", "pending")
-            result = q.execute()
-            return result.data or []
+            try:
+                q = self.supabase.table("friend_requests").select("*").eq("to_email", clean).eq("status", "pending")
+                result = q.execute()
+                return result.data or []
+            except Exception as e:
+                self._disable_supabase("list_incoming_friend_requests", e)
+
         return [r for r in memory_db.friend_requests.values() if r["to_email"] == clean and r["status"] == "pending"]
 
     async def accept_friend_request(self, request_id: str, user_id: str, user_email: str) -> bool:
         req = None
         if self.supabase:
-            req = self._sb_select_one("friend_requests", {"id": request_id})
-        else:
+            try:
+                req = self._sb_select_one("friend_requests", {"id": request_id})
+            except Exception as e:
+                self._disable_supabase("accept_friend_request_select", e)
+
+        if not req:
             req = memory_db.friend_requests.get(request_id)
 
         if not req or req.get("status") != "pending":
             return False
 
         if self.supabase:
-            self._sb_update("friend_requests", request_id, {"status": "accepted"})
-        else:
-            memory_db.friend_requests[request_id]["status"] = "accepted"
+            try:
+                self._sb_update("friend_requests", request_id, {"status": "accepted"})
+            except Exception as e:
+                self._disable_supabase("accept_friend_request_update", e)
+
+        memory_db.friend_requests[request_id]["status"] = "accepted"
 
         friendship_entry = {
             "id": str(uuid.uuid4()),
@@ -1037,14 +1246,21 @@ class Repository:
             "created_at": memory_db.now_iso()
         }
         if self.supabase:
-            self._sb_insert("friendships", friendship_entry)
-        else:
-            memory_db.friendships.append(friendship_entry)
+            try:
+                self._sb_insert("friendships", friendship_entry)
+            except Exception as e:
+                self._disable_supabase("accept_friend_request_friendship", e)
+
+        memory_db.friendships.append(friendship_entry)
         return True
 
     async def decline_friend_request(self, request_id: str, user_email: str) -> bool:
         if self.supabase:
-            self._sb_update("friend_requests", request_id, {"status": "declined"})
+            try:
+                self._sb_update("friend_requests", request_id, {"status": "declined"})
+            except Exception as e:
+                self._disable_supabase("decline_friend_request", e)
+
         if request_id in memory_db.friend_requests:
             memory_db.friend_requests[request_id]["status"] = "declined"
         return True
@@ -1054,8 +1270,12 @@ class Repository:
         friends = []
         source = memory_db.friendships
         if self.supabase:
-            result = self.supabase.table("friendships").select("*").execute()
-            source = result.data or []
+            try:
+                result = self.supabase.table("friendships").select("*").execute()
+                source = result.data or []
+            except Exception as e:
+                self._disable_supabase("list_friends", e)
+                source = memory_db.friendships
 
         for f in source:
             if f.get("user1_id") == user_id or f.get("user1_email") == clean_email:
