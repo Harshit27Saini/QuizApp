@@ -18,9 +18,8 @@ class GeminiProvider(BaseAIProvider):
     # (compared to only 20 requests/day on gemini-3.6-flash preview)
     MODELS_IN_PRIORITY: List[str] = [
         "gemini-3.5-flash-lite",
-        "gemini-2.5-flash-lite",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
+        "gemini-flash-latest",
+        "gemini-flash-lite-latest",
         "gemini-3.5-flash",
         "gemini-3-flash-preview",
     ]
@@ -66,7 +65,7 @@ class GeminiProvider(BaseAIProvider):
         }
 
         headers = {"Content-Type": "application/json"}
-        timeout = httpx.Timeout(connect=15.0, read=90.0, write=20.0, pool=15.0)
+        timeout = httpx.Timeout(connect=5.0, read=12.0, write=10.0, pool=5.0)
         last_error = "Unknown error"
 
         async with httpx.AsyncClient(timeout=timeout) as client:

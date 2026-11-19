@@ -13,9 +13,9 @@ class GroqProvider(BaseAIProvider):
     """
 
     MODELS_IN_PRIORITY: List[str] = [
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
-        "mixtral-8x7b-32768"
+        "qwen/qwen3.8-27b",
+        "openai/gpt-oss-120b",
+        "openai/gpt-oss-20b"
     ]
 
     def __init__(self, api_key: str = ""):
@@ -40,7 +40,7 @@ class GroqProvider(BaseAIProvider):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-        timeout = httpx.Timeout(connect=10.0, read=60.0, write=15.0, pool=10.0)
+        timeout = httpx.Timeout(connect=5.0, read=15.0, write=10.0, pool=5.0)
         last_error = "Unknown error"
 
         async with httpx.AsyncClient(timeout=timeout) as client:
