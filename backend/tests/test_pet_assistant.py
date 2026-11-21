@@ -49,3 +49,26 @@ async def test_all_five_pets_respond():
         assert res["pet_id"] == p_id
         assert len(res["reply"]) > 15
 
+
+@pytest.mark.asyncio
+async def test_ai_provider_generate_text_contract():
+    from app.services.ai.factory import get_ai_provider
+    from app.services.ai.mock_provider import MockAIProvider
+
+    mock = MockAIProvider()
+    reply = await mock.generate_text(
+        system_instruction="You are a tutor. Current Topic: Spaced Repetition",
+        user_prompt="Student: How does spaced repetition fight forgetting?\nTutor:"
+    )
+    assert isinstance(reply, str)
+    assert len(reply) > 30
+
+    provider = get_ai_provider()
+    assert hasattr(provider, "generate_text")
+    live_reply = await provider.generate_text(
+        system_instruction="You are Sydney. Current Topic: Cognitive Science",
+        user_prompt="Student: What is active recall?\nSydney:"
+    )
+    assert isinstance(live_reply, str)
+    assert len(live_reply) > 20
+

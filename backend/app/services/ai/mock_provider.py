@@ -101,3 +101,37 @@ class MockAIProvider(BaseAIProvider):
                 })
 
         return {"questions": questions}
+
+    async def generate_text(
+        self,
+        system_instruction: str,
+        user_prompt: str
+    ) -> str:
+        # Extract question from user_prompt
+        last_turn_match = re.search(r"Student:\s*(.*?)(?:\n|\Z)", user_prompt)
+        question = last_turn_match.group(1).strip() if last_turn_match else user_prompt.strip()
+
+        # Extract topic or context if available in system_instruction
+        topic_match = re.search(r"Current Topic:\s*(.*?)(?:\n|\Z)", system_instruction)
+        topic = topic_match.group(1).strip() if topic_match else "the study material"
+
+        # Determine pet persona cue
+        if "Sydney" in system_instruction:
+            cue = "*Excited tail wag!* Great question!"
+        elif "Connie" in system_instruction:
+            cue = "*Gentle, dignified purr.* Let us be precise here."
+        elif "Milo" in system_instruction:
+            cue = "*Alert ear perk!* Here is the street-smart intuition."
+        elif "Scooby" in system_instruction:
+            cue = "*Rests chin calmly beside you.* Let's break this down step-by-step."
+        elif "Bunny" in system_instruction:
+            cue = "*Bouncing with energy!* Let's conquer this together!"
+        else:
+            cue = "*Attentive companion look.*"
+
+        return (
+            f"{cue} Regarding **{question}** in {topic}:\n\n"
+            f"1. **Core Principle:** In {topic}, key mechanisms work by establishing stable feedback loops between inputs, intermediate transformations, and output targets.\n"
+            f"2. **Intuitive Analogy:** Think of it like cruise control on a vehicle—when external friction or hills (disturbances) alter the speed, the system calculates the delta and instantly throttles to maintain equilibrium.\n"
+            f"3. **Exam Takeaway:** Look closely for distinguishing characteristics between baseline nominal values and dynamic error states on tests!"
+        )

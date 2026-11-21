@@ -17,11 +17,10 @@ class GeminiProvider(BaseAIProvider):
     # gemini-3.5-flash-lite has 500 requests/day & 15 RPM on Google AI Studio Free Tier
     # (compared to only 20 requests/day on gemini-3.6-flash preview)
     MODELS_IN_PRIORITY: List[str] = [
-        "gemini-3.5-flash-lite",
-        "gemini-flash-latest",
         "gemini-flash-lite-latest",
-        "gemini-3.5-flash",
+        "gemini-3.5-flash-lite",
         "gemini-3-flash-preview",
+        "gemini-flash-latest",
     ]
 
     def __init__(self, api_key: str = ""):
@@ -113,3 +112,69 @@ class GeminiProvider(BaseAIProvider):
         from app.services.ai.mock_provider import MockAIProvider
         mock = MockAIProvider()
         return await mock.generate_structured_json(system_instruction, user_prompt, response_schema)
+
+    async def generate_text(
+        self,
+        system_instruction: str,
+        user_prompt: str
+    ) -> str:
+        payload = {
+            "system_instruction": {
+                "parts": [{"text": system_instruction}]
+            },
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": user_prompt}]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.7
+            }
+        }
+
+        headers = {"Content-Type": "application/json"}
+        timeout = httpx.Timeout(connect=5.0, read=15.0, write=10.0, pool=5.0)
+        last_error = "Unknown error"
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            for _ in range(len(self.api_keys)):
+                current_key = self._get_current_key()
+                params = {"key": current_key}
+
+                for model_name in self.MODELS_IN_PRIORITY:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+                    try:
+                        response = await client.post(url, headers=headers, params=params, json=payload)
+                    except httpx.TimeoutException:
+                        last_error = f"Gemini ({model_name}) timed out."
+                        continue
+                    except httpx.RequestError as e:
+                        last_error = f"Gemini ({model_name}) connection error: {str(e)}"
+                        continue
+
+                    if response.status_code in (429, 503):
+                        last_error = f"Model {model_name} rate limit or high demand (HTTP {response.status_code})."
+                        continue
+
+                    if response.status_code == 200:
+                        try:
+                            result = response.json()
+                            candidates = result.get("candidates", [])
+                            if not candidates:
+                                continue
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts and "text" in parts[0]:
+                                return parts[0]["text"].strip()
+                        except Exception as e:
+                            last_error = f"Failed to parse text response from {model_name}: {str(e)}"
+                            continue
+                    else:
+                        last_error = f"HTTP {response.status_code} ({model_name}): {response.text}"
+
+                self._rotate_key()
+
+        print(f"[Recall AI] Gemini text generation failed across all models ({last_error}). Falling back to local offline provider.")
+        from app.services.ai.mock_provider import MockAIProvider
+        mock = MockAIProvider()
+        return await mock.generate_text(system_instruction, user_prompt)

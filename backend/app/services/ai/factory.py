@@ -39,6 +39,25 @@ class FastHybridProvider(BaseAIProvider):
 
         return await self.mock.generate_structured_json(system_instruction, user_prompt, response_schema)
 
+    async def generate_text(
+        self,
+        system_instruction: str,
+        user_prompt: str
+    ) -> str:
+        if self.groq:
+            try:
+                return await self.groq.generate_text(system_instruction, user_prompt)
+            except Exception as e:
+                print(f"[Recall AI] Groq fast-tier chat failed: {e}. Falling back to Gemini.")
+
+        if self.gemini:
+            try:
+                return await self.gemini.generate_text(system_instruction, user_prompt)
+            except Exception as e:
+                print(f"[Recall AI] Gemini fallback chat failed: {e}. Falling back to local offline provider.")
+
+        return await self.mock.generate_text(system_instruction, user_prompt)
+
 
 def get_ai_provider() -> BaseAIProvider:
     """

@@ -121,12 +121,13 @@ export const PetAssistantChat: React.FC<PetAssistantChatProps> = ({
       if (res.suggested_followups && res.suggested_followups.length > 0) {
         setFollowups(res.suggested_followups);
       }
-    } catch {
+    } catch (err: any) {
+      console.error("[PetAssistantChat] Communication error:", err);
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          content: `*${activePet.name} nudges your hand.* Based on ${currentTopic || 'this topic'}, remember that the system relies on comparing inputs with target outputs to maintain stability!`
+          content: `*${activePet.name} looks concerned.* I had trouble connecting to the study AI service (${err?.message || 'Connection error'}). Please check your connection or tap again to retry!`
         }
       ]);
     } finally {

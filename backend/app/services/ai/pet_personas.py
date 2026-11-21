@@ -83,54 +83,28 @@ async def get_pet_response(
 
     full_prompt = f"{history_text}Student: {user_message}\n{pet['name']}:"
 
-    # Fallback response if mock or offline
-    if provider.__class__.__name__ == "MockAIProvider":
-        if pet_id == "sydney":
-            reply = f"*Happy tail wag!* You're making awesome progress on {current_topic or 'this topic'}! Think of this like balancing on three legs—the feedback loop constantly corrects errors to keep the system stable. You've got this!"
-        elif pet_id == "connie":
-            reply = f"*Gentle, dignified purr.* Let us be rigorous regarding {current_topic or 'this mechanism'}. Notice the exact relationship between the input state and the output response—the distinction lies in how disturbances are attenuated."
-        elif pet_id == "milo":
-            reply = f"*Alert ear perk!* Here's the street-smart trick for {current_topic or 'this concept'}: ignore the scary terminology. In practice, all it means is you monitor output, calculate the difference, and adjust power. Simple as that."
-        elif pet_id == "scooby":
-            reply = f"*Resting chin calmly on your knee.* Take a breath. Let's break down {current_topic or 'this section'} together. First, we identify what we are measuring, then we look at what changes over time."
-        else: # bunny
-            reply = f"*Bouncing happily!* Wow, this part of {current_topic or 'the lesson'} is super interesting! Once you see how the components connect, everything falls into place like clockwork!"
-
-        return {
-            "pet_id": pet["id"],
-            "pet_name": pet["name"],
-            "reply": reply,
-            "suggested_followups": [
-                f"🐾 Break down the formula/steps",
-                f"🐾 Give an intuitive real-world example",
-                f"🐾 What's the most common exam trap here?"
-            ]
-        }
-
     try:
         reply = await provider.generate_text(
             system_instruction=system_prompt,
             user_prompt=full_prompt
         )
-        return {
-            "pet_id": pet["id"],
-            "pet_name": pet["name"],
-            "reply": reply.strip(),
-            "suggested_followups": [
-                f"🐾 Can you explain that with an example?",
-                f"🐾 What should I watch out for in exams?",
-                f"🐾 Why does this mechanism work this way?"
-            ]
-        }
-    except Exception:
-        # Graceful fallback to persona message if network hiccups
-        return {
-            "pet_id": pet["id"],
-            "pet_name": pet["name"],
-            "reply": f"*Nudges your hand gently.* Based on {current_topic or 'your study material'}, this concept focuses on how the core principles and relationships govern the outcome. Let's review the key definition together!",
-            "suggested_followups": [
-                "🐾 Explain with an analogy",
-                "🐾 Show the step-by-step breakdown"
-            ]
-        }
+    except Exception as e:
+        print(f"[Recall AI] Chat generation failed with primary provider ({e}). Falling back to local synthesizer.")
+        from app.services.ai.mock_provider import MockAIProvider
+        mock = MockAIProvider()
+        reply = await mock.generate_text(system_instruction, full_prompt)
+
+    # Generate tailored companion follow-up questions
+    followups = [
+        f"🐾 Break down the formula or core steps",
+        f"🐾 Can you explain with a real-world analogy?",
+        f"🐾 What is the most common exam trap here?"
+    ]
+
+    return {
+        "pet_id": pet["id"],
+        "pet_name": pet["name"],
+        "reply": reply.strip(),
+        "suggested_followups": followups
+    }
 

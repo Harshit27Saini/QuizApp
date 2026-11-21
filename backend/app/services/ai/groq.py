@@ -88,3 +88,60 @@ class GroqProvider(BaseAIProvider):
         mock = MockAIProvider()
         return await mock.generate_structured_json(system_instruction, user_prompt, response_schema)
 
+    async def generate_text(
+        self,
+        system_instruction: str,
+        user_prompt: str
+    ) -> str:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        timeout = httpx.Timeout(connect=5.0, read=15.0, write=10.0, pool=5.0)
+        last_error = "Unknown error"
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            for model_name in self.MODELS_IN_PRIORITY:
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": system_instruction},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "temperature": 0.7
+                }
+
+                try:
+                    response = await client.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers=headers,
+                        json=payload
+                    )
+                except httpx.TimeoutException:
+                    last_error = f"Groq ({model_name}) timed out."
+                    continue
+                except httpx.RequestError as e:
+                    last_error = f"Groq ({model_name}) network error: {str(e)}"
+                    continue
+
+                if response.status_code == 429:
+                    last_error = f"Groq model {model_name} rate limit reached."
+                    continue
+
+                if response.status_code == 200:
+                    try:
+                        result = response.json()
+                        raw_content = result["choices"][0]["message"]["content"]
+                        if raw_content:
+                            return raw_content.strip()
+                    except Exception as e:
+                        last_error = f"Failed to parse Groq response: {str(e)}"
+                        continue
+                else:
+                    last_error = f"Groq HTTP {response.status_code}: {response.text}"
+
+        print(f"[Recall AI] Groq text generation failed ({last_error}). Falling back to local offline provider.")
+        from app.services.ai.mock_provider import MockAIProvider
+        mock = MockAIProvider()
+        return await mock.generate_text(system_instruction, user_prompt)
+
