@@ -225,6 +225,23 @@
   4. Fixed `docs/supabase_schema.sql` line 184.
 - **Consequences:** Collections persist permanently across quiz completions, gaming questions by option length is completely eliminated, and real study friends can seamlessly connect across cloud devices.
 
+---
+
+## ADR 022: Transition from Flashcard Stepping Stones to Classical STEM Textbook Pedagogical Model
+- **Date:** 2026-11-21
+- **Status:** Accepted
+- **Context:**
+  1. Users found flashcards in the primary learning path stepping stone runner repetitive and counter-productive for complex STEM slide decks, where foundational theory must precede problem solving.
+  2. The learning path stepping stone required a pedagogical structure matching classical STEM textbooks: Theory & Operational Rules $\rightarrow$ Worked Example with step-by-step breakdown $\rightarrow$ Ask Study Buddy $\rightarrow$ Practice Understanding Check.
+  3. Gemini pet chatbot previously experienced repetitive responses due to missing `generate_text` methods across AI providers, which has been resolved with multi-provider failover.
+- **Decision:**
+  1. Overhauled `SteppingStoneRunner.tsx` from `['cards', 'notes', 'companion', 'quiz']` to `['theory', 'example', 'companion', 'quiz', 'celebration']`.
+  2. Built Step 1 (`theory`): Structured Theory & Operational Rules with conceptual overview, mechanisms confidence toggles, audio read-aloud TTS, Gemini TL;DR bullets, and direct PDF slide jump.
+  3. Built Step 2 (`example`): Worked Example & Application Walkthrough featuring concrete case scenarios, collapsible step-by-step solution breakdown mapping governing principles and mechanisms, key distinctions callout, and examiner's trap warning.
+  4. Preserved Step 3 (`companion`) and Step 4 (`quiz`) with seamless bi-directional navigation.
+- **Consequences:** Learning paths provide deep conceptual grounding and practical application without forced flashcard flipping, substantially elevating user satisfaction and study efficacy.
+
+
 
 
 
