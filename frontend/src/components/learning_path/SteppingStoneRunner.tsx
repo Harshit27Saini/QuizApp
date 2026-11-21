@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { PathNode, PathNodeQuestion, FlashcardItem } from '../../types';
+import type { PathNode, PathNodeQuestion } from '../../types';
 import { api } from '../../services/api';
 import { companionService } from '../../services/companions';
 import { soundManager } from '../../utils/sound';
@@ -17,7 +17,7 @@ interface SteppingStoneRunnerProps {
   onNavigateToReader: (slidePage?: number) => void;
 }
 
-type RunnerStep = 'cards' | 'notes' | 'companion' | 'quiz' | 'celebration';
+type RunnerStep = 'theory' | 'example' | 'companion' | 'quiz' | 'celebration';
 
 export const SteppingStoneRunner: React.FC<SteppingStoneRunnerProps> = ({
   node,
@@ -28,89 +28,16 @@ export const SteppingStoneRunner: React.FC<SteppingStoneRunnerProps> = ({
   onComplete,
   onNavigateToReader
 }) => {
-  const [currentStep, setCurrentStep] = useState<RunnerStep>('cards');
+  const [currentStep, setCurrentStep] = useState<RunnerStep>('theory');
   const activeCompanion = companionService.getActiveCompanion();
 
   // ---------------------------------------------------------------------------
-  // Step 1: Flip Cards State
+  // Step 2: Worked Example State (Textbook Model)
   // ---------------------------------------------------------------------------
-  const [cards, setCards] = useState<FlashcardItem[]>([]);
-  const [cardIndex, setCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [reviewedCardCount, setReviewedCardCount] = useState(0);
-
-  // Generate dynamic flip cards for this stepping stone based on slide range and depth
-  useEffect(() => {
-    const rawMechanisms = node.substantive_content?.mechanisms || [];
-    const overview = node.substantive_content?.overview || node.concept_summary;
-    const pitfalls = node.substantive_content?.exam_pitfalls;
-    const startSlide = node.slide_start || node.source_page || 1;
-    const endSlide = node.slide_end || node.source_page || startSlide;
-
-    const stoneCards: FlashcardItem[] = [
-      {
-        id: `card_${node.id}_core`,
-        deck_id: node.id,
-        front: `What is the core principle governing ${node.title.replace(/^Slides?\s*\d+[-–]?\d*:\s*/i, '')}?`,
-        back: overview,
-        source_page: startSlide,
-        tags: ['Core Concept', `Slide ${startSlide}`],
-        mastered: false,
-        created_at: new Date().toISOString()
-      }
-    ];
-
-    rawMechanisms.forEach((m, idx) => {
-      stoneCards.push({
-        id: `card_${node.id}_mech_${idx}`,
-        deck_id: node.id,
-        front: `Mechanism Check: How does rule #${idx + 1} operate in this topic?`,
-        back: m,
-        source_page: Math.min(endSlide, startSlide + idx),
-        tags: ['Mechanism', `Slide ${Math.min(endSlide, startSlide + idx)}`],
-        mastered: false,
-        created_at: new Date().toISOString()
-      });
-    });
-
-    if (pitfalls) {
-      stoneCards.push({
-        id: `card_${node.id}_pitfall`,
-        deck_id: node.id,
-        front: `⚠️ Common Exam Trap: What classic mistake do examiners test on these slides?`,
-        back: pitfalls,
-        source_page: endSlide,
-        tags: ['Exam Pitfall', `Slide ${endSlide}`],
-        mastered: false,
-        created_at: new Date().toISOString()
-      });
-    }
-
-    setCards(stoneCards);
-    setCardIndex(0);
-    setIsFlipped(false);
-  }, [node]);
-
-  const handleNextCard = (rating?: 'hard' | 'good' | 'easy') => {
-    soundManager.playTick();
-    setIsFlipped(false);
-    setReviewedCardCount(prev => prev + 1);
-    if (rating === 'easy') soundManager.playCorrect();
-    if (cardIndex < cards.length - 1) {
-      setCardIndex(prev => prev + 1);
-    }
-  };
-
-  const handlePrevCard = () => {
-    soundManager.playTick();
-    setIsFlipped(false);
-    if (cardIndex > 0) {
-      setCardIndex(prev => prev - 1);
-    }
-  };
+  const [showSolution, setShowSolution] = useState(true);
 
   // ---------------------------------------------------------------------------
-  // Step 2: Slide Breakdown & Confidence Toggles + TTS + TL;DR State
+  // Step 1: Slide Breakdown & Confidence Toggles + TTS + TL;DR State
   // ---------------------------------------------------------------------------
   const [confidenceMap, setConfidenceMap] = useState<Record<string, 'got_it' | 'tricky'>>({});
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -398,10 +325,10 @@ export const SteppingStoneRunner: React.FC<SteppingStoneRunnerProps> = ({
           borderRadius: 'var(--radius-md)'
         }}>
           {[
-            { id: 'cards', label: '1. Flip Cards 🗂️' },
-            { id: 'notes', label: '2. Deep Dive 📖' },
+            { id: 'theory', label: '1. Theory & Rules 📖' },
+            { id: 'example', label: '2. Worked Example 🎯' },
             { id: 'companion', label: '3. Ask Buddy 💬' },
-            { id: 'quiz', label: '4. Mastery ⚡' }
+            { id: 'quiz', label: '4. Practice Check ⚡' }
           ].map(s => {
             const isActive = currentStep === s.id;
             return (
@@ -428,127 +355,9 @@ export const SteppingStoneRunner: React.FC<SteppingStoneRunnerProps> = ({
         </div>
 
         {/* =================================================================== */}
-        {/* STEP 1: DYNAMIC FLIP CARDS (Active Recall Warmup)                  */}
+        {/* STEP 1: STRUCTURED THEORY & OPERATIONAL RULES                      */}
         {/* =================================================================== */}
-        {currentStep === 'cards' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 900, margin: 0 }}>
-                  Active Recall Flip Cards
-                </h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0 0' }}>
-                  Ignite memory for Slides {node.slide_start || node.source_page}–{node.slide_end || node.source_page}. Tap card or Spacebar to flip!
-                </p>
-              </div>
-              <span className="badge badge-blue" style={{ fontSize: '0.8rem' }}>
-                Card {cardIndex + 1} of {cards.length}
-              </span>
-            </div>
-
-            {cards.length > 0 && cards[cardIndex] && (
-              <div
-                onClick={() => setIsFlipped(prev => !prev)}
-                style={{
-                  minHeight: '220px',
-                  borderRadius: 'var(--radius-lg)',
-                  border: '2.5px solid var(--color-border)',
-                  background: isFlipped ? 'var(--color-surface-hover)' : 'var(--color-surface)',
-                  padding: '2rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.06)',
-                  transition: 'all 0.25s ease'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="badge badge-gray" style={{ fontSize: '0.7rem' }}>
-                    {isFlipped ? '💡 RECALL ANSWER' : '❓ CONCEPT PROMPT'}
-                  </span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-blue)' }}>
-                    📍 Slide {cards[cardIndex].source_page}
-                  </span>
-                </div>
-
-                <div style={{
-                  fontSize: isFlipped ? '1.05rem' : '1.2rem',
-                  fontWeight: isFlipped ? 600 : 800,
-                  lineHeight: 1.6,
-                  color: 'var(--color-text-main)',
-                  textAlign: 'center',
-                  padding: '1rem 0'
-                }}>
-                  {isFlipped ? cards[cardIndex].back : cards[cardIndex].front}
-                </div>
-
-                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-subtle)', fontWeight: 700 }}>
-                  {isFlipped ? 'Tap again to flip back' : 'Tap to reveal key takeaway'}
-                </div>
-              </div>
-            )}
-
-            {/* Rating Buttons */}
-            {isFlipped ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                <button onClick={() => handleNextCard('hard')} className="btn-3d btn-3d-red" style={{ padding: '0.65rem', fontSize: '0.85rem' }}>
-                  🔴 Hard
-                </button>
-                <button onClick={() => handleNextCard('good')} className="btn-3d btn-3d-blue" style={{ padding: '0.65rem', fontSize: '0.85rem' }}>
-                  🟡 Good
-                </button>
-                <button onClick={() => handleNextCard('easy')} className="btn-3d btn-3d-green" style={{ padding: '0.65rem', fontSize: '0.85rem' }}>
-                  🟢 Easy (+10 XP)
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
-                <button
-                  onClick={handlePrevCard}
-                  disabled={cardIndex === 0}
-                  className="btn-3d btn-3d-white"
-                  style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}
-                >
-                  ← Prev Card
-                </button>
-                <button
-                  onClick={() => setIsFlipped(true)}
-                  className="btn-3d btn-3d-blue"
-                  style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem' }}
-                >
-                  Flip Card 🔄
-                </button>
-                <button
-                  onClick={() => handleNextCard()}
-                  disabled={cardIndex === cards.length - 1}
-                  className="btn-3d btn-3d-white"
-                  style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}
-                >
-                  Next Card →
-                </button>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-subtle)' }}>
-                {reviewedCardCount} reviews completed
-              </span>
-              <button
-                onClick={() => setCurrentStep('notes')}
-                className="btn-3d btn-3d-green"
-                style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
-              >
-                Proceed to Slide Deep Dive ➔
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* =================================================================== */}
-        {/* STEP 2: SLIDE BREAKDOWN & CONFIDENCE TOGGLES & TTS & TL;DR          */}
-        {/* =================================================================== */}
-        {currentStep === 'notes' && (
+        {currentStep === 'theory' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
@@ -556,7 +365,7 @@ export const SteppingStoneRunner: React.FC<SteppingStoneRunnerProps> = ({
                   {node.title}
                 </h2>
                 <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>
-                  Structured Theory & Mechanisms
+                  Structured Theory & Operational Rules
                 </span>
               </div>
 
@@ -719,19 +528,234 @@ export const SteppingStoneRunner: React.FC<SteppingStoneRunnerProps> = ({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
               <button
-                onClick={() => setCurrentStep('cards')}
+                onClick={() => onNavigateToReader(node.source_page)}
                 className="btn-3d btn-3d-white"
                 style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}
               >
-                ← Back to Cards
+                📖 Open in Full Reader
               </button>
               <button
-                onClick={() => setCurrentStep('companion')}
+                onClick={() => setCurrentStep('example')}
                 className="btn-3d btn-3d-green"
                 style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
               >
-                Have Doubts? Ask Companion ➔
+                Proceed to Worked Example ➔
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* STEP 2: WORKED EXAMPLE & APPLICATION WALKTHROUGH                   */}
+        {/* =================================================================== */}
+        {currentStep === 'example' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 900, margin: 0 }}>
+                  Worked Example & Case Walkthrough
+                </h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: '0.2rem 0 0 0' }}>
+                  Translating theoretical principles into applied solutions for Slides {node.slide_start || node.source_page}–{node.slide_end || node.source_page}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowSolution(prev => !prev)}
+                className="btn-3d btn-3d-white"
+                style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}
+              >
+                {showSolution ? '👁️ Hide Walkthrough' : '💡 Show Solution Walkthrough'}
+              </button>
+            </div>
+
+            {/* Problem / Scenario Card */}
+            <div style={{
+              background: 'var(--color-surface)',
+              border: '2px solid var(--color-blue)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              boxShadow: '0 4px 16px rgba(28, 176, 246, 0.08)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="badge badge-blue" style={{ fontSize: '0.75rem', fontWeight: 900 }}>
+                  🎯 APPLICATION SCENARIO
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)', fontWeight: 700 }}>
+                  Case Problem
+                </span>
+              </div>
+
+              <div style={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1.6, color: 'var(--color-text-main)' }}>
+                {node.substantive_content?.examples && node.substantive_content.examples.length > 0
+                  ? node.substantive_content.examples[0]
+                  : `Practical application of ${node.title.replace(/^Slides?\s*\d+[-–]?\d*:\s*/i, '')} in engineering & analytical problem solving.`}
+              </div>
+
+              {node.substantive_content?.examples && node.substantive_content.examples.length > 1 && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-subtle)', textTransform: 'uppercase' }}>
+                    Additional Scenario:
+                  </span>
+                  <div style={{
+                    padding: '0.75rem',
+                    background: 'var(--color-surface-hover)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.875rem',
+                    lineHeight: 1.5,
+                    borderLeft: '3px solid var(--color-purple)'
+                  }}>
+                    {node.substantive_content.examples[1]}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Step-by-Step Solution Breakdown */}
+            {showSolution && (
+              <div style={{
+                background: 'var(--color-surface-hover)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1.5px solid var(--color-border)',
+                padding: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.85rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--color-green)' }}>
+                    ✅ Step-by-Step Solution Breakdown
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {/* Step 1: Baseline Context */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '0.75rem',
+                    alignItems: 'flex-start',
+                    background: 'var(--color-surface)',
+                    padding: '0.85rem',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)'
+                  }}>
+                    <span style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: 'var(--color-blue)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.75rem',
+                      fontWeight: 900,
+                      flexShrink: 0
+                    }}>1</span>
+                    <div>
+                      <strong style={{ fontSize: '0.85rem', color: 'var(--color-text-main)' }}>Establish Governing Principle: </strong>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                        {node.substantive_content?.overview || node.concept_summary}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Step 2+: Mechanisms application */}
+                  {(node.substantive_content?.mechanisms || []).map((mech, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        gap: '0.75rem',
+                        alignItems: 'flex-start',
+                        background: 'var(--color-surface)',
+                        padding: '0.85rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--color-border)'
+                      }}
+                    >
+                      <span style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        background: 'var(--color-green)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.75rem',
+                        fontWeight: 900,
+                        flexShrink: 0
+                      }}>{idx + 2}</span>
+                      <div>
+                        <strong style={{ fontSize: '0.85rem', color: 'var(--color-text-main)' }}>Apply Rule #{idx + 1}: </strong>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                          {mech}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Distinctions / Edge Cases */}
+                  {node.substantive_content?.distinctions && (
+                    <div style={{
+                      padding: '0.75rem 1rem',
+                      background: 'rgba(147, 51, 234, 0.08)',
+                      border: '1.5px solid rgba(147, 51, 234, 0.25)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.85rem',
+                      lineHeight: 1.5
+                    }}>
+                      <strong style={{ color: 'var(--color-purple)' }}>💡 Key Distinction: </strong>
+                      {node.substantive_content.distinctions}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Examiner's Pitfall Alert */}
+            {node.substantive_content?.exam_pitfalls && (
+              <div style={{
+                background: 'rgba(255, 75, 75, 0.08)',
+                border: '2px solid rgba(255, 75, 75, 0.35)',
+                padding: '0.875rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '0.875rem',
+                lineHeight: 1.5
+              }}>
+                <strong style={{ color: 'var(--color-red)' }}>⚠️ Examiner's Trap in this Example: </strong>
+                {node.substantive_content.exam_pitfalls}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+              <button
+                onClick={() => setCurrentStep('theory')}
+                className="btn-3d btn-3d-white"
+                style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}
+              >
+                ← Back to Theory
+              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => setCurrentStep('companion')}
+                  className="btn-3d btn-3d-white"
+                  style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}
+                >
+                  Ask Buddy 💬
+                </button>
+                <button
+                  onClick={() => setCurrentStep('quiz')}
+                  className="btn-3d btn-3d-green"
+                  style={{ padding: '0.65rem 1.25rem', fontSize: '0.9rem' }}
+                >
+                  Check Understanding (Practice Quiz) ➔
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -858,11 +882,11 @@ export const SteppingStoneRunner: React.FC<SteppingStoneRunnerProps> = ({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
               <button
-                onClick={() => setCurrentStep('notes')}
+                onClick={() => setCurrentStep('example')}
                 className="btn-3d btn-3d-white"
                 style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}
               >
-                ← Back to Notes
+                ← Back to Worked Example
               </button>
               <button
                 onClick={() => setCurrentStep('quiz')}
