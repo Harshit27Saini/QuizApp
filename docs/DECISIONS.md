@@ -256,6 +256,22 @@
   4. Implemented full-window drag-and-drop and multi-file batch uploads on `CollectionDetailPage.tsx` and direct card drop targets on `DashboardPage.tsx`.
 - **Consequences:** Intuitive, frictionless file ingestion across collections and a world-class conversational study assistant that answers any question with personality and document grounding.
 
+---
+
+## ADR 024: Socratic Teach-Me Split-Screen with Authentic Unchanged PDF Viewer
+- **Date:** 2026-11-22
+- **Status:** Accepted
+- **Context:**
+  1. Users preferred uploading PDFs directly to Gemini/ChatGPT to be taught slide-by-slide rather than navigating through rigid LMS-style modals and extracted plain text.
+  2. Users explicitly required viewing the original, unchanged visual PDF (diagrams, equations, plots, colors) side-by-side with an active Socratic companion tutor instead of lossy text extractions.
+- **Decision:**
+  1. Built `SocraticStudyPage.tsx` (`/documents/:documentId/study`) providing a unified split-screen workspace: Left side is the live authentic visual PDF viewer (via raw blob / iframe with slide jump), Right side is the active Socratic AI tutor.
+  2. Created `POST /api/v1/documents/{document_id}/socratic-teach` and `generate_socratic_teaching` service in `backend/app/services/socratic/tutor.py` to deliver slide-accurate core principles, intuitive real-world analogies, and active recall understanding check questions with instant feedback and XP rewards.
+  3. Enabled direct token authentication on raw document file endpoint (`/documents/{document_id}/file?token=...`) and blob fetching in `api.ts`.
+  4. Added prominent 1-click `🎓 Socratic Teach-Me` access points on `CollectionDetailPage.tsx` and `DocumentPreviewPage.tsx`.
+- **Consequences:** Combines the conversational warmth and adaptive questioning of ChatGPT/Gemini with visual spatial diagram grounding, persistent mastery tracking, and zero prompt engineering overhead.
+
+
 
 
 

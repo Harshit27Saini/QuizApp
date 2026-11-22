@@ -363,6 +363,14 @@ export const DocumentPreviewPage: React.FC = () => {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {document && (
             <>
+              <Link
+                to={`/documents/${document.id}/study`}
+                className="btn-3d btn-3d-gold"
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
+                title="Socratic Split-Screen: Live PDF Viewer + Interactive AI Tutor"
+              >
+                🎓 Socratic Teach-Me
+              </Link>
               {document.file_type?.toLowerCase() === 'pdf' && (
                 <button
                   className="btn-3d btn-3d-white"

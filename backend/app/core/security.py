@@ -2,7 +2,7 @@ import time
 import hashlib
 import uuid
 from typing import Optional, Dict, Any
-from fastapi import Header, HTTPException, status, Depends
+from fastapi import Header, HTTPException, status, Depends, Query
 import jwt
 from app.core.config import settings
 
@@ -69,23 +69,28 @@ def create_access_token(
 
 async def get_current_user(
     authorization: Optional[str] = Header(None),
+    token: Optional[str] = Query(None),
     x_user_id: Optional[str] = Header(None),
     x_founder_passcode: Optional[str] = Header(None)
 ) -> Dict[str, Any]:
     """
     Extracts and validates user identity from either:
-    1. Signed Recall HS256 Bearer JWT
+    1. Signed Recall HS256 Bearer JWT (via Authorization header or ?token= query param)
     2. Firebase Auth ID Bearer token
     3. Dev user fallback when running in local development mode
     """
     user_data: Dict[str, Any] = {}
+    raw_token = None
 
     if authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ")[1]
+        raw_token = authorization.split(" ")[1]
+    elif token:
+        raw_token = token
 
+    if raw_token:
         # 1. First attempt: Recall native JWT token
         try:
-            decoded = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+            decoded = jwt.decode(raw_token, settings.JWT_SECRET, algorithms=["HS256"])
             email = decoded.get("email", "")
             user_data = {
                 "id": decoded.get("sub"),
@@ -103,7 +108,7 @@ async def get_current_user(
                 import firebase_admin
                 from firebase_admin import auth as fb_auth
 
-                decoded_token = fb_auth.verify_id_token(token)
+                decoded_token = fb_auth.verify_id_token(raw_token)
                 email = decoded_token.get("email", "")
                 user_data = {
                     "id": decoded_token.get("uid"),

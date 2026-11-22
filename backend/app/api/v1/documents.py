@@ -10,6 +10,8 @@ from app.core.config import settings
 from app.core.errors import not_found_error, bad_request_error
 from app.services.document_parser import parse_document
 from app.schemas.document import DocumentResponse, DocumentDetailResponse, DocumentSectionResponse
+from app.schemas.socratic import SocraticTeachRequest, SocraticTeachResponse
+from app.services.socratic.tutor import generate_socratic_teaching
 
 router = APIRouter(tags=["Documents & Ingestion"])
 
@@ -165,4 +167,39 @@ async def get_document_raw_file(
         media_type=media_type,
         filename=doc.get("filename", f"document.{ext}")
     )
+
+
+@router.post("/documents/{document_id}/socratic-teach", response_model=SocraticTeachResponse)
+async def socratic_teach_page(
+    document_id: str,
+    payload: SocraticTeachRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Socratic Teach-Me Mode: Returns structured, step-by-step tutoring for a specific
+    page/slide of the visual PDF reader, complete with core principle, intuitive analogy,
+    and a quick active-recall check question.
+    """
+    doc = await db.get_document(document_id, current_user["id"], is_admin=current_user.get("is_admin", False))
+    if not doc:
+        raise not_found_error("Document", document_id)
+
+    sections = await db.get_document_sections(document_id)
+    # Filter sections on the target page
+    page_sections = [s for s in sections if s.get("page_number") == payload.page_number]
+    if not page_sections and sections:
+        idx = min(len(sections) - 1, max(0, payload.page_number - 1))
+        page_sections = [sections[idx]]
+
+    page_text = "\n\n".join([f"### {s.get('heading', '')}\n{s.get('content', '')}" for s in page_sections])
+
+    res = await generate_socratic_teaching(
+        document_title=doc.get("filename", "Study Material"),
+        page_number=payload.page_number,
+        page_text=page_text,
+        pet_id=payload.pet_id,
+        user_response=payload.user_response,
+        previous_question=payload.previous_question
+    )
+    return res
 

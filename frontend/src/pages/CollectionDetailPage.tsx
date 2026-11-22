@@ -222,13 +222,20 @@ export const CollectionDetailPage: React.FC = () => {
           {documents.length > 0 && (
             <>
               <button
+                className="btn-3d btn-3d-gold"
+                onClick={() => navigate(`/documents/${documents[0].id}/study`)}
+                title="Open the first document in Socratic split-screen PDF tutor"
+              >
+                🎓 Socratic Teach-Me
+              </button>
+              <button
                 className="btn-3d btn-3d-white"
                 onClick={() => navigate(`/collections/${collectionId}/cards`)}
               >
                 🗂️ Study Cards
               </button>
               <button
-                className="btn-3d btn-3d-gold"
+                className="btn-3d btn-3d-white"
                 onClick={() => navigate(`/documents/${documents[0].id}/path`)}
               >
                 🗺️ Learning Path
@@ -449,18 +456,26 @@ export const CollectionDetailPage: React.FC = () => {
 
                 <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
                   <Link
-                    to={`/documents/${doc.id}/path`}
+                    to={`/documents/${doc.id}/study`}
                     className="btn-3d btn-3d-gold"
                     style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
+                    title="Interactive Split-Screen: Original PDF + Socratic Tutor"
                   >
-                    🗺️ Learning Path
+                    🎓 Socratic Teach-Me
+                  </Link>
+                  <Link
+                    to={`/documents/${doc.id}/path`}
+                    className="btn-3d btn-3d-white"
+                    style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
+                  >
+                    🗺️ Path
                   </Link>
                   <Link
                     to={`/documents/${doc.id}/preview`}
                     className="btn-3d btn-3d-white"
                     style={{ fontSize: '0.8rem', padding: '0.5rem 0.875rem' }}
                   >
-                    🔍 Text Preview
+                    🔍 Text
                   </Link>
                   <button
                     className="btn-3d btn-3d-blue"

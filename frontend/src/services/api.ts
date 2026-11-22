@@ -11,7 +11,8 @@ import type {
   LearningPathGenerateOptions,
   PetProfile,
   PetChatRequest,
-  PetChatResponse
+  PetChatResponse,
+  SocraticTeachResponse
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -108,8 +109,30 @@ export const api = {
     request<StudyDocument[]>(`/collections/${collectionId}/documents`),
   getDocumentPreview: (documentId: string) =>
     request<StudyDocument>(`/documents/${documentId}`),
-  getDocumentFileUrl: (documentId: string) =>
-    `${API_BASE_URL}/documents/${documentId}/file`,
+  getDocumentFileUrl: (documentId: string) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('recall_auth_token') : null;
+    const base = `${API_BASE_URL}/documents/${documentId}/file`;
+    return token ? `${base}?token=${encodeURIComponent(token)}` : base;
+  },
+  fetchDocumentRawBlob: async (documentId: string): Promise<string> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('recall_auth_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/documents/${documentId}/file`, { headers });
+    if (!res.ok) throw new Error(`Failed to load document (${res.status})`);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  },
+  socraticTeachPage: (documentId: string, payload: {
+    page_number: number;
+    pet_id: string;
+    user_response?: string;
+    previous_question?: string;
+  }) =>
+    request<SocraticTeachResponse>(`/documents/${documentId}/socratic-teach`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   uploadDocument: (collectionId: string, file: File) => {
     const formData = new FormData();
     formData.append('file', file);

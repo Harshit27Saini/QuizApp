@@ -231,3 +231,24 @@ export interface PetChatResponse {
   reply: string;
   suggested_followups: string[];
 }
+
+export interface SocraticOption {
+  id: string;
+  text: string;
+}
+
+export interface SocraticTeachResponse {
+  page_number: number;
+  pet_id: string;
+  pet_name: string;
+  avatar: string;
+  slide_title: string;
+  core_principle: string;
+  intuitive_analogy: string;
+  socratic_question: string;
+  options: SocraticOption[];
+  correct_option_id?: string;
+  evaluation?: string;
+  is_correct?: boolean;
+  xp_awarded: number;
+}

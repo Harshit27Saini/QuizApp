@@ -11,6 +11,7 @@ import { QuizResultPage } from './pages/QuizResultPage';
 import { QuizHistoryPage } from './pages/QuizHistoryPage';
 import { LearningPathPage } from './pages/LearningPathPage';
 import { CompanionsPage } from './pages/CompanionsPage';
+import { SocraticStudyPage } from './pages/SocraticStudyPage';
 import { JustStartPage } from './pages/JustStartPage';
 import { TodoListPage } from './pages/TodoListPage';
 import { ShopPage } from './pages/ShopPage';
@@ -55,6 +56,7 @@ export const App: React.FC = () => {
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/just-start" element={<JustStartPage />} />
           <Route path="/collections/:collectionId" element={<CollectionDetailPage />} />
+          <Route path="/documents/:documentId/study" element={<SocraticStudyPage />} />
           <Route path="/documents/:documentId/preview" element={<DocumentPreviewPage />} />
           <Route path="/documents/:documentId/reader" element={<DocumentPreviewPage />} />
           <Route path="/documents/:documentId/path" element={<LearningPathPage />} />
