@@ -11,6 +11,7 @@ import { uiScaleService, type UiScale, SCALE_CONFIGS } from '../../services/uiSc
 import { xpService } from '../../services/xp';
 import { questService } from '../../services/quests';
 import { companionService } from '../../services/companions';
+import { PetAssistantChat } from '../learning_path/PetAssistantChat';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -338,6 +339,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />
+
+      {/* Global Gemini / ChatGPT Style AI Study Companion */}
+      <PetAssistantChat />
     </div>
   );
 };

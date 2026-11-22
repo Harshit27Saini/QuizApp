@@ -241,6 +241,22 @@
   4. Preserved Step 3 (`companion`) and Step 4 (`quiz`) with seamless bi-directional navigation.
 - **Consequences:** Learning paths provide deep conceptual grounding and practical application without forced flashcard flipping, substantially elevating user satisfaction and study efficacy.
 
+---
+
+## ADR 023: Universal ChatGPT/Gemini-Grade Study Companion with Presets & Multi-File Drag-and-Drop
+- **Date:** 2026-11-22
+- **Status:** Accepted
+- **Context:**
+  1. Users reported the study chatbot felt limited and robotic, unable to answer open-ended questions like ChatGPT or Gemini, lacked collection-level grounding, and had no quick preset actions.
+  2. Users were unable to drag and drop files onto collections to upload documents because drag-and-drop event handlers were missing from `CollectionDetailPage.tsx` and collection cards.
+- **Decision:**
+  1. Expanded `PetAssistantChat.tsx` into a universal, ChatGPT/Gemini-grade conversational drawer mounted globally in `AppLayout.tsx` and accessible on all pages.
+  2. Implemented 6 one-click document & collection presets (`Executive Summary`, `Quiz Me (3 Qs)`, `Explain Like I'm 10`, `Exam Pitfalls & Traps`, `Formulas & Rules`, `7-Day Study Plan`).
+  3. Upgraded `pet_personas.py` system prompts to answer *anything* with academic breadth, Markdown code blocks, KaTeX math rendering, and distinct companion personalities (Sydney, Connie, Milo, Scooby, Bunny, Nandhini, Coach Harshit, Duo, Archimedes).
+  4. Implemented full-window drag-and-drop and multi-file batch uploads on `CollectionDetailPage.tsx` and direct card drop targets on `DashboardPage.tsx`.
+- **Consequences:** Intuitive, frictionless file ingestion across collections and a world-class conversational study assistant that answers any question with personality and document grounding.
+
+
 
 
 

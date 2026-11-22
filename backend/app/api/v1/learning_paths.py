@@ -34,13 +34,39 @@ async def chat_with_pet_assistant(
     Direct in-lesson chat with your chosen Study Companion (e.g. Sydney, Connie, Milo).
     Answers questions, gives real-world analogies, and clarifies difficult academic material.
     """
+    topic = payload.current_topic or ""
+    context = payload.context_text or ""
+
+    # Auto-load collection context if provided without explicit text
+    if payload.collection_id and not context:
+        try:
+            coll = await db.get_collection(payload.collection_id, current_user["id"], current_user.get("is_admin", False))
+            if coll:
+                topic = topic or f"Collection: {coll.get('title', 'Study Collection')}"
+                docs = await db.list_documents(payload.collection_id, current_user["id"], current_user.get("is_admin", False))
+                doc_summaries = [f"- {d.get('filename')} ({d.get('total_pages', 1)} pages)" for d in docs]
+                context = f"Collection: {coll.get('title')}\nDescription: {coll.get('description', '')}\nDocuments Included:\n" + "\n".join(doc_summaries)
+        except Exception as e:
+            print(f"[Recall AI] Note: Collection context lookup skipped: {e}")
+
+    # Auto-load document context if provided without explicit text
+    if payload.document_id and not context:
+        try:
+            sections = await db.get_document_sections(payload.document_id)
+            if sections:
+                headings = [f"Slide/Section {s.get('page_number', s.get('section_index', 1))}: {s.get('heading', '')}" for s in sections[:10]]
+                context = "Document Content Outline:\n" + "\n".join(headings)
+        except Exception as e:
+            print(f"[Recall AI] Note: Document context lookup skipped: {e}")
+
     history_dicts = [{"role": m.role, "content": m.content} for m in (payload.chat_history or [])]
     res = await get_pet_response(
         pet_id=payload.pet_id,
         user_message=payload.user_message,
-        current_topic=payload.current_topic or "",
-        context_text=payload.context_text or "",
-        chat_history=history_dicts
+        current_topic=topic,
+        context_text=context,
+        chat_history=history_dicts,
+        preset=payload.preset
     )
     return res
 

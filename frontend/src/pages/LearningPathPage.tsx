@@ -5,7 +5,6 @@ import { soundManager } from '../utils/sound';
 import { triggerConfetti } from '../utils/confetti';
 import { companionService } from '../services/companions';
 import { xpService } from '../services/xp';
-import { PetAssistantChat } from '../components/learning_path/PetAssistantChat';
 import { SandboxSetupModal } from '../components/learning_path/SandboxSetupModal';
 import { SteppingStoneRunner } from '../components/learning_path/SteppingStoneRunner';
 import { DungeonSideNode } from '../components/learning_path/DungeonSideNode';
@@ -543,17 +542,7 @@ export const LearningPathPage: React.FC = () => {
         />
       )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Floating Study Companion                                            */}
-      {/* ------------------------------------------------------------------ */}
-      <PetAssistantChat
-        currentTopic={activeNode?.title || path?.title}
-        contextText={activeNode?.substantive_content?.overview || activeNode?.concept_summary}
-      />
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Sandbox Scope Modal                                                 */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Sandbox Scope Modal */}
       {showSandboxModal && (
         <SandboxSetupModal
           totalPages={path?.nodes?.length ? Math.max(...path.nodes.map(n => n.source_page || 1)) : 10}

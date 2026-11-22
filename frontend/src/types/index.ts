@@ -220,6 +220,9 @@ export interface PetChatRequest {
   current_topic?: string;
   context_text?: string;
   chat_history?: PetMessage[];
+  collection_id?: string;
+  document_id?: string;
+  preset?: string;
 }
 
 export interface PetChatResponse {

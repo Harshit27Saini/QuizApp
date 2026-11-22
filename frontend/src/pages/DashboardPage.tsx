@@ -18,6 +18,40 @@ export const DashboardPage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [dragTargetCardId, setDragTargetCardId] = useState<string | null>(null);
+  const [cardUploading, setCardUploading] = useState<string | null>(null);
+
+  const handleCardDrop = async (collectionId: string, files: FileList | null, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragTargetCardId(null);
+    if (!files || files.length === 0) return;
+
+    const validFiles = Array.from(files).filter(f => {
+      const ext = '.' + f.name.split('.').pop()?.toLowerCase();
+      return ['.pdf', '.docx', '.pptx', '.txt'].includes(ext);
+    });
+
+    if (validFiles.length === 0) {
+      alert("Please drop supported document files (.pdf, .docx, .pptx, or .txt).");
+      return;
+    }
+
+    try {
+      setCardUploading(collectionId);
+      for (const f of validFiles) {
+        await api.uploadDocument(collectionId, f);
+        soundManager.playCorrect();
+      }
+      soundManager.playVictory();
+      triggerConfetti();
+      navigate(`/collections/${collectionId}`);
+    } catch (err: any) {
+      alert(`Upload failed: ${err?.message || 'Server error'}`);
+    } finally {
+      setCardUploading(null);
+    }
+  };
 
   const fetchCollections = async () => {
     try {
@@ -244,37 +278,100 @@ export const DashboardPage: React.FC = () => {
           gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
           gap: '1.25rem'
         }}>
-          {collections.map(c => (
-            <Link key={c.id} to={`/collections/${c.id}`} style={{ textDecoration: 'none' }}>
-              <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.25rem' }}>📁</span>
-                      <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text-main)' }}>{c.title}</h2>
+          {collections.map(c => {
+            const isTarget = dragTargetCardId === c.id;
+            const isUploadingThis = cardUploading === c.id;
+
+            return (
+              <div
+                key={c.id}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+                  if (dragTargetCardId !== c.id) setDragTargetCardId(c.id);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (dragTargetCardId === c.id) setDragTargetCardId(null);
+                }}
+                onDrop={(e) => handleCardDrop(c.id, e.dataTransfer.files, e)}
+                style={{ height: '100%' }}
+              >
+                <Link to={`/collections/${c.id}`} style={{ textDecoration: 'none', height: '100%', display: 'block' }}>
+                  <div
+                    className="card"
+                    style={{
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      border: isTarget ? '2.5px dashed var(--color-green)' : '2px solid var(--color-border)',
+                      background: isTarget ? 'rgba(88, 204, 2, 0.08)' : 'var(--color-surface)',
+                      boxShadow: isTarget ? '0 12px 30px rgba(88, 204, 2, 0.2)' : 'none',
+                      transform: isTarget ? 'scale(1.02)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '1.25rem' }}>{isTarget ? '📥' : '📁'}</span>
+                          <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text-main)' }}>{c.title}</h2>
+                        </div>
+                        <button
+                          onClick={(e) => handleDeleteCollection(c.id, c.title, e)}
+                          className="btn-3d btn-3d-white"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: 'var(--color-error)' }}
+                          title="Delete Collection"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      {c.description && (
+                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', lineHeight: 1.4 }}>
+                          {c.description}
+                        </p>
+                      )}
+                      {isTarget && (
+                        <div style={{
+                          marginTop: '0.75rem',
+                          padding: '0.5rem',
+                          background: 'rgba(88, 204, 2, 0.15)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          color: 'var(--color-green)',
+                          textAlign: 'center'
+                        }}>
+                          Drop file here to upload!
+                        </div>
+                      )}
+                      {isUploadingThis && (
+                        <div style={{
+                          marginTop: '0.75rem',
+                          padding: '0.5rem',
+                          background: 'rgba(28, 176, 246, 0.15)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.8rem',
+                          fontWeight: 800,
+                          color: 'var(--color-blue)',
+                          textAlign: 'center'
+                        }}>
+                          Uploading & analyzing document...
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={(e) => handleDeleteCollection(c.id, c.title, e)}
-                      className="btn-3d btn-3d-white"
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: 'var(--color-error)' }}
-                      title="Delete Collection"
-                    >
-                      🗑️
-                    </button>
+                    <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>
+                      <span>Created {new Date(c.created_at).toLocaleDateString()}</span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>Open →</span>
+                    </div>
                   </div>
-                  {c.description && (
-                    <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', lineHeight: 1.4 }}>
-                      {c.description}
-                    </p>
-                  )}
-                </div>
-                <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>
-                  <span>Created {new Date(c.created_at).toLocaleDateString()}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>Open →</span>
-                </div>
+                </Link>
               </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       )}
 

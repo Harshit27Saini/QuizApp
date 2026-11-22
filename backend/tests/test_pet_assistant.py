@@ -3,7 +3,7 @@ from app.services.ai.pet_personas import PET_PROFILES, get_pet_response, build_p
 
 
 def test_pet_profiles_exist():
-    expected_pets = ["sydney", "connie", "milo", "scooby", "bunny"]
+    expected_pets = ["sydney", "connie", "milo", "scooby", "bunny", "nandhini", "coach_harshit", "duo", "archimedes"]
     for p_id in expected_pets:
         assert p_id in PET_PROFILES
         pet = PET_PROFILES[p_id]
@@ -22,6 +22,21 @@ def test_pet_system_prompt_structure():
     assert "Sydney" in prompt
     assert "PID Controllers in Robotics" in prompt
     assert "Closed-loop controllers" in prompt
+
+
+@pytest.mark.asyncio
+async def test_pet_presets_execution():
+    for preset_key in ["summary", "quiz_me", "explain_simple", "exam_traps", "formulas", "study_plan"]:
+        res = await get_pet_response(
+            pet_id="nandhini",
+            user_message="",
+            current_topic="Fourier Transform Analysis",
+            context_text="The Fourier transform decomposes functions depending on space or time into functions depending on spatial frequency or temporal frequency.",
+            preset=preset_key
+        )
+        assert res["pet_id"] == "nandhini"
+        assert len(res["reply"]) > 20
+        assert len(res["suggested_followups"]) >= 2
 
 
 @pytest.mark.asyncio

@@ -18,9 +18,8 @@ class GeminiProvider(BaseAIProvider):
     # (compared to only 20 requests/day on gemini-3.6-flash preview)
     MODELS_IN_PRIORITY: List[str] = [
         "gemini-flash-lite-latest",
-        "gemini-3.5-flash-lite",
-        "gemini-3-flash-preview",
         "gemini-flash-latest",
+        "gemini-3-flash-preview",
     ]
 
     def __init__(self, api_key: str = ""):

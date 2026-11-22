@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { soundManager } from '../utils/sound';
 import type { Collection, StudyDocument } from '../types';
 
 export const CollectionDetailPage: React.FC = () => {
@@ -12,7 +13,11 @@ export const CollectionDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [recreating, setRecreating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; fileName: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isWindowDragging, setIsWindowDragging] = useState(false);
+  const [isDropzoneHovered, setIsDropzoneHovered] = useState(false);
+  const dragCounterRef = useRef<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const cachedTitle = collectionId ? localStorage.getItem(`recall_coll_title_${collectionId}`) : null;
@@ -59,22 +64,104 @@ export const CollectionDetailPage: React.FC = () => {
     fetchData();
   }, [collectionId]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !collectionId) return;
+  const uploadFilesList = async (files: File[]) => {
+    if (!collectionId || files.length === 0) return;
+    const validExtensions = ['.pdf', '.docx', '.pptx', '.txt'];
+    const validFiles = files.filter(f => {
+      const ext = '.' + f.name.split('.').pop()?.toLowerCase();
+      return validExtensions.includes(ext);
+    });
+
+    if (validFiles.length === 0) {
+      setError("Please drop or select supported files (.pdf, .docx, .pptx, or .txt).");
+      return;
+    }
 
     try {
       setUploading(true);
       setError(null);
-      const newDoc = await api.uploadDocument(collectionId, file);
-      setDocuments(prev => [newDoc, ...prev]);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (err: any) {
-      setError(err.message || 'Upload failed');
+      const newDocs: StudyDocument[] = [];
+
+      for (let i = 0; i < validFiles.length; i++) {
+        const file = validFiles[i];
+        setUploadProgress({ current: i + 1, total: validFiles.length, fileName: file.name });
+        try {
+          const doc = await api.uploadDocument(collectionId, file);
+          newDocs.push(doc);
+          soundManager.playCorrect();
+        } catch (err: any) {
+          console.error(`Upload error for ${file.name}:`, err);
+          setError(`Failed to process ${file.name}: ${err?.message || 'Upload error'}`);
+        }
+      }
+
+      if (newDocs.length > 0) {
+        setDocuments(prev => [...newDocs, ...prev]);
+        soundManager.playVictory();
+      }
     } finally {
       setUploading(false);
+      setUploadProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (fileList && fileList.length > 0) {
+      uploadFilesList(Array.from(fileList));
+    }
+  };
+
+  // Full-window drag-and-drop listener
+  useEffect(() => {
+    const handleWindowDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer?.types?.includes('Files')) {
+        dragCounterRef.current += 1;
+        setIsWindowDragging(true);
+      }
+    };
+
+    const handleWindowDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current -= 1;
+      if (dragCounterRef.current <= 0) {
+        dragCounterRef.current = 0;
+        setIsWindowDragging(false);
+      }
+    };
+
+    const handleWindowDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    };
+
+    const handleWindowDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current = 0;
+      setIsWindowDragging(false);
+      setIsDropzoneHovered(false);
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (files.length > 0) {
+        uploadFilesList(files);
+      }
+    };
+
+    window.addEventListener('dragenter', handleWindowDragEnter);
+    window.addEventListener('dragleave', handleWindowDragLeave);
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('drop', handleWindowDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleWindowDragEnter);
+      window.removeEventListener('dragleave', handleWindowDragLeave);
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('drop', handleWindowDrop);
+    };
+  }, [collectionId]);
 
   const handleDeleteCollection = async () => {
     if (!collectionId || !collection) return;
@@ -116,28 +203,45 @@ export const CollectionDetailPage: React.FC = () => {
           )}
         </div>
 
-        {documents.length > 0 && (
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button
-              className="btn-3d btn-3d-white"
-              onClick={() => navigate(`/collections/${collectionId}/cards`)}
-            >
-              🗂️ Study Cards
-            </button>
-            <button
-              className="btn-3d btn-3d-gold"
-              onClick={() => navigate(`/documents/${documents[0].id}/path`)}
-            >
-              🗺️ Learning Path
-            </button>
-            <button
-              className="btn-3d btn-3d-green"
-              onClick={() => navigate(`/collections/${collectionId}/quiz-setup`)}
-            >
-              ⚡ Generate Quiz
-            </button>
-          </div>
-        )}
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            className="btn-3d btn-3d-purple"
+            onClick={() => {
+              soundManager.playTick();
+              window.dispatchEvent(new CustomEvent('recall:open-study-chat', {
+                detail: {
+                  collectionId,
+                  topic: `Collection: ${collection?.title || 'Study Collection'}`
+                }
+              }));
+            }}
+            title="Chat with your companion grounded in this collection"
+          >
+            💬 Ask Companion
+          </button>
+          {documents.length > 0 && (
+            <>
+              <button
+                className="btn-3d btn-3d-white"
+                onClick={() => navigate(`/collections/${collectionId}/cards`)}
+              >
+                🗂️ Study Cards
+              </button>
+              <button
+                className="btn-3d btn-3d-gold"
+                onClick={() => navigate(`/documents/${documents[0].id}/path`)}
+              >
+                🗺️ Learning Path
+              </button>
+              <button
+                className="btn-3d btn-3d-green"
+                onClick={() => navigate(`/collections/${collectionId}/quiz-setup`)}
+              >
+                ⚡ Generate Quiz
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -198,35 +302,99 @@ export const CollectionDetailPage: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* Upload Dropzone */}
+      {/* Full Window Drag Overlay */}
+      {isWindowDragging && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(28, 176, 246, 0.22)',
+          backdropFilter: 'blur(8px)',
+          border: '4px dashed var(--color-blue)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          animation: 'fadeIn 0.15s ease-out'
+        }}>
+          <div className="card" style={{
+            padding: '2.5rem 3.5rem',
+            textAlign: 'center',
+            boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+            border: '2px solid var(--color-blue)',
+            background: 'var(--color-surface)',
+            transform: 'scale(1.05)',
+            transition: 'transform 0.2s ease'
+          }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>📥</div>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--color-blue)', margin: 0 }}>
+              Drop Files to Add to {collection?.title || 'Collection'}
+            </h2>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem', margin: '0.5rem 0 0 0' }}>
+              Release to upload PDF, DOCX, PPTX, or TXT (batch multiple files supported)
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Dropzone */}
       <div
         className="card"
         style={{
-          border: '2px dashed var(--color-border-strong)',
+          border: isDropzoneHovered
+            ? '3px dashed var(--color-blue)'
+            : '2px dashed var(--color-border-strong)',
           textAlign: 'center',
           padding: '2.5rem 1.5rem',
           cursor: uploading ? 'wait' : 'pointer',
-          background: 'var(--color-surface)'
+          background: isDropzoneHovered ? 'rgba(28, 176, 246, 0.08)' : 'var(--color-surface)',
+          transform: isDropzoneHovered ? 'scale(1.01)' : 'none',
+          boxShadow: isDropzoneHovered ? '0 12px 32px rgba(28, 176, 246, 0.18)' : 'none',
+          transition: 'all 0.2s ease'
         }}
         onClick={() => !uploading && fileInputRef.current?.click()}
+        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsDropzoneHovered(true); }}
+        onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDropzoneHovered(false); }}
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDropzoneHovered(false);
+          const droppedFiles = Array.from(e.dataTransfer.files || []);
+          if (droppedFiles.length > 0) uploadFilesList(droppedFiles);
+        }}
       >
         <input
           ref={fileInputRef}
           type="file"
           accept=".pdf,.docx,.pptx,.txt"
+          multiple
           style={{ display: 'none' }}
-          onChange={handleFileUpload}
+          onChange={handleFileInputChange}
           disabled={uploading}
         />
-        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📄</div>
-        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.25rem' }}>
-          {uploading ? 'Extracting text and analyzing sections...' : 'Upload Study Document'}
+        <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>
+          {isDropzoneHovered ? '✨' : uploading ? '⚙️' : '📄'}
+        </div>
+        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.35rem' }}>
+          {uploading
+            ? (uploadProgress
+                ? `Uploading ${uploadProgress.current} of ${uploadProgress.total}: ${uploadProgress.fileName}...`
+                : 'Extracting text and analyzing sections...')
+            : isDropzoneHovered
+              ? 'Release to upload your documents!'
+              : 'Drag & Drop Study Documents Here'}
         </h3>
         <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
-          Supports <strong>PDF</strong>, <strong>DOCX</strong>, <strong>PPTX</strong>, or <strong>TXT</strong> (up to 25MB)
+          Supports <strong>PDF</strong>, <strong>DOCX</strong>, <strong>PPTX</strong>, or <strong>TXT</strong> • Multi-file drop enabled
         </p>
-        <button type="button" className="btn btn-secondary" disabled={uploading}>
-          {uploading ? 'Processing Document...' : 'Select File'}
+        <button
+          type="button"
+          className="btn-3d btn-3d-blue"
+          disabled={uploading}
+          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+        >
+          {uploading ? 'Processing Documents...' : 'Browse / Select Files 📁'}
         </button>
       </div>
 
