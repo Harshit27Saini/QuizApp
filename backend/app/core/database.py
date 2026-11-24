@@ -253,7 +253,7 @@ class Repository:
         sb_colls = []
         if self.supabase:
             try:
-                if is_admin or user_id == "00000000-0000-0000-0000-000000000001":
+                if is_admin:
                     sb_colls = self._sb_select_many("collections", order_col="created_at", order_desc=True)
                 else:
                     sb_colls = self._sb_select_many("collections", filters={"user_id": user_id}, order_col="created_at", order_desc=True)
@@ -267,37 +267,43 @@ class Repository:
             memory_db._save_to_disk()
             return sb_colls
 
-        # If admin or dev founder, return all platform collections
-        if is_admin or user_id == "00000000-0000-0000-0000-000000000001":
+        # If admin explicitly requests all platform collections
+        if is_admin:
             return sorted(list(memory_db.collections.values()), key=lambda x: x.get("created_at", ""), reverse=True)
 
-        # For student, return their collections and any guest collections on this session
+        # Strict user isolation: ONLY return collections owned by this specific user
         colls = [
             c for c in memory_db.collections.values()
-            if c.get("user_id") == user_id or c.get("user_id", "").startswith("guest_")
+            if c.get("user_id") == user_id
         ]
         return sorted(colls, key=lambda x: x.get("created_at", ""), reverse=True)
 
-    async def adopt_collection_to_user(self, collection_id: str, user_id: str) -> None:
+    async def adopt_collection_to_user(self, collection_id: str, user_id: str, guest_id: Optional[str] = None) -> bool:
         """Adopts a guest-created collection, its documents, and its quizzes to an authenticated user ID."""
         if not user_id or user_id.startswith("guest_"):
-            return
+            return False
 
         if collection_id in memory_db.collections:
             coll = memory_db.collections[collection_id]
-            if coll.get("user_id") != user_id:
-                coll["user_id"] = user_id
-                coll["updated_at"] = memory_db.now_iso()
+            coll_owner = coll.get("user_id", "")
+            # Only adopt if the collection was created by an anonymous guest session
+            if not coll_owner.startswith("guest_"):
+                return False
+            if guest_id and coll_owner != guest_id:
+                return False
 
-        for doc in memory_db.documents.values():
-            if doc.get("collection_id") == collection_id and doc.get("user_id") != user_id:
-                doc["user_id"] = user_id
+            coll["user_id"] = user_id
+            coll["updated_at"] = memory_db.now_iso()
 
-        for q in memory_db.quizzes.values():
-            if q.get("collection_id") == collection_id and q.get("user_id") != user_id:
-                q["user_id"] = user_id
+            for doc in memory_db.documents.values():
+                if doc.get("collection_id") == collection_id and doc.get("user_id") == coll_owner:
+                    doc["user_id"] = user_id
 
-        memory_db._save_to_disk()
+            for q in memory_db.quizzes.values():
+                if q.get("collection_id") == collection_id and q.get("user_id") == coll_owner:
+                    q["user_id"] = user_id
+
+            memory_db._save_to_disk()
 
         if self.supabase:
             try:
@@ -306,6 +312,7 @@ class Repository:
                 self.supabase.table("quizzes").update({"user_id": user_id}).eq("collection_id", collection_id).execute()
             except Exception:
                 pass
+        return True
 
     async def get_collection(self, collection_id: str, user_id: str, is_admin: bool = False) -> Optional[Dict[str, Any]]:
         if self.supabase:
@@ -320,11 +327,7 @@ class Repository:
 
         item = memory_db.collections.get(collection_id)
         if item:
-            if is_admin or item.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
-                return item
-            if (item.get("user_id", "").startswith("guest_") or item.get("user_id") == "00000000-0000-0000-0000-000000000001") and not user_id.startswith("guest_"):
-                item["user_id"] = user_id
-                memory_db._save_to_disk()
+            if is_admin or item.get("user_id") == user_id:
                 return item
         return None
 
@@ -334,17 +337,23 @@ class Repository:
         user_id: str,
         title: str = "Study Collection",
         is_admin: bool = False
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Returns the collection or auto-restores it if erased during a cloud cold-start."""
         existing = await self.get_collection(collection_id, user_id, is_admin=is_admin)
         if existing:
             return existing
 
+        # Check if collection exists for another user - do NOT hijack or overwrite
+        if collection_id in memory_db.collections:
+            other = memory_db.collections[collection_id]
+            if other.get("user_id") != user_id and not is_admin:
+                return None
+
         item = {
             "id": collection_id,
             "user_id": user_id,
             "title": title,
-            "description": "Auto-restored study collection",
+            "description": "Study collection",
             "created_at": memory_db.now_iso(),
             "updated_at": memory_db.now_iso()
         }
@@ -365,7 +374,7 @@ class Repository:
         if self.supabase:
             try:
                 item = self._sb_select_one("collections", {"id": collection_id})
-                if item and (is_admin or item.get("user_id") == user_id or item.get("user_id") == "00000000-0000-0000-0000-000000000001"):
+                if item and (is_admin or item.get("user_id") == user_id):
                     self._sb_delete("collections", collection_id)
                     if collection_id in memory_db.collections:
                         del memory_db.collections[collection_id]
@@ -377,7 +386,7 @@ class Repository:
 
         if collection_id in memory_db.collections:
             coll = memory_db.collections[collection_id]
-            if is_admin or coll.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
+            if is_admin or coll.get("user_id") == user_id:
                 del memory_db.collections[collection_id]
                 memory_db._save_to_disk()
                 return True
@@ -424,6 +433,11 @@ class Repository:
         return doc
 
     async def list_documents(self, collection_id: str, user_id: str, is_admin: bool = False) -> List[Dict[str, Any]]:
+        # Verify collection access first
+        coll = await self.get_collection(collection_id, user_id, is_admin=is_admin)
+        if not coll:
+            return []
+
         if self.supabase:
             try:
                 items = self._sb_select_many("documents", filters={"collection_id": collection_id}, order_col="created_at", order_desc=True)
@@ -438,8 +452,6 @@ class Repository:
             if d.get("collection_id") == collection_id and (
                 is_admin
                 or d.get("user_id") == user_id
-                or user_id == "00000000-0000-0000-0000-000000000001"
-                or d.get("user_id") == "00000000-0000-0000-0000-000000000001"
             )
         ]
 
@@ -449,19 +461,13 @@ class Repository:
                 doc = self._sb_select_one("documents", {"id": document_id})
                 if doc and (is_admin or doc.get("user_id") == user_id):
                     return doc
-                if doc:
-                    return None
+                return None
             except Exception as e:
                 self._disable_supabase("get_document", e)
 
         doc = memory_db.documents.get(document_id)
-        if doc:
-            if is_admin or doc.get("user_id") == user_id or user_id == "00000000-0000-0000-0000-000000000001":
-                return doc
-            if (doc.get("user_id", "").startswith("guest_") or doc.get("user_id") == "00000000-0000-0000-0000-000000000001") and not user_id.startswith("guest_"):
-                doc["user_id"] = user_id
-                memory_db._save_to_disk()
-                return doc
+        if doc and (is_admin or doc.get("user_id") == user_id):
+            return doc
         return None
 
     async def create_document_sections(self, sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

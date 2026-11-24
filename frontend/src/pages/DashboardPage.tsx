@@ -53,27 +53,29 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  const getCollectionsCacheKey = () => {
+    try {
+      const profileStr = localStorage.getItem('recall_user_profile');
+      if (profileStr) {
+        const p = JSON.parse(profileStr);
+        if (p?.id) return `recall_cached_collections_${p.id}`;
+      }
+    } catch {}
+    const guestId = localStorage.getItem('recall_guest_id') || 'guest';
+    return `recall_cached_collections_${guestId}`;
+  };
+
   const fetchCollections = async () => {
+    const cacheKey = getCollectionsCacheKey();
     try {
       setLoading(true);
       const data = await api.listCollections();
-      if (Array.isArray(data) && data.length > 0) {
-        setCollections(data);
-        localStorage.setItem('recall_cached_collections', JSON.stringify(data));
-      } else {
-        const cached = localStorage.getItem('recall_cached_collections');
-        if (cached) {
-          try {
-            setCollections(JSON.parse(cached));
-          } catch {
-            setCollections(data || []);
-          }
-        } else {
-          setCollections(data || []);
-        }
-      }
+      const list = Array.isArray(data) ? data : [];
+      setCollections(list);
+      localStorage.setItem(cacheKey, JSON.stringify(list));
+      setError(null);
     } catch (err: any) {
-      const cached = localStorage.getItem('recall_cached_collections');
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
           setCollections(JSON.parse(cached));
@@ -91,8 +93,13 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     fetchCollections();
     const handleTodos = () => setTodos(todoService.getTodos());
+    const handleAuth = () => fetchCollections();
     window.addEventListener('recall:todos-changed', handleTodos);
-    return () => window.removeEventListener('recall:todos-changed', handleTodos);
+    window.addEventListener('recall:auth-changed', handleAuth);
+    return () => {
+      window.removeEventListener('recall:todos-changed', handleTodos);
+      window.removeEventListener('recall:auth-changed', handleAuth);
+    };
   }, []);
 
   const handleToggleTodo = (id: string, e: React.MouseEvent) => {
@@ -114,8 +121,9 @@ export const DashboardPage: React.FC = () => {
       const created = await api.createCollection(title.trim(), description.trim());
       if (created?.id) {
         localStorage.setItem(`recall_coll_title_${created.id}`, created.title);
-        const cached = JSON.parse(localStorage.getItem('recall_cached_collections') || '[]');
-        localStorage.setItem('recall_cached_collections', JSON.stringify([created, ...cached.filter((c: any) => c.id !== created.id)]));
+        const cacheKey = getCollectionsCacheKey();
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        localStorage.setItem(cacheKey, JSON.stringify([created, ...cached.filter((c: any) => c.id !== created.id)]));
       }
       setTitle('');
       setDescription('');
@@ -134,8 +142,9 @@ export const DashboardPage: React.FC = () => {
     if (window.confirm(`Are you sure you want to delete the collection "${title}" and all its documents?`)) {
       try {
         await api.deleteCollection(id);
-        const cached = JSON.parse(localStorage.getItem('recall_cached_collections') || '[]');
-        localStorage.setItem('recall_cached_collections', JSON.stringify(cached.filter((c: any) => c.id !== id)));
+        const cacheKey = getCollectionsCacheKey();
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        localStorage.setItem(cacheKey, JSON.stringify(cached.filter((c: any) => c.id !== id)));
         soundManager.playCorrect();
         fetchCollections();
       } catch (err: any) {

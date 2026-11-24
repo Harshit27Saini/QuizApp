@@ -100,6 +100,21 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     if (window.confirm('Log out of this playtest account?')) {
       localStorage.removeItem('recall_auth_token');
       localStorage.removeItem('recall_user_profile');
+      localStorage.removeItem('recall_guest_id');
+      localStorage.removeItem('recall_cached_collections');
+
+      // Purge all user-scoped cached collections from localStorage
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('recall_cached_collections') || k.startsWith('recall_coll_title_'))) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      } catch {}
+
       setAuthUser(null);
       setHasToken(false);
       setGuestBypass(false);

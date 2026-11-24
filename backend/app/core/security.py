@@ -29,16 +29,13 @@ def is_admin_user(user: Dict[str, Any], passcode: Optional[str] = None) -> bool:
     if passcode and passcode == settings.FOUNDER_PASSCODE:
         return True
 
-    if user.get("is_admin") is True:
-        return True
-
     email = user.get("email", "").strip().lower()
     if not email:
         return False
 
     # Check exact configured admin list
     for admin_email in settings.admin_email_list:
-        if admin_email in email:
+        if admin_email == email or admin_email in email:
             return True
 
     # Convenience check for founder handle
@@ -125,12 +122,14 @@ async def get_current_user(
         if settings.ENVIRONMENT == "development" or (not settings.FIREBASE_PROJECT_ID and not settings.FIREBASE_CREDENTIALS_PATH):
             user_id = x_user_id or DEV_USER["id"]
             email = DEV_USER["email"] if not x_user_id else f"guest_{x_user_id[:8]}@recall.local"
+            # When x_user_id is not provided, evaluate admin strictly by email or founder passcode
+            is_admin_flag = is_admin_user({"email": email}, passcode=x_founder_passcode)
             user_data = {
                 "id": user_id,
                 "email": email,
                 "display_name": DEV_USER["display_name"] if not x_user_id else f"Guest {x_user_id[:4]}",
                 "xp": DEV_USER["xp"],
-                "is_admin": (not x_user_id) or is_admin_user({"email": email})
+                "is_admin": is_admin_flag
             }
         else:
             raise HTTPException(
@@ -138,7 +137,7 @@ async def get_current_user(
                 detail="Missing or invalid authentication token."
             )
 
-    # Evaluate admin status with founder passcode or email rules
+    # Re-evaluate admin status strictly against founder passcode or admin email rules
     user_data["is_admin"] = is_admin_user(user_data, passcode=x_founder_passcode)
     return user_data
 

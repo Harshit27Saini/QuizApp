@@ -26,10 +26,11 @@ async def list_collections(
     all_users: bool = Query(False, description="Admin-only: list all platform collections"),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Lists study collections owned by the authenticated user (or all if admin)."""
+    """Lists study collections owned by the authenticated user (or all platform collections if admin explicitly passes all_users=true)."""
+    is_admin_mode = bool(current_user.get("is_admin", False) and all_users)
     return await db.list_collections(
         user_id=current_user["id"],
-        is_admin=current_user.get("is_admin", False) or all_users
+        is_admin=is_admin_mode
     )
 
 
@@ -38,19 +39,14 @@ async def get_collection(
     collection_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Retrieves a specific collection by ID (with cold-start auto-recovery)."""
+    """Retrieves a specific collection by ID if owned by current user or admin."""
     coll = await db.get_collection(
         collection_id=collection_id,
         user_id=current_user["id"],
         is_admin=current_user.get("is_admin", False)
     )
     if not coll:
-        coll = await db.get_or_restore_collection(
-            collection_id=collection_id,
-            user_id=current_user["id"],
-            title="Study Collection",
-            is_admin=current_user.get("is_admin", False)
-        )
+        raise not_found_error("Collection", collection_id)
     return coll
 
 

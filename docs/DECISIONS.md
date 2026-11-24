@@ -271,6 +271,27 @@
   4. Added prominent 1-click `🎓 Socratic Teach-Me` access points on `CollectionDetailPage.tsx` and `DocumentPreviewPage.tsx`.
 - **Consequences:** Combines the conversational warmth and adaptive questioning of ChatGPT/Gemini with visual spatial diagram grounding, persistent mastery tracking, and zero prompt engineering overhead.
 
+---
+
+## ADR 025: Strict Multi-Tenant Isolation and Data Privacy for User Collections
+- **Date:** 2026-11-24
+- **Status:** Accepted
+- **Context:**
+  1. Users reported that private study collections and documents became visible to other friends/users on the platform.
+  2. Investigation revealed multiple critical privacy leakage vectors:
+     - `list_collections` endpoint bypassed user filtering whenever `current_user["is_admin"]` was true (or query had `or all_users`), returning all platform collections to admin accounts.
+     - Fallback in `InMemoryDB.list_collections` returned any collection where `user_id.startswith("guest_")` to *every* visitor, exposing all guest-created study materials to all users.
+     - Unauthenticated requests without an `X-User-Id` header defaulted to the hardcoded `DEV_USER` with `is_admin = True`, granting accidental superadmin platform visibility.
+     - `attempts.py` automatically called `adopt_collection_to_user` upon submitting any quiz attempt, reassigning the creator's collection ownership to whoever took the quiz.
+     - `DashboardPage.tsx` cached collections in a global `localStorage` key (`recall_cached_collections`) and fell back to loading the previous user's cached collections whenever a new user logged in with 0 collections.
+- **Decision:**
+  1. Enforced strict user scoping on `GET /collections`: only returns collections where `c.user_id == current_user["id"]`. Elevated `is_admin` all-collections listing is only permitted if the user is an admin AND explicitly requests `?all_users=true`.
+  2. Removed the wildcard `startswith("guest_")` match from database queries. Guest collections are strictly isolated to their own unique `X-User-Id`.
+  3. Removed collection hijacking in `get_collection`, `get_document`, and `attempts.py`. Taking a quiz or viewing a document never reassigns ownership.
+  4. Secured unauthenticated request fallback in `security.py` so unauthenticated requests never receive `is_admin = True`.
+  5. Scoped frontend localStorage caching to user ID (`recall_cached_collections_${userId}`) and purged all cached collection keys and guest tokens on logout.
+- **Consequences:** Complete data privacy and multi-tenant isolation. No user or friend can see, access, or modify another user's private study collections or documents.
+
 
 
 
